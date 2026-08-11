@@ -1,0 +1,113 @@
+﻿using Firetrack.Models;
+using Firetrack.Services;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
+using Microsoft.Maui.Controls;
+
+namespace Firetrack.ViewModels
+{
+    public class PendingRequestsViewModel : ViewModelBase
+    {
+        private ObservableCollection<EquipmentModel> _requests = new();
+        private bool _isBusy;
+
+        public ObservableCollection<EquipmentModel> Requests
+        {
+            get => _requests;
+            set { _requests = value; OnPropertyChanged(); }
+        }
+
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set { _isBusy = value; OnPropertyChanged(); }
+        }
+
+        public ICommand LoadRequestsCommand { get; }
+        public ICommand ApproveCommand { get; }
+        public ICommand RejectCommand { get; }
+        // GoBackCommand removed – navigation is handled by Shell
+
+        public PendingRequestsViewModel()
+        {
+            LoadRequestsCommand = new Command(OnLoadRequests);
+            ApproveCommand = new Command<EquipmentModel>(OnApprove);
+            RejectCommand = new Command<EquipmentModel>(OnReject);
+            // GoBackCommand assignment removed
+
+            OnLoadRequests();
+        }
+
+        private async void OnLoadRequests()
+        {
+            if (App.Database == null) return;
+
+            IsBusy = true;
+            try
+            {
+                var list = await App.Database.GetPendingRequestsAsync();
+                Requests.Clear();
+                foreach (var item in list)
+                    Requests.Add(item);
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        private async void OnApprove(EquipmentModel? equipment)
+        {
+            if (equipment == null) return;
+            if (App.CurrentUser == null) return;
+
+            bool confirm = await Shell.Current.DisplayAlert(
+                "Approve Request",
+                $"Approve '{equipment.Name}' for {equipment.RequestedByUsername}?",
+                "Yes",
+                "Cancel");
+
+            if (!confirm) return;
+
+            try
+            {
+                await App.Database!.ApproveRequestAsync(equipment.QRCode, App.CurrentUser);
+                await Shell.Current.DisplayAlert("Success", $"Request approved. Equipment issued.", "OK");
+                OnLoadRequests(); // refresh
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+        }
+
+        private async void OnReject(EquipmentModel? equipment)
+        {
+            if (equipment == null) return;
+            if (App.CurrentUser == null) return;
+
+            bool confirm = await Shell.Current.DisplayAlert(
+                "Reject Request",
+                $"Reject '{equipment.Name}' for {equipment.RequestedByUsername}?",
+                "Yes",
+                "Cancel");
+
+            if (!confirm) return;
+
+            try
+            {
+                await App.Database!.RejectRequestAsync(equipment.QRCode, App.CurrentUser);
+                await Shell.Current.DisplayAlert("Success", $"Request rejected.", "OK");
+                OnLoadRequests(); // refresh
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+        }
+    }
+}

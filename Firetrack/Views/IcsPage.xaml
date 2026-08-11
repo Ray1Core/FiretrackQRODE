@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.IcsPage"
+             Title="Generate ICS">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- Header -->
+            <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                <Label Text="📄 Inventory Custodian Slip"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryColor}"
+                       HorizontalOptions="Center" />
+                <Label Text="Review the details and generate the official ICS document."
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondaryColor}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Equipment Details -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Equipment Details"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Label Text="{Binding Equipment.Name}" />
+                    <Label Text="{Binding Equipment.QRCode}" />
+                    <Label Text="{Binding Equipment.Type}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Custodian Details -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Custodian Details"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Label Text="{Binding Officer.FullName}" />
+                    <Label Text="{Binding Officer.Username}" />
+                    <Label Text="{Binding Officer.Role}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Issuing Officer -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Issuing Officer"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Label Text="{Binding Issuer.FullName}" />
+                    <Label Text="{Binding Issuer.Role}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Buttons -->
+            <Button Text="📄 Generate &amp; Download ICS"
+                    Style="{StaticResource SuccessButton}"
+                    Command="{Binding GenerateIcsCommand}" />
+
+            <!-- Back button removed – users can use Shell back or flyout -->
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               Color="{StaticResource PrimaryColor}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.PendingRequestsPage"
+             Title="Pending Requests"
+             BackgroundColor="{StaticResource Background}">
+
+    <Grid RowDefinitions="Auto, *">
+        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
+            <Label Text="📋 Pending Requests"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+            <Label Text="Approve or reject equipment requests."
+                   FontSize="14"
+                   TextColor="#E0E0E0"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadRequestsCommand}">
+            <CollectionView ItemsSource="{Binding Requests}" EmptyView="No pending requests.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
+                            <VerticalStackLayout Spacing="6">
+                                <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                                <Label Text="{Binding QRCode, StringFormat='QR: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                                <Label Text="{Binding RequestedByUsername, StringFormat='Requested by: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                                <Label Text="Status: Pending" FontSize="13" TextColor="{StaticResource WarningColor}" />
+
+                                <Grid ColumnDefinitions="*, *" ColumnSpacing="10" Margin="0,5,0,0">
+                                    <Button Text="✅ Approve"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ApproveCommand}"
+                                            CommandParameter="{Binding .}"
+                                            Style="{StaticResource SuccessButton}"
+                                            HeightRequest="35"
+                                            FontSize="12" />
+                                    <Button Grid.Column="1"
+                                            Text="❌ Reject"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RejectCommand}"
+                                            CommandParameter="{Binding .}"
+                                            Style="{StaticResource DangerButton}"
+                                            HeightRequest="35"
+                                            FontSize="12" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.LoginPage"
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="{StaticResource Background}">
+
+    <Grid Padding="30" VerticalOptions="Center">
+        <VerticalStackLayout Spacing="24" HorizontalOptions="Fill">
+
+            <!-- Logo -->
+            <Image Source="logo.jpg"
+                   WidthRequest="120"
+                   HeightRequest="120"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,10" />
+
+            <!-- Brand Name -->
+            <Label Text="Fire Track"
+                   FontSize="32"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource OnBackground}"
+                   HorizontalOptions="Center" />
+
+            <!-- Subtitle -->
+            <Label Text="QR Inventory &amp; Asset Accountability"
+                   FontSize="14"
+                   TextColor="{StaticResource Gray300}"
+                   HorizontalOptions="Center"
+                   Margin="0,0,0,20" />
+
+            <!-- Username -->
+            <Border Stroke="{StaticResource BorderColor}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 10"
+                    Padding="10,0"
+                    BackgroundColor="{StaticResource Surface}">
+                <Entry Style="{StaticResource EntryStyle}"
+                       Placeholder="Username"
+                       Text="{Binding Username}"
+                       TextColor="{StaticResource OnBackground}"
+                       PlaceholderColor="{StaticResource Gray300}"
+                       BackgroundColor="Transparent" />
+            </Border>
+
+            <!-- Password -->
+            <Border Stroke="{StaticResource BorderColor}"
+                    StrokeThickness="1"
+                    StrokeShape="RoundRectangle 10"
+                    Padding="10,0"
+                    BackgroundColor="{StaticResource Surface}">
+                <Entry Style="{StaticResource EntryStyle}"
+                       Placeholder="Password"
+                       Text="{Binding Password}"
+                       IsPassword="True"
+                       TextColor="{StaticResource OnBackground}"
+                       PlaceholderColor="{StaticResource Gray300}"
+                       BackgroundColor="Transparent" />
+            </Border>
+
+            <!-- Error message -->
+            <Label Text="{Binding ErrorMessage}"
+                   TextColor="{Binding ErrorMessage, Converter={StaticResource StringToColorConverter}}"
+                   FontSize="14"
+                   HorizontalOptions="Center" />
+
+            <!-- Login button -->
+            <Button Text="LOGIN"
+                    Command="{Binding LoginCommand}"
+                    BackgroundColor="{StaticResource Primary}"
+                    TextColor="{StaticResource OnBackground}"
+                    CornerRadius="12"
+                    HeightRequest="50"
+                    FontAttributes="Bold"
+                    FontSize="16" />
+
+            <!-- Forgot Password link (required for login flow) -->
+            <Button Text="Forgot Password?"
+                    Command="{Binding GoToForgotPasswordCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource Gray300}"
+                    FontSize="14"
+                    HorizontalOptions="Center" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               Color="{StaticResource OnBackground}"
+                               HorizontalOptions="Center" />
+
+        </VerticalStackLayout>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.TransactionHistoryPage"
+             Title="Transaction History"
+             BackgroundColor="{StaticResource Background}">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
+            <Label Text="📜 Chain of Custody"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+            <Label Text="{Binding Equipment.Name, StringFormat='Equipment: {0}'}"
+                   FontSize="16"
+                   TextColor="#E0E0E0"
+                   HorizontalOptions="Center" />
+            <Label Text="{Binding Equipment.QRCode, StringFormat='QR: {0}'}"
+                   FontSize="14"
+                   TextColor="#CCCCCC"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <!-- List -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}">
+            <VerticalStackLayout Padding="20" Spacing="15">
+                <CollectionView ItemsSource="{Binding Transactions}" EmptyView="No transactions found.">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardStyle}" Margin="0,5" Padding="10">
+                                <VerticalStackLayout Spacing="4">
+                                    <Label Text="{Binding Action, StringFormat='Action: {0}'}"
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           TextColor="{Binding Action, Converter={StaticResource StringToColorConverter}}" />
+                                    <Label Text="{Binding Timestamp, StringFormat='Date: {0:MMM dd, yyyy HH:mm}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray300}" />
+                                    <Label Text="{Binding FromUser, StringFormat='From: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource OnBackground}" />
+                                    <Label Text="{Binding ToUser, StringFormat='To: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource OnBackground}" />
+                                    <Label Text="{Binding Remarks, StringFormat='Remarks: {0}'}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray300}"
+                                           IsVisible="{Binding Remarks, Converter={StaticResource IsNotNullConverter}}" />
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <!-- Back button removed – users can use Shell back or flyout -->
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
+            </VerticalStackLayout>
+        </RefreshView>
+    </Grid>
+</ContentPage>

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.TransferPage"
+             Title="Transfer Equipment">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- Header -->
+            <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+                <Label Text="🔄 Dual‑Scan Handshake"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryColor}"
+                       HorizontalOptions="Center" />
+                <Label Text="Transfer equipment from Admin to Personnel."
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondaryColor}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Step 1: Officer -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Step 1: Select Receiving Officer"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Picker Title="Select Officer"
+                            ItemsSource="{Binding Users}"
+                            ItemDisplayBinding="{Binding FullName}"
+                            SelectedItem="{Binding SelectedOfficer}"
+                            TextColor="{StaticResource OnBackground}"
+                            TitleColor="{StaticResource Gray300}"
+                            BackgroundColor="{StaticResource Surface}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Step 2: Equipment -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Step 2: Identify Equipment"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Picker Title="Select Equipment"
+                            ItemsSource="{Binding EquipmentList}"
+                            ItemDisplayBinding="{Binding Name}"
+                            SelectedItem="{Binding SelectedEquipment}"
+                            TextColor="{StaticResource OnBackground}"
+                            TitleColor="{StaticResource Gray300}"
+                            BackgroundColor="{StaticResource Surface}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Transfer Button -->
+            <Button Text="Transfer Equipment"
+                    Style="{StaticResource SuccessButton}"
+                    Command="{Binding TransferCommand}" />
+
+            <!-- Back button removed – users can use Shell back or flyout -->
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               Color="{StaticResource PrimaryColor}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

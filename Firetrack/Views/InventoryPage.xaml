@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.InventoryPage"
+             Title="Equipment Inventory"
+             BackgroundColor="{StaticResource Background}">
+
+    <Grid RowDefinitions="Auto, Auto, *">
+        <!-- Header with Add Button -->
+        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource Background}">
+            <Grid ColumnDefinitions="*, Auto">
+                <Label Text="📋 Equipment Inventory"
+                       FontSize="24"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource OnBackground}"
+                       VerticalOptions="Center" />
+                <Button Grid.Column="1"
+                        Text="➕ Add"
+                        Command="{Binding GoToAddEquipmentCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        HeightRequest="40"
+                        FontSize="14" />
+            </Grid>
+            <Label Text="Manage all equipment in the station."
+                   FontSize="14"
+                   TextColor="{StaticResource Gray300}" />
+        </VerticalStackLayout>
+
+        <!-- Search Bar -->
+        <VerticalStackLayout Grid.Row="1" Padding="20" Spacing="10" BackgroundColor="{StaticResource Background}">
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                <Entry Style="{StaticResource EntryStyle}"
+                       Placeholder="Search by name, QR, or type..."
+                       Text="{Binding SearchText}"
+                       TextColor="{StaticResource OnBackground}"
+                       PlaceholderColor="{StaticResource Gray300}"
+                       BackgroundColor="{StaticResource Surface}" />
+                <Button Grid.Column="1"
+                        Text="🔍 Search"
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding SearchCommand}"
+                        WidthRequest="100" />
+            </Grid>
+        </VerticalStackLayout>
+
+        <!-- Equipment List -->
+        <RefreshView Grid.Row="2" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadEquipmentsCommand}">
+            <CollectionView ItemsSource="{Binding Equipments}"
+                            SelectionMode="None"
+                            EmptyView="No equipment found.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
+                            <VerticalStackLayout Spacing="6">
+                                <!-- Row 1: Name + QR -->
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <Label Text="{Binding Name}"
+                                           FontSize="16"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource OnBackground}"
+                                           Grid.Column="0" />
+                                    <Label Text="{Binding QRCode}"
+                                           FontSize="12"
+                                           TextColor="{StaticResource Gray300}"
+                                           Grid.Column="1" />
+                                </Grid>
+
+                                <!-- Row 2: Type + Status (clickable) -->
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <Label Text="{Binding Type, StringFormat='Type: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray300}"
+                                           Grid.Column="0" />
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Status}"
+                                           FontSize="12"
+                                           Padding="8,3"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="White"
+                                           BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}">
+                                        <Label.GestureRecognizers>
+                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ShowEquipmentDetailsCommand}"
+                                                                  CommandParameter="{Binding .}" />
+                                        </Label.GestureRecognizers>
+                                    </Label>
+                                </Grid>
+
+                                <!-- Row 3: Assigned To -->
+                                <Label Text="{Binding AssignedToUsername, StringFormat='Assigned to: {0}'}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray300}" />
+
+                                <!-- Row 4: Action Buttons -->
+                                <Grid ColumnDefinitions="*, *, *" ColumnSpacing="10" Margin="0,5,0,0">
+                                    <Button Text="✏️ Edit"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditEquipmentCommand}"
+                                            CommandParameter="{Binding .}"
+                                            Style="{StaticResource PrimaryButton}"
+                                            HeightRequest="35"
+                                            FontSize="12" />
+                                    <Button Grid.Column="1"
+                                            Text="📜 History"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ViewHistoryCommand}"
+                                            CommandParameter="{Binding .}"
+                                            Style="{StaticResource PrimaryButton}"
+                                            HeightRequest="35"
+                                            FontSize="12" />
+                                    <Button Grid.Column="2"
+                                            Text="🗑️ Delete"
+                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteEquipmentCommand}"
+                                            CommandParameter="{Binding .}"
+                                            Style="{StaticResource DangerButton}"
+                                            HeightRequest="35"
+                                            FontSize="12" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

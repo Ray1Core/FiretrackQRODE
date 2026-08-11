@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.RequestEquipmentPage"
+             Title="Request Equipment"
+             BackgroundColor="{StaticResource Background}">
+
+    <Grid RowDefinitions="Auto, *">
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
+            <Label Text="📋 Request Equipment"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+            <Label Text="Select available equipment to request."
+                   FontSize="14"
+                   TextColor="#E0E0E0"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <!-- Scrollable content -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadAvailableCommand}">
+            <ScrollView>
+                <VerticalStackLayout Padding="20" Spacing="15">
+                    <CollectionView ItemsSource="{Binding AvailableEquipment}"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedEquipment}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardStyle}" Margin="0,5" Padding="10">
+                                    <VerticalStackLayout Spacing="5">
+                                        <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                                        <Label Text="{Binding Type, StringFormat='Type: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                                        <Label Text="{Binding QRCode, StringFormat='QR: {0}'}" FontSize="12" TextColor="{StaticResource Gray300}" />
+                                    </VerticalStackLayout>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <Button Text="✅ Request Selected"
+                            Style="{StaticResource SuccessButton}"
+                            Command="{Binding RequestCommand}" />
+
+                    <!-- Back button removed – users can use Shell back or flyout -->
+
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
+                </VerticalStackLayout>
+            </ScrollView>
+        </RefreshView>
+    </Grid>
+</ContentPage>

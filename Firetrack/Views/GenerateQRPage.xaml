@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.GenerateQRPage"
+             Title="Generate QR Sticker">
+
+    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20" Padding="30">
+        <Label Text="📱 QR Generator"
+               FontSize="32"
+               FontAttributes="Bold"
+               TextColor="{StaticResource PrimaryColor}"
+               HorizontalOptions="Center" />
+        <Label Text="QR generation is currently disabled."
+               FontSize="18"
+               TextColor="{StaticResource TextSecondaryColor}"
+               HorizontalOptions="Center" />
+        <Label Text="We are working on a stable QR generation library."
+               FontSize="14"
+               TextColor="{StaticResource TextSecondaryColor}"
+               HorizontalOptions="Center" />
+        <!-- Back button removed – users can use Shell back or flyout -->
+    </VerticalStackLayout>
+</ContentPage>

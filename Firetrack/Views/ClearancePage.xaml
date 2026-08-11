@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.ClearancePage"
+             Title="Clearance Audit">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- Header -->
+            <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                <Label Text="📋 Clearance Audit List"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource PrimaryColor}"
+                       HorizontalOptions="Center" />
+                <Label Text="Select an officer to view their equipment and process returns."
+                       FontSize="14"
+                       TextColor="{StaticResource TextSecondaryColor}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Officer Picker -->
+            <Picker Title="Select Officer"
+                    ItemsSource="{Binding Officers}"
+                    ItemDisplayBinding="{Binding FullName}"
+                    SelectedItem="{Binding SelectedOfficer}"
+                    TextColor="{StaticResource OnBackground}"
+                    TitleColor="{StaticResource Gray300}"
+                    BackgroundColor="{StaticResource Surface}" />
+
+            <!-- Equipment List Card -->
+            <Border Style="{StaticResource CardStyle}" Padding="0">
+                <VerticalStackLayout>
+                    <Label Text="Assigned Equipment"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}"
+                           Margin="15,10,15,5" />
+                    <CollectionView ItemsSource="{Binding AssignedEquipment}"
+                                    HeightRequest="280"
+                                    SelectionMode="Single"
+                                    SelectedItem="{Binding SelectedEquipment}">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid ColumnDefinitions="*, Auto, Auto" Padding="10,8">
+                                    <Label Text="{Binding Name}"
+                                           Grid.Column="0"
+                                           FontSize="14"
+                                           TextColor="{StaticResource TextPrimaryColor}" />
+                                    <Label Text="{Binding Status}"
+                                           Grid.Column="1"
+                                           FontSize="12"
+                                           Padding="6,2"
+                                           Margin="5,0"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="White"
+                                           BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}" />
+                                    <Label Grid.Column="2"
+                                           Text="{Binding AssignedToUsername, StringFormat='({0})'}"
+                                           FontSize="11"
+                                           TextColor="{StaticResource TextSecondaryColor}" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Status Message -->
+            <Label Text="{Binding StatusMessage}"
+                   TextColor="{Binding StatusMessage, Converter={StaticResource StringToColorConverter}}"
+                   HorizontalOptions="Center"
+                   FontSize="14" />
+
+            <!-- Action Buttons -->
+            <Button Text="✅ Mark Selected as Returned"
+                    Style="{StaticResource SuccessButton}"
+                    Command="{Binding MarkReturnedCommand}" />
+
+            <Button Text="🔄 Refresh List"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding RefreshCommand}" />
+
+            <!-- Back button removed – users can use Shell back or flyout -->
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               Color="{StaticResource PrimaryColor}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

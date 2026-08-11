@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.ProfilePage"
+             Title="Profile"
+             BackgroundColor="{StaticResource Background}">
+
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="20">
+            <!-- Header with circular profile image -->
+            <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
+                <Border Stroke="Transparent"
+                        StrokeThickness="0"
+                        WidthRequest="100"
+                        HeightRequest="100"
+                        StrokeShape="RoundRectangle 100"
+                        BackgroundColor="{StaticResource Surface}">
+                    <Image Source="profile.jpg"
+                           Aspect="AspectFill"
+                           WidthRequest="100"
+                           HeightRequest="100"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+                </Border>
+                <Label Text="My Profile"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="{StaticResource OnBackground}"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Profile Details Card -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="User Details"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Label Text="{Binding FullName, StringFormat='Name: {0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Username, StringFormat='Username: {0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Role, StringFormat='Role: {0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Status, StringFormat='Status: {0}'}"
+                           FontSize="14"
+                           TextColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Change Password Button -->
+            <Button Text="🔑 Change Password"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding ChangePasswordCommand}" />
+
+            <!-- Back button removed – users can use Shell back or flyout -->
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               Color="{StaticResource PrimaryColor}" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
