@@ -49,7 +49,6 @@ namespace Firetrack.ViewModels
 
         public ICommand PickPhotoCommand { get; }
         public ICommand SubmitReportCommand { get; }
-        // GoBackCommand removed – navigation handled by Shell
 
         public ReportDamageViewModel(EquipmentModel equipment)
         {
@@ -58,7 +57,6 @@ namespace Firetrack.ViewModels
 
             PickPhotoCommand = new Command(OnPickPhoto);
             SubmitReportCommand = new Command(OnSubmitReport);
-            // GoBackCommand assignment removed
         }
 
         private async void OnPickPhoto()
@@ -146,14 +144,21 @@ namespace Firetrack.ViewModels
                 await _db.SaveEquipmentAsync(Equipment);
                 await _db.SaveTransactionAsync(transaction);
 
+                // ✅ Log the action
+                if (App.CurrentUser != null)
+                {
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Report Damage",
+                        $"Reported damage on '{Equipment.Name}' ({Equipment.QRCode})");
+                }
+
                 await _db.SendNotificationAsync(
                     "admin",
                     "⚠️ Damage Report",
-                    $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'."
-                );
+                    $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'.");
 
                 await Shell.Current.DisplayAlert("Success", "Damage report submitted successfully!", "OK");
-                // Navigate to Dashboard after submission
                 await Shell.Current.GoToAsync("//DashboardPage");
             }
             catch (Exception ex)

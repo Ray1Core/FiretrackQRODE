@@ -26,15 +26,12 @@ namespace Firetrack.ViewModels
         public ICommand LoadRequestsCommand { get; }
         public ICommand ApproveCommand { get; }
         public ICommand RejectCommand { get; }
-        // GoBackCommand removed – navigation is handled by Shell
 
         public PendingRequestsViewModel()
         {
             LoadRequestsCommand = new Command(OnLoadRequests);
             ApproveCommand = new Command<EquipmentModel>(OnApprove);
             RejectCommand = new Command<EquipmentModel>(OnReject);
-            // GoBackCommand assignment removed
-
             OnLoadRequests();
         }
 
@@ -75,7 +72,17 @@ namespace Firetrack.ViewModels
 
             try
             {
-                await App.Database!.ApproveRequestAsync(equipment.QRCode, App.CurrentUser);
+                var db = App.Database;
+                if (db == null) return;
+
+                await db.ApproveRequestAsync(equipment.QRCode, App.CurrentUser);
+
+                // ✅ Log the action
+                await db.LogActionAsync(
+                    App.CurrentUser.Username,
+                    "Approve Request",
+                    $"Approved request for '{equipment.Name}' by {equipment.RequestedByUsername}");
+
                 await Shell.Current.DisplayAlert("Success", $"Request approved. Equipment issued.", "OK");
                 OnLoadRequests(); // refresh
             }
@@ -100,7 +107,17 @@ namespace Firetrack.ViewModels
 
             try
             {
-                await App.Database!.RejectRequestAsync(equipment.QRCode, App.CurrentUser);
+                var db = App.Database;
+                if (db == null) return;
+
+                await db.RejectRequestAsync(equipment.QRCode, App.CurrentUser);
+
+                // ✅ Log the action
+                await db.LogActionAsync(
+                    App.CurrentUser.Username,
+                    "Reject Request",
+                    $"Rejected request for '{equipment.Name}' by {equipment.RequestedByUsername}");
+
                 await Shell.Current.DisplayAlert("Success", $"Request rejected.", "OK");
                 OnLoadRequests(); // refresh
             }

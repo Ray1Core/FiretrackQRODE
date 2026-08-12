@@ -3,7 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.ProfilePage"
              Title="Profile"
-             BackgroundColor="{StaticResource Background}">
+             BackgroundColor="{StaticResource Background}"
+             Shell.TabBarIsVisible="False">
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
@@ -56,7 +57,10 @@
                     Style="{StaticResource PrimaryButton}"
                     Command="{Binding ChangePasswordCommand}" />
 
-            <!-- Back button removed – users can use Shell back or flyout -->
+            <!-- ✅ Logout Button -->
+            <Button Text="🚪 Logout"
+                    Style="{StaticResource DangerButton}"
+                    Command="{Binding LogoutCommand}" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                Color="{StaticResource PrimaryColor}" />

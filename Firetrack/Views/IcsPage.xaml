@@ -2,7 +2,9 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.IcsPage"
-             Title="Generate ICS">
+             Title="Generate ICS"
+             Shell.TabBarIsVisible="False">
+    <!-- ✅ Added -->
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
@@ -61,8 +63,6 @@
             <Button Text="📄 Generate &amp; Download ICS"
                     Style="{StaticResource SuccessButton}"
                     Command="{Binding GenerateIcsCommand}" />
-
-            <!-- Back button removed – users can use Shell back or flyout -->
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                Color="{StaticResource PrimaryColor}" />

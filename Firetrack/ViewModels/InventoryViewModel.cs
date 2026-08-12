@@ -53,7 +53,8 @@ namespace Firetrack.ViewModels
             EditEquipmentCommand = new Command<EquipmentModel>(OnEditEquipment);
             ViewHistoryCommand = new Command<EquipmentModel>(OnViewHistory);
             ShowEquipmentDetailsCommand = new Command<EquipmentModel>(OnShowEquipmentDetails);
-            GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("//AddEquipmentPage"));
+
+            GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("AddEquipmentPage"));
 
             OnLoadEquipments();
         }
@@ -65,12 +66,13 @@ namespace Firetrack.ViewModels
 
         private async Task LoadEquipmentsAsync()
         {
-            if (App.Database == null) return;
+            var db = App.Database;
+            if (db == null) return;
 
             IsBusy = true;
             try
             {
-                var all = await App.Database.GetEquipmentsAsync();
+                var all = await db.GetEquipmentsAsync();
                 var filtered = string.IsNullOrWhiteSpace(SearchText)
                     ? all
                     : all.Where(e => e.Name.Contains(SearchText, StringComparison.OrdinalIgnoreCase)
@@ -108,9 +110,22 @@ namespace Firetrack.ViewModels
 
             if (!confirm) return;
 
+            var db = App.Database;
+            if (db == null) return;
+
             try
             {
-                await App.Database!.DeleteEquipmentAsync(equipment);
+                await db.DeleteEquipmentAsync(equipment);
+
+                // ✅ Log the action
+                if (App.CurrentUser != null)
+                {
+                    await db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Delete Equipment",
+                        $"Deleted '{equipment.Name}' ({equipment.QRCode})");
+                }
+
                 await Shell.Current.DisplayAlert("Success", $"'{equipment.Name}' deleted successfully.", "OK");
                 await LoadEquipmentsAsync();
             }
@@ -172,7 +187,7 @@ namespace Firetrack.ViewModels
             {
                 { "equipment", equipment }
             };
-            await Shell.Current.GoToAsync("//TransactionHistoryPage", navParams);
+            await Shell.Current.GoToAsync("TransactionHistoryPage", navParams);
         }
 
         private async void OnShowEquipmentDetails(EquipmentModel? equipment)

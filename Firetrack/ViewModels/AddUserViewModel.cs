@@ -85,6 +85,15 @@ namespace Firetrack.ViewModels
 
                 await _db.SaveUserAsync(newUser);
 
+                // ✅ Log the action
+                if (App.CurrentUser != null)
+                {
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Add User",
+                        $"Added user '{newUser.Username}'");
+                }
+
                 await Shell.Current.DisplayAlert("Success", $"User '{newUser.Username}' created successfully!", "OK");
 
                 // Clear fields
@@ -93,8 +102,7 @@ namespace Firetrack.ViewModels
                 FullName = string.Empty;
                 Role = "Personnel";
 
-                // Navigate back to UserManagementPage
-                await Shell.Current.GoToAsync("//UserManagementPage");
+                await Shell.Current.GoToAsync("UserManagementPage");
             }
             catch (Exception ex)
             {

@@ -13,7 +13,6 @@ public partial class DashboardPage : ContentPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
-        // Refresh the ViewModel when the page appears
         if (BindingContext is DashboardViewModel vm)
         {
             vm.RefreshDashboard();

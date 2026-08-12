@@ -121,6 +121,17 @@ namespace Firetrack.Services
                     Timestamp DATETIME NOT NULL DEFAULT GETDATE()
                 )");
 
+            // ===== NEW: AUDIT LOGS =====
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='AuditLogs' AND xtype='U')
+                CREATE TABLE AuditLogs (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    Username NVARCHAR(50) NOT NULL,
+                    Action NVARCHAR(100) NOT NULL,
+                    Details NVARCHAR(500) NULL,
+                    Timestamp DATETIME NOT NULL DEFAULT GETDATE()
+                )");
+
             // ===== SEED USERS =====
             var admin = connection.QueryFirstOrDefault<UserModel>(
                 "SELECT * FROM Users WHERE Username = @Username", new { Username = "admin" });
@@ -446,6 +457,29 @@ namespace Firetrack.Services
                 IsRead = false,
                 Timestamp = DateTime.Now
             });
+        }
+
+        // ===== NEW: AUDIT LOGS =====
+        public async Task LogActionAsync(string username, string action, string? details = null)
+        {
+            using var connection = new SqlConnection(_connectionString);
+            string sql = @"INSERT INTO AuditLogs (Username, Action, Details, Timestamp)
+                           VALUES (@Username, @Action, @Details, @Timestamp)";
+            await connection.ExecuteAsync(sql, new
+            {
+                Username = username,
+                Action = action,
+                Details = details,
+                Timestamp = DateTime.Now
+            });
+        }
+
+        public async Task<List<AuditLogModel>> GetAuditLogsAsync()
+        {
+            using var connection = new SqlConnection(_connectionString);
+            var result = await connection.QueryAsync<AuditLogModel>(
+                "SELECT * FROM AuditLogs ORDER BY Timestamp DESC");
+            return result.ToList();
         }
     }
 }

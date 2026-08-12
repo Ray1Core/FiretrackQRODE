@@ -59,14 +59,12 @@ namespace Firetrack.ViewModels
 
         public ICommand MarkReturnedCommand { get; }
         public ICommand RefreshCommand { get; }
-        // GoBackCommand removed – users can use Shell navigation
 
         public ClearanceViewModel()
         {
             _db = App.Database!;
             MarkReturnedCommand = new Command(OnMarkReturned);
             RefreshCommand = new Command(OnRefresh);
-            // GoBackCommand assignment removed
             LoadOfficers();
         }
 
@@ -129,6 +127,15 @@ namespace Firetrack.ViewModels
 
                 await _db.SaveTransactionAsync(transaction);
                 await _db.SaveEquipmentAsync(SelectedEquipment);
+
+                // ✅ Log the action
+                if (App.CurrentUser != null)
+                {
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Clearance Return",
+                        $"Marked '{SelectedEquipment.Name}' as returned from {SelectedEquipment.AssignedToUsername ?? "unknown"}");
+                }
 
                 StatusMessage = $"✅ {SelectedEquipment.Name} marked as returned.";
                 LoadAssignedEquipment();

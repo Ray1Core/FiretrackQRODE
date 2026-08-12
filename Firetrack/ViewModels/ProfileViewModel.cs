@@ -16,14 +16,14 @@ namespace Firetrack.ViewModels
         public string Status => _currentUser?.IsActive == true ? "Active" : "Inactive";
 
         public ICommand ChangePasswordCommand { get; }
-        // GoBackCommand removed – navigation handled by Shell
+        public ICommand LogoutCommand { get; }  // ✅ New
 
         public ProfileViewModel()
         {
             _db = App.Database!;
             _currentUser = App.CurrentUser;
             ChangePasswordCommand = new Command(OnChangePassword);
-            // GoBackCommand assignment removed
+            LogoutCommand = new Command(OnLogout);  // ✅ New
         }
 
         private async void OnChangePassword()
@@ -57,7 +57,6 @@ namespace Firetrack.ViewModels
                 if (success)
                 {
                     await Shell.Current.DisplayAlert("Success", "Password changed successfully.", "OK");
-                    // Update the current user object with the new password
                     _currentUser.Password = newPassword;
                 }
                 else
@@ -69,6 +68,19 @@ namespace Firetrack.ViewModels
             {
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
+        }
+
+        // ✅ New Logout method
+        private async void OnLogout()
+        {
+            if (_currentUser != null)
+            {
+                await _db.LogActionAsync(_currentUser.Username, "Logout", "User logged out");
+            }
+
+            App.CurrentUser = null;
+            if (Shell.Current is AppShell shell) shell.UpdateUserRoleVisibility();
+            await Shell.Current.GoToAsync("//LoginPage");
         }
     }
 }

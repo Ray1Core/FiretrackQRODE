@@ -2,7 +2,9 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.ClearancePage"
-             Title="Clearance Audit">
+             Title="Clearance Audit"
+             Shell.TabBarIsVisible="False">
+    <!-- ✅ Added -->
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
@@ -80,8 +82,6 @@
             <Button Text="🔄 Refresh List"
                     Style="{StaticResource PrimaryButton}"
                     Command="{Binding RefreshCommand}" />
-
-            <!-- Back button removed – users can use Shell back or flyout -->
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
                                Color="{StaticResource PrimaryColor}" />

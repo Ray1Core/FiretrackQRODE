@@ -3,30 +3,141 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.DashboardPage"
              Title="Dashboard"
-             Shell.TabBarIsVisible="True">
+             Shell.TabBarIsVisible="False">
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <!-- Header -->
-            <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                <Label Text="🔥 Fire Track"
-                       FontSize="32"
-                       FontAttributes="Bold"
-                       TextColor="{StaticResource PrimaryColor}"
-                       HorizontalOptions="Center" />
-                <Label Text="{Binding WelcomeMessage}"
-                       FontSize="18"
-                       TextColor="{StaticResource TextPrimaryColor}"
-                       HorizontalOptions="Center" />
-                <Label Text="{Binding UserRole, StringFormat='Role: {0}'}"
-                       FontSize="14"
-                       TextColor="{StaticResource TextSecondaryColor}"
-                       HorizontalOptions="Center" />
-            </VerticalStackLayout>
+            <!-- ========== HEADER (Centered) ========== -->
+            <Grid ColumnDefinitions="Auto, *, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
 
-            <!-- Assigned Equipment -->
-            <Border Style="{StaticResource CardStyle}" Padding="0">
+                <!-- LEFT: Flyout Menu Button (hamburger) -->
+                <Button Grid.Column="0"
+                        Text="☰"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource OnBackground}"
+                        WidthRequest="50"
+                        HeightRequest="50"
+                        FontSize="28"
+                        CornerRadius="0"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center"
+                        Command="{Binding ToggleFlyoutCommand}" />
+
+                <!-- CENTER: Profile Picture + Name -->
+                <Grid Grid.Column="1"
+                      ColumnDefinitions="Auto, *"
+                      RowDefinitions="Auto, Auto"
+                      ColumnSpacing="10"
+                      HorizontalOptions="Center"
+                      VerticalOptions="Center">
+
+                    <!-- Profile Picture -->
+                    <Border Grid.Row="0" Grid.RowSpan="2"
+                            Grid.Column="0"
+                            Stroke="Transparent"
+                            StrokeThickness="0"
+                            WidthRequest="60"
+                            HeightRequest="60"
+                            StrokeShape="RoundRectangle 60"
+                            BackgroundColor="{StaticResource Surface}"
+                            HorizontalOptions="Center"
+                            VerticalOptions="Center">
+                        <Image Source="profile.jpg"
+                               Aspect="AspectFill"
+                               WidthRequest="60"
+                               HeightRequest="60"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- Full Name -->
+                    <Label Grid.Row="0"
+                           Grid.Column="1"
+                           Text="{Binding FullName}"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource OnBackground}"
+                           VerticalOptions="End"
+                           HorizontalOptions="Start" />
+
+                    <!-- Role -->
+                    <Label Grid.Row="1"
+                           Grid.Column="1"
+                           Text="{Binding UserRole, StringFormat='Role: {0}'}"
+                           FontSize="14"
+                           TextColor="{StaticResource TextSecondaryColor}"
+                           VerticalOptions="Start"
+                           HorizontalOptions="Start" />
+                </Grid>
+
+                <!-- RIGHT: Notifications + Logout -->
+                <Button Grid.Column="2"
+                        Text="🔔"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource OnBackground}"
+                        Command="{Binding GoToNotificationsCommand}"
+                        WidthRequest="50"
+                        HeightRequest="50"
+                        FontSize="24"
+                        CornerRadius="0"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+
+                <Button Grid.Column="3"
+                        Text="🚪"
+                        BackgroundColor="Transparent"
+                        TextColor="{StaticResource DangerColor}"
+                        Command="{Binding LogoutCommand}"
+                        WidthRequest="50"
+                        HeightRequest="50"
+                        FontSize="24"
+                        CornerRadius="0"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center" />
+
+            </Grid>
+
+            <!-- ========== PERSONNEL LIST (Admin only) ========== -->
+            <Border Style="{StaticResource CardStyle}" Padding="0"
+                    IsVisible="{Binding IsAdmin}">
+                <VerticalStackLayout>
+                    <Label Text="👥 Personnel List"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}"
+                           Margin="15,10,15,5" />
+                    <CollectionView ItemsSource="{Binding PersonnelList}" HeightRequest="200">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Padding="10,6" ColumnDefinitions="*, Auto">
+                                    <VerticalStackLayout Grid.Column="0">
+                                        <Label Text="{Binding FullName}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource OnBackground}" />
+                                        <Label Text="{Binding Username, StringFormat='Username: {0}'}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource Gray300}" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="1"
+                                           Text="{Binding Role}"
+                                           FontSize="12"
+                                           Padding="6,2"
+                                           HorizontalTextAlignment="Center"
+                                           TextColor="White"
+                                           BackgroundColor="{StaticResource PrimaryColor}"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- ========== ASSIGNED EQUIPMENT (Personnel only) ========== -->
+            <Border Style="{StaticResource CardStyle}" Padding="0"
+                    IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}">
                 <VerticalStackLayout>
                     <Label Text="📦 Your Assigned Equipment"
                            FontAttributes="Bold"
@@ -41,7 +152,6 @@
                                            Grid.Column="0"
                                            FontSize="14"
                                            TextColor="{StaticResource TextPrimaryColor}" />
-                                    <!-- Status (tap for details) -->
                                     <Label Grid.Column="1"
                                            Text="{Binding Status}"
                                            FontSize="12"
@@ -55,7 +165,6 @@
                                                                   CommandParameter="{Binding .}" />
                                         </Label.GestureRecognizers>
                                     </Label>
-                                    <!-- Return Button -->
                                     <Button Grid.Column="2"
                                             Text="↩️ Return"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReturnEquipmentCommand}"
@@ -66,7 +175,6 @@
                                             CornerRadius="6"
                                             Padding="8,4"
                                             HeightRequest="30" />
-                                    <!-- Report Damage Button -->
                                     <Button Grid.Column="3"
                                             Text="⚠️ Report"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReportDamageCommand}"
@@ -84,10 +192,9 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- ===== Quick Actions (2‑column grid) ===== -->
+            <!-- ========== QUICK ACTIONS ========== -->
             <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="12">
 
-                <!-- Row 0: Two side‑by‑side buttons -->
                 <!-- Admin: Transfer + Scan QR -->
                 <Button Grid.Row="0" Grid.Column="0"
                         Text="🔄 Transfer"
@@ -100,22 +207,20 @@
                         Command="{Binding GoToScannerCommand}"
                         Style="{StaticResource PrimaryButton}" />
 
-                <!-- Personnel: Request + Scan QR (overwrites Transfer) -->
+                <!-- Personnel: Request + Scan QR -->
                 <Button Grid.Row="0" Grid.Column="0"
                         Text="📋 Request"
                         Command="{Binding GoToRequestEquipmentCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}" />
 
-                <!-- Row 1: Full‑width button -->
-                <!-- Admin: Clearance -->
+                <!-- Row 1: Admin – Clearance ; Personnel – Profile -->
                 <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                         Text="📋 Clearance"
                         Command="{Binding GoToClearanceCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin}" />
 
-                <!-- Personnel: Profile -->
                 <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                         Text="👤 Profile"
                         Command="{Binding GoToProfileCommand}"
@@ -123,12 +228,6 @@
                         IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}" />
 
             </Grid>
-
-            <!-- Logout (full width) -->
-            <Button Text="🚪 Logout"
-                    Command="{Binding LogoutCommand}"
-                    Style="{StaticResource DangerButton}"
-                    Margin="0,8,0,0" />
 
         </VerticalStackLayout>
     </ScrollView>

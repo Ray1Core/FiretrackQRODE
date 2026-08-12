@@ -88,6 +88,15 @@ namespace Firetrack.ViewModels
 
                 await _db.SaveEquipmentAsync(newEquipment);
 
+                // ✅ Log the action
+                if (App.CurrentUser != null)
+                {
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Add Equipment",
+                        $"Added '{newEquipment.Name}' ({newEquipment.QRCode})");
+                }
+
                 await Shell.Current.DisplayAlert("Success", $"Equipment '{newEquipment.Name}' added successfully!", "OK");
 
                 // Clear fields
@@ -96,8 +105,7 @@ namespace Firetrack.ViewModels
                 Type = string.Empty;
                 Status = "Available";
 
-                // Navigate back to InventoryPage
-                await Shell.Current.GoToAsync("//InventoryPage");
+                await Shell.Current.GoToAsync("InventoryPage");
             }
             catch (Exception ex)
             {

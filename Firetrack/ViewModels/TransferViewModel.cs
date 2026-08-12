@@ -42,7 +42,6 @@ namespace Firetrack.ViewModels
         }
 
         public ICommand TransferCommand { get; }
-        // GoBackCommand removed (navigation via Shell)
 
         public TransferViewModel()
         {
@@ -52,7 +51,13 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            _db = App.Database!;
+            _db = App.Database;
+            if (_db == null)
+            {
+                TransferCommand = new Command(() => Shell.Current.DisplayAlert("Error", "Database not available.", "OK"));
+                return;
+            }
+
             TransferCommand = new Command(OnTransfer);
             _ = LoadDataAsync();
         }
@@ -66,8 +71,6 @@ namespace Firetrack.ViewModels
             {
                 var userList = await _db.GetUsersAsync();
                 Users.Clear();
-                // Optional: filter to only Personnel (uncomment if you want)
-                // var personnel = userList.Where(u => u.Role == "Personnel");
                 foreach (var u in userList)
                     Users.Add(u);
 
@@ -126,7 +129,15 @@ namespace Firetrack.ViewModels
                 await _db.SaveTransactionAsync(transaction);
                 await _db.SaveEquipmentAsync(capturedEquipment);
 
-                // Send notification to receiving officer
+                // ✅ Log the action
+                if (App.CurrentUser != null)
+                {
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Transfer/Issue",
+                        $"Issued '{capturedEquipment.Name}' to {capturedOfficer.Username}");
+                }
+
                 await _db.SendNotificationAsync(
                     capturedOfficer.Username,
                     "🔄 Equipment Issued",
@@ -140,13 +151,12 @@ namespace Firetrack.ViewModels
 
                 await LoadDataAsync();
 
-                // ✅ CORRECT ROUTE – note the capital "I" in "IcsPage"
                 var navParams = new Dictionary<string, object>
                 {
                     { "equipment", capturedEquipment },
                     { "officer", capturedOfficer }
                 };
-                await Shell.Current.GoToAsync("//IcsPage", navParams);
+                await Shell.Current.GoToAsync("IcsPage", navParams);
             }
             catch (Exception ex)
             {

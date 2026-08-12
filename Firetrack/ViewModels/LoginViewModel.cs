@@ -3,6 +3,7 @@ using System.Windows.Input;
 using System.Threading.Tasks;
 using Firetrack.Models;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Devices;  // ✅ for DeviceInfo
 
 namespace Firetrack.ViewModels
 {
@@ -66,6 +67,12 @@ namespace Firetrack.ViewModels
                 {
                     // Set current user
                     App.CurrentUser = user;
+
+                    // ✅ Log successful login
+                    await db.LogActionAsync(
+                        user.Username,
+                        "Login",
+                        $"User logged in from {DeviceInfo.Platform}");
 
                     // Update Shell flyout visibility based on role
                     if (Shell.Current is AppShell shell)

@@ -22,10 +22,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         set { _isPersonnel = value; OnPropertyChanged(); }
     }
 
-    // ✅ Added 'new' keyword to hide base class event (CS0108 fix)
     public new event PropertyChangedEventHandler? PropertyChanged;
 
-    // ✅ Added 'new' keyword to hide base class method (CS0114 fix)
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
@@ -34,14 +32,19 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         InitializeComponent();
         BindingContext = this;
 
-        // Set initial visibility based on current user
+        // ===== EXPLICIT ROUTE REGISTRATION =====
+        // Registers all pages that are navigated to via absolute routing (//)
+        Routing.RegisterRoute("AddEquipmentPage", typeof(AddEquipmentPage));
+        Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
+        Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
+        Routing.RegisterRoute("IcsPage", typeof(IcsPage));
+        Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));
+        Routing.RegisterRoute("AuditLogPage", typeof(AuditLogPage));
+        // Add any other page that gives "unable to figure out route" error
+
         UpdateUserRoleVisibility();
     }
 
-    /// <summary>
-    /// Updates the flyout visibility based on the current user's role.
-    /// Call this method whenever the user logs in or out.
-    /// </summary>
     public void UpdateUserRoleVisibility()
     {
         var user = App.CurrentUser;
@@ -65,28 +68,21 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         OnPropertyChanged(nameof(IsPersonnel));
     }
 
-    /// <summary>
-    /// Checks if the current user is allowed to navigate to the given route.
-    /// </summary>
     private bool IsRouteAllowed(string route)
     {
         var user = App.CurrentUser;
         bool isLoggedIn = user != null;
         bool isAdmin = isLoggedIn && user!.Role == "Admin";
 
-        // Not logged in → only Login and ForgotPassword are allowed
         if (!isLoggedIn)
             return route == "LoginPage" || route == "ForgotPasswordPage";
 
-        // Logged in → cannot go back to Login or ForgotPassword
         if (route == "LoginPage" || route == "ForgotPasswordPage")
             return false;
 
-        // Admin → all pages allowed
         if (isAdmin)
             return true;
 
-        // Personnel → only these specific pages
         var allowedForPersonnel = new[]
         {
             "DashboardPage",
@@ -102,14 +98,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         return allowedForPersonnel.Contains(route);
     }
 
-    /// <summary>
-    /// Intercepts every navigation and enforces the access rules.
-    /// </summary>
     protected override void OnNavigating(ShellNavigatingEventArgs args)
     {
         base.OnNavigating(args);
 
-        // Extract the target route (last segment after the last '/')
         var target = args.Target.Location.OriginalString;
         var route = target.Split('/').Last();
 
@@ -118,21 +110,15 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         if (!IsRouteAllowed(route))
         {
             System.Diagnostics.Debug.WriteLine($"🚫 Blocked: {route}");
-
-            // Cancel the forbidden navigation
             args.Cancel();
 
-            // Redirect to a safe page
             if (App.CurrentUser == null)
             {
-                // Not logged in → go to Login
                 GoToAsync("//LoginPage");
             }
             else
             {
-                // Logged in but trying to access an unauthorized page → go to Dashboard
                 GoToAsync("//DashboardPage");
-                // Optional: show a friendly message
                 Application.Current?.MainPage?.DisplayAlert(
                     "Access Denied",
                     "You do not have permission to view this page.",

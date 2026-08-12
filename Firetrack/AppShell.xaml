@@ -5,7 +5,29 @@
        x:Class="Firetrack.AppShell"
        x:Name="MyShell">
 
-    <!-- === Hidden pages (Login, ForgotPassword) – not in flyout === -->
+    <!-- ===== FLYOUT HEADER with LOGO ===== -->
+    <Shell.FlyoutHeader>
+        <VerticalStackLayout BackgroundColor="{StaticResource PrimaryColor}"
+                             Padding="20"
+                             Spacing="5">
+            <Image Source="logo.jpg"
+                   WidthRequest="80"
+                   HeightRequest="80"
+                   HorizontalOptions="Center"
+                   Aspect="AspectFit" />
+            <Label Text="Fire Track"
+                   FontSize="20"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+            <Label Text="BFP Cebu City Station"
+                   FontSize="14"
+                   TextColor="#E0E0E0"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </Shell.FlyoutHeader>
+
+    <!-- ===== HIDDEN GLOBAL PAGES (Login and ForgotPassword only) ===== -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
@@ -16,9 +38,9 @@
                   Route="ForgotPasswordPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- === ADMIN FLYOUT GROUP === -->
+    <!-- ===== ADMIN FLYOUT GROUP ===== -->
     <FlyoutItem Title="Admin"
-                FlyoutDisplayOptions="AsSingleItem"
+                FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsAdmin}">
 
         <ShellContent Title="Dashboard"
@@ -53,6 +75,10 @@
                       ContentTemplate="{DataTemplate views:PendingRequestsPage}"
                       Route="PendingRequestsPage" />
 
+        <ShellContent Title="ICS"
+                      ContentTemplate="{DataTemplate views:IcsPage}"
+                      Route="IcsPage" />
+
         <ShellContent Title="Generate QR"
                       ContentTemplate="{DataTemplate views:GenerateQRPage}"
                       Route="GenerateQRPage" />
@@ -61,11 +87,16 @@
                       ContentTemplate="{DataTemplate views:ScannerPage}"
                       Route="ScannerPage" />
 
+        <!-- ✅ NEW: Audit Log (Admin only) -->
+        <ShellContent Title="Audit Log"
+                      ContentTemplate="{DataTemplate views:AuditLogPage}"
+                      Route="AuditLogPage" />
+
     </FlyoutItem>
 
-    <!-- === PERSONNEL FLYOUT GROUP === -->
+    <!-- ===== PERSONNEL FLYOUT GROUP ===== -->
     <FlyoutItem Title="Personnel"
-                FlyoutDisplayOptions="AsSingleItem"
+                FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsPersonnel}">
 
         <ShellContent Title="Dashboard"
@@ -83,7 +114,6 @@
         <ShellContent Title="Profile"
                       ContentTemplate="{DataTemplate views:ProfilePage}"
                       Route="ProfilePage" />
-        <!-- ✅ This was missing! -->
 
         <ShellContent Title="Notifications"
                       ContentTemplate="{DataTemplate views:NotificationsPage}"
@@ -92,10 +122,6 @@
         <ShellContent Title="Transaction History"
                       ContentTemplate="{DataTemplate views:TransactionHistoryPage}"
                       Route="TransactionHistoryPage" />
-
-        <ShellContent Title="ICS"
-                      ContentTemplate="{DataTemplate views:IcsPage}"
-                      Route="IcsPage" />
 
         <ShellContent Title="Scanner"
                       ContentTemplate="{DataTemplate views:ScannerPage}"

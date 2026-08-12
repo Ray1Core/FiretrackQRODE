@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.UserManagementPage"
              Title="User Management"
-             BackgroundColor="{StaticResource Background}">
+             BackgroundColor="{StaticResource Background}"
+             Shell.TabBarIsVisible="False">
+    <!-- ✅ Added -->
 
     <Grid RowDefinitions="Auto, *">
         <!-- Header -->

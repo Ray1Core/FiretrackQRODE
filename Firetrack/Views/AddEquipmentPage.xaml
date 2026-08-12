@@ -3,7 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.AddEquipmentPage"
              Title="Add Equipment"
-             BackgroundColor="{StaticResource Background}">
+             BackgroundColor="{StaticResource Background}"
+             Shell.TabBarIsVisible="False">
+    <!-- ✅ Added -->
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
@@ -51,7 +53,7 @@
                             TitleColor="{StaticResource Gray300}"
                             BackgroundColor="{StaticResource Surface}" />
 
-                    <!-- Save Button Only (Cancel removed) -->
+                    <!-- Save Button Only -->
                     <Button Text="Save Equipment"
                             Style="{StaticResource SuccessButton}"
                             Command="{Binding SaveCommand}" />

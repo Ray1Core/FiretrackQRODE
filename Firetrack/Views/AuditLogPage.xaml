@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.AuditLogPage"
+             Title="Audit Log"
+             BackgroundColor="{StaticResource Background}"
+             Shell.TabBarIsVisible="False">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
+            <Label Text="📋 Audit Log"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+            <Label Text="All user actions are recorded here."
+                   FontSize="14"
+                   TextColor="#E0E0E0"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <!-- Logs List -->
+        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadLogsCommand}">
+            <CollectionView ItemsSource="{Binding Logs}" EmptyView="No logs found.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
+                            <VerticalStackLayout Spacing="4">
+                                <Label Text="{Binding Action}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                                <Label Text="{Binding Details}" FontSize="14" TextColor="{StaticResource Gray300}" IsVisible="{Binding Details, Converter={StaticResource IsNotNullConverter}}" />
+                                <Grid ColumnDefinitions="*, Auto">
+                                    <Label Grid.Column="0" Text="{Binding Username, StringFormat='User: {0}'}" FontSize="12" TextColor="{StaticResource Gray300}" />
+                                    <Label Grid.Column="1" Text="{Binding Timestamp, StringFormat='{0:MMM dd, yyyy HH:mm}'}" FontSize="12" TextColor="{StaticResource Gray300}" />
+                                </Grid>
+                            </VerticalStackLayout>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
+        </RefreshView>
+    </Grid>
+</ContentPage>
