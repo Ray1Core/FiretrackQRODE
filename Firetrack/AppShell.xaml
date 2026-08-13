@@ -27,7 +27,7 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== HIDDEN GLOBAL PAGES (Login, ForgotPassword, EquipmentDetail) ===== -->
+    <!-- ===== HIDDEN GLOBAL PAGES (not in flyout) ===== -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
@@ -38,10 +38,21 @@
                   Route="ForgotPasswordPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- EquipmentDetailPage is hidden from flyout; navigated via ItemTapped -->
     <ShellContent Title="Equipment Detail"
                   ContentTemplate="{DataTemplate views:EquipmentDetailPage}"
                   Route="EquipmentDetailPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ✅ Hidden page for Request detail (navigated from RequestEquipmentPage) -->
+    <ShellContent Title="Equipment Request Detail"
+                  ContentTemplate="{DataTemplate views:EquipmentRequestDetailPage}"
+                  Route="EquipmentRequestDetailPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ICS is hidden – only accessible via Transfer navigation -->
+    <ShellContent Title="ICS"
+                  ContentTemplate="{DataTemplate views:IcsPage}"
+                  Route="IcsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
     <!-- ===== ADMIN FLYOUT GROUP ===== -->
@@ -80,10 +91,6 @@
         <ShellContent Title="Pending Requests"
                       ContentTemplate="{DataTemplate views:PendingRequestsPage}"
                       Route="PendingRequestsPage" />
-
-        <ShellContent Title="ICS"
-                      ContentTemplate="{DataTemplate views:IcsPage}"
-                      Route="IcsPage" />
 
         <ShellContent Title="Generate QR"
                       ContentTemplate="{DataTemplate views:GenerateQRPage}"

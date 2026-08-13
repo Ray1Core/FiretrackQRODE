@@ -32,15 +32,14 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         InitializeComponent();
         BindingContext = this;
 
-        // ===== EXPLICIT ROUTE REGISTRATION =====
-        // Registers all pages that are navigated to via absolute routing (//)
         Routing.RegisterRoute("AddEquipmentPage", typeof(AddEquipmentPage));
         Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
         Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
         Routing.RegisterRoute("IcsPage", typeof(IcsPage));
         Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));
         Routing.RegisterRoute("AuditLogPage", typeof(AuditLogPage));
-        Routing.RegisterRoute("EquipmentDetailPage", typeof(EquipmentDetailPage));   // ✅ New
+        Routing.RegisterRoute("EquipmentDetailPage", typeof(EquipmentDetailPage));
+        Routing.RegisterRoute("EquipmentRequestDetailPage", typeof(EquipmentRequestDetailPage));   // ✅ New
 
         UpdateUserRoleVisibility();
     }

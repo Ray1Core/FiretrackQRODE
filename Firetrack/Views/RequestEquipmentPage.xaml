@@ -5,9 +5,9 @@
              Title="Request Equipment"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
     <Grid RowDefinitions="Auto, *">
+
         <!-- Header -->
         <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
             <Label Text="📋 Request Equipment"
@@ -15,41 +15,69 @@
                    FontAttributes="Bold"
                    TextColor="White"
                    HorizontalOptions="Center" />
-            <Label Text="Select available equipment to request."
+            <Label Text="Tap an item to view details and request."
                    FontSize="14"
                    TextColor="#E0E0E0"
                    HorizontalOptions="Center" />
         </VerticalStackLayout>
 
-        <!-- Scrollable content -->
+        <!-- Equipment List (clean, tap to request) -->
         <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadAvailableCommand}">
-            <ScrollView>
-                <VerticalStackLayout Padding="20" Spacing="15">
-                    <CollectionView ItemsSource="{Binding AvailableEquipment}"
-                                    SelectionMode="Single"
-                                    SelectedItem="{Binding SelectedEquipment}">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border Style="{StaticResource CardStyle}" Margin="0,5" Padding="10">
-                                    <VerticalStackLayout Spacing="5">
-                                        <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
-                                        <Label Text="{Binding Type, StringFormat='Type: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
-                                        <Label Text="{Binding QRCode, StringFormat='QR: {0}'}" FontSize="12" TextColor="{StaticResource Gray300}" />
-                                    </VerticalStackLayout>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
+            <CollectionView ItemsSource="{Binding AvailableEquipment}"
+                            SelectionMode="None"
+                            EmptyView="No available equipment.">
+                <CollectionView.ItemTemplate>
+                    <DataTemplate>
+                        <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
+                            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto, Auto">
 
-                    <Button Text="✅ Request Selected"
-                            Style="{StaticResource SuccessButton}"
-                            Command="{Binding RequestCommand}" />
+                                <!-- Name -->
+                                <Label Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding Name}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource OnBackground}" />
+                                <!-- QR Code -->
+                                <Label Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding QRCode}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray300}" />
 
-                    <!-- Back button removed – users can use Shell back or flyout -->
+                                <!-- Type -->
+                                <Label Grid.Row="1" Grid.Column="0"
+                                       Text="{Binding Type, StringFormat='Type: {0}'}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray300}" />
 
-                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
-                </VerticalStackLayout>
-            </ScrollView>
+                                <!-- Status -->
+                                <Label Grid.Row="2" Grid.Column="0"
+                                       Text="{Binding Status}"
+                                       FontSize="13"
+                                       TextColor="White"
+                                       Padding="6,2"
+                                       Margin="0,4,0,0"
+                                       HorizontalOptions="Start"
+                                       HorizontalTextAlignment="Start"
+                                       BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}" />
+
+                                <!-- Assigned To (should be None for available) -->
+                                <Label Grid.Row="3" Grid.Column="0"
+                                       Text="{Binding AssignedToUsername, StringFormat='Assigned to: {0}'}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray300}" />
+
+                                <!-- Tap gesture -->
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ItemTappedCommand}"
+                                                          CommandParameter="{Binding .}" />
+                                </Grid.GestureRecognizers>
+
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </CollectionView.ItemTemplate>
+            </CollectionView>
         </RefreshView>
+
     </Grid>
 </ContentPage>
