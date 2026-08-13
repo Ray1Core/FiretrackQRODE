@@ -8,7 +8,7 @@ namespace Firetrack.ViewModels
     public class EquipmentDetailViewModel : ViewModelBase
     {
         private readonly DatabaseService _db;
-        private EquipmentModel _equipment = null!;   // ✅ add null-forgiving
+        private EquipmentModel _equipment = null!;  // ✅ null-forgiving
         private bool _isBusy;
 
         public EquipmentModel Equipment
@@ -37,7 +37,6 @@ namespace Firetrack.ViewModels
             DeleteCommand = new Command(OnDelete);
         }
 
-
         private async void OnEdit()
         {
             string newName = await Shell.Current.DisplayPromptAsync(
@@ -50,30 +49,23 @@ namespace Firetrack.ViewModels
             if (newName == null) return;
 
             if (!string.IsNullOrWhiteSpace(newName) && newName != Equipment.Name)
-            {
                 Equipment.Name = newName.Trim();
-            }
 
             string newStatus = await Shell.Current.DisplayActionSheet(
                 "Select Status",
                 "Cancel",
                 null,
-                "Available",
-                "Issued",
-                "Damaged",
-                "InRepair");
+                "Available", "Issued", "Damaged", "InRepair");
 
             if (!string.IsNullOrEmpty(newStatus) && newStatus != "Cancel")
-            {
                 Equipment.Status = newStatus;
-            }
 
             try
             {
                 IsBusy = true;
                 await _db.SaveEquipmentAsync(Equipment);
                 await Shell.Current.DisplayAlert("Success", "Equipment updated.", "OK");
-                await Shell.Current.GoToAsync(".."); // go back to inventory
+                await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
             {
@@ -95,9 +87,8 @@ namespace Firetrack.ViewModels
         {
             bool confirm = await Shell.Current.DisplayAlert(
                 "Confirm Delete",
-                $"Are you sure you want to delete '{Equipment.Name}'?",
-                "Yes",
-                "Cancel");
+                $"Delete '{Equipment.Name}'?",
+                "Yes", "Cancel");
 
             if (!confirm) return;
 
@@ -105,8 +96,8 @@ namespace Firetrack.ViewModels
             {
                 IsBusy = true;
                 await _db.DeleteEquipmentAsync(Equipment);
-                await Shell.Current.DisplayAlert("Success", $"'{Equipment.Name}' deleted successfully.", "OK");
-                await Shell.Current.GoToAsync(".."); // go back to inventory
+                await Shell.Current.DisplayAlert("Success", "Equipment deleted.", "OK");
+                await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
             {

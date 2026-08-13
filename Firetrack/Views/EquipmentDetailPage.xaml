@@ -19,23 +19,56 @@
 
             <Border Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="10">
+                    <!-- QR Code -->
                     <Label Text="QR Code" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryColor}" />
                     <Label Text="{Binding Equipment.QRCode}" FontSize="16" TextColor="{StaticResource OnBackground}" />
 
+                    <!-- Name -->
                     <Label Text="Name" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryColor}" Margin="0,10,0,0" />
                     <Label Text="{Binding Equipment.Name}" FontSize="16" TextColor="{StaticResource OnBackground}" />
 
+                    <!-- Type -->
                     <Label Text="Type" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryColor}" Margin="0,10,0,0" />
                     <Label Text="{Binding Equipment.Type}" FontSize="16" TextColor="{StaticResource OnBackground}" />
 
+                    <!-- Status -->
                     <Label Text="Status" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryColor}" Margin="0,10,0,0" />
                     <Label Text="{Binding Equipment.Status}" FontSize="16" TextColor="{Binding Equipment.Status, Converter={StaticResource StatusToColorConverter}}" />
 
+                    <!-- Assigned To (fallback "None" when null or empty) -->
                     <Label Text="Assigned To" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryColor}" Margin="0,10,0,0" />
-                    <Label Text="{Binding Equipment.AssignedToUsername, StringFormat='{0}'}" FontSize="16" TextColor="{StaticResource OnBackground}" />
+                    <Label FontSize="16" TextColor="{StaticResource OnBackground}" Text="{Binding Equipment.AssignedToUsername}">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label"
+                                         Binding="{Binding Equipment.AssignedToUsername}"
+                                         Value="{x:Null}">
+                                <Setter Property="Text" Value="None" />
+                            </DataTrigger>
+                            <DataTrigger TargetType="Label"
+                                         Binding="{Binding Equipment.AssignedToUsername}"
+                                         Value="">
+                                <Setter Property="Text" Value="None" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
 
+                    <!-- Remarks (fallback "None" when null or empty) -->
                     <Label Text="Remarks" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource PrimaryColor}" Margin="0,10,0,0" />
-                    <Label Text="{Binding Equipment.Remarks}" FontSize="16" TextColor="{StaticResource OnBackground}" />
+                    <Label FontSize="16" TextColor="{StaticResource OnBackground}" Text="{Binding Equipment.Remarks}">
+                        <Label.Triggers>
+                            <DataTrigger TargetType="Label"
+                                         Binding="{Binding Equipment.Remarks}"
+                                         Value="{x:Null}">
+                                <Setter Property="Text" Value="None" />
+                            </DataTrigger>
+                            <DataTrigger TargetType="Label"
+                                         Binding="{Binding Equipment.Remarks}"
+                                         Value="">
+                                <Setter Property="Text" Value="None" />
+                            </DataTrigger>
+                        </Label.Triggers>
+                    </Label>
+
                 </VerticalStackLayout>
             </Border>
 
