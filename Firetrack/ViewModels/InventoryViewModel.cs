@@ -9,7 +9,6 @@ namespace Firetrack.ViewModels
     public class InventoryViewModel : ViewModelBase
     {
         private ObservableCollection<EquipmentModel> _equipments = new();
-        private EquipmentModel? _selectedEquipment;
         private string _searchText = string.Empty;
         private bool _isBusy;
 
@@ -17,12 +16,6 @@ namespace Firetrack.ViewModels
         {
             get => _equipments;
             set { _equipments = value; OnPropertyChanged(); }
-        }
-
-        public EquipmentModel? SelectedEquipment
-        {
-            get => _selectedEquipment;
-            set { _selectedEquipment = value; OnPropertyChanged(); }
         }
 
         public string SearchText
@@ -39,22 +32,15 @@ namespace Firetrack.ViewModels
 
         public ICommand LoadEquipmentsCommand { get; }
         public ICommand SearchCommand { get; }
-        public ICommand DeleteEquipmentCommand { get; }
-        public ICommand EditEquipmentCommand { get; }
-        public ICommand ViewHistoryCommand { get; }
-        public ICommand ShowEquipmentDetailsCommand { get; }
         public ICommand GoToAddEquipmentCommand { get; }
+        public ICommand ItemTappedCommand { get; }
 
         public InventoryViewModel()
         {
             LoadEquipmentsCommand = new Command(OnLoadEquipments);
             SearchCommand = new Command(OnSearch);
-            DeleteEquipmentCommand = new Command<EquipmentModel>(OnDeleteEquipment);
-            EditEquipmentCommand = new Command<EquipmentModel>(OnEditEquipment);
-            ViewHistoryCommand = new Command<EquipmentModel>(OnViewHistory);
-            ShowEquipmentDetailsCommand = new Command<EquipmentModel>(OnShowEquipmentDetails);
-
             GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("AddEquipmentPage"));
+            ItemTappedCommand = new Command<EquipmentModel>(OnItemTapped);
 
             OnLoadEquipments();
         }
@@ -98,111 +84,11 @@ namespace Firetrack.ViewModels
             _ = LoadEquipmentsAsync();
         }
 
-        private async void OnDeleteEquipment(EquipmentModel? equipment)
+        private async void OnItemTapped(EquipmentModel equipment)
         {
             if (equipment == null) return;
-
-            bool confirm = await Shell.Current.DisplayAlert(
-                "Confirm Delete",
-                $"Are you sure you want to delete '{equipment.Name}'?",
-                "Yes",
-                "Cancel");
-
-            if (!confirm) return;
-
-            var db = App.Database;
-            if (db == null) return;
-
-            try
-            {
-                await db.DeleteEquipmentAsync(equipment);
-
-                // ✅ Log the action
-                if (App.CurrentUser != null)
-                {
-                    await db.LogActionAsync(
-                        App.CurrentUser.Username,
-                        "Delete Equipment",
-                        $"Deleted '{equipment.Name}' ({equipment.QRCode})");
-                }
-
-                await Shell.Current.DisplayAlert("Success", $"'{equipment.Name}' deleted successfully.", "OK");
-                await LoadEquipmentsAsync();
-            }
-            catch (Exception ex)
-            {
-                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
-            }
-        }
-
-        private async void OnEditEquipment(EquipmentModel? equipment)
-        {
-            if (equipment == null) return;
-
-            string newName = await Shell.Current.DisplayPromptAsync(
-                "Edit Equipment",
-                $"Current name: {equipment.Name}\nEnter new name:",
-                "Save",
-                "Cancel",
-                placeholder: equipment.Name);
-
-            if (newName == null) return;
-
-            if (!string.IsNullOrWhiteSpace(newName) && newName != equipment.Name)
-            {
-                equipment.Name = newName.Trim();
-            }
-
-            string newStatus = await Shell.Current.DisplayActionSheet(
-                "Select Status",
-                "Cancel",
-                null,
-                "Available",
-                "Issued",
-                "Damaged",
-                "InRepair");
-
-            if (!string.IsNullOrEmpty(newStatus) && newStatus != "Cancel")
-            {
-                equipment.Status = newStatus;
-            }
-
-            try
-            {
-                await App.Database!.SaveEquipmentAsync(equipment);
-                await Shell.Current.DisplayAlert("Success", "Equipment updated.", "OK");
-                await LoadEquipmentsAsync();
-            }
-            catch (Exception ex)
-            {
-                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
-            }
-        }
-
-        private async void OnViewHistory(EquipmentModel? equipment)
-        {
-            if (equipment == null) return;
-
-            var navParams = new Dictionary<string, object>
-            {
-                { "equipment", equipment }
-            };
-            await Shell.Current.GoToAsync("TransactionHistoryPage", navParams);
-        }
-
-        private async void OnShowEquipmentDetails(EquipmentModel? equipment)
-        {
-            if (equipment == null) return;
-
-            await Shell.Current.DisplayAlert(
-                "Equipment Details",
-                $"Name: {equipment.Name}\n" +
-                $"QR: {equipment.QRCode}\n" +
-                $"Type: {equipment.Type}\n" +
-                $"Status: {equipment.Status}\n" +
-                $"Assigned to: {equipment.AssignedToUsername ?? "None"}\n" +
-                $"Remarks: {equipment.Remarks ?? "None"}",
-                "OK");
+            var navParams = new Dictionary<string, object> { { "equipment", equipment } };
+            await Shell.Current.GoToAsync("EquipmentDetailPage", navParams);
         }
     }
 }

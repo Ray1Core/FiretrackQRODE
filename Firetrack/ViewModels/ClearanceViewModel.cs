@@ -72,7 +72,8 @@ namespace Firetrack.ViewModels
         {
             var users = await _db.GetUsersAsync();
             Officers.Clear();
-            foreach (var u in users)
+            // Only add users with Role = "Personnel"
+            foreach (var u in users.Where(u => u.Role == "Personnel"))
                 Officers.Add(u);
         }
 

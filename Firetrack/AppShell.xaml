@@ -27,7 +27,7 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== HIDDEN GLOBAL PAGES (Login and ForgotPassword only) ===== -->
+    <!-- ===== HIDDEN GLOBAL PAGES (Login, ForgotPassword, EquipmentDetail) ===== -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
@@ -36,6 +36,12 @@
     <ShellContent Title="ForgotPassword"
                   ContentTemplate="{DataTemplate views:ForgotPasswordPage}"
                   Route="ForgotPasswordPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- EquipmentDetailPage is hidden from flyout; navigated via ItemTapped -->
+    <ShellContent Title="Equipment Detail"
+                  ContentTemplate="{DataTemplate views:EquipmentDetailPage}"
+                  Route="EquipmentDetailPage"
                   Shell.FlyoutItemIsVisible="False" />
 
     <!-- ===== ADMIN FLYOUT GROUP ===== -->
@@ -87,7 +93,6 @@
                       ContentTemplate="{DataTemplate views:ScannerPage}"
                       Route="ScannerPage" />
 
-        <!-- ✅ NEW: Audit Log (Admin only) -->
         <ShellContent Title="Audit Log"
                       ContentTemplate="{DataTemplate views:AuditLogPage}"
                       Route="AuditLogPage" />

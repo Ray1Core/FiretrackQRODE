@@ -5,9 +5,9 @@
              Title="Equipment Inventory"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
     <Grid RowDefinitions="Auto, Auto, *">
+
         <!-- Header with Add Button -->
         <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource Background}">
             <Grid ColumnDefinitions="*, Auto">
@@ -23,7 +23,7 @@
                         HeightRequest="40"
                         FontSize="14" />
             </Grid>
-            <Label Text="Manage all equipment in the station."
+            <Label Text="Tap an item to view details and actions."
                    FontSize="14"
                    TextColor="{StaticResource Gray300}" />
         </VerticalStackLayout>
@@ -45,7 +45,7 @@
             </Grid>
         </VerticalStackLayout>
 
-        <!-- Equipment List -->
+        <!-- Equipment List (clean, tap to open detail) -->
         <RefreshView Grid.Row="2" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadEquipmentsCommand}">
             <CollectionView ItemsSource="{Binding Equipments}"
                             SelectionMode="None"
@@ -53,73 +53,56 @@
                 <CollectionView.ItemTemplate>
                     <DataTemplate>
                         <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
-                            <VerticalStackLayout Spacing="6">
-                                <!-- Row 1: Name + QR -->
-                                <Grid ColumnDefinitions="*, Auto">
-                                    <Label Text="{Binding Name}"
-                                           FontSize="16"
-                                           FontAttributes="Bold"
-                                           TextColor="{StaticResource OnBackground}"
-                                           Grid.Column="0" />
-                                    <Label Text="{Binding QRCode}"
-                                           FontSize="12"
-                                           TextColor="{StaticResource Gray300}"
-                                           Grid.Column="1" />
-                                </Grid>
+                            <Grid ColumnDefinitions="*, Auto" RowDefinitions="Auto, Auto, Auto, Auto">
 
-                                <!-- Row 2: Type + Status (clickable) -->
-                                <Grid ColumnDefinitions="*, Auto">
-                                    <Label Text="{Binding Type, StringFormat='Type: {0}'}"
-                                           FontSize="13"
-                                           TextColor="{StaticResource Gray300}"
-                                           Grid.Column="0" />
-                                    <Label Grid.Column="1"
-                                           Text="{Binding Status}"
-                                           FontSize="12"
-                                           Padding="8,3"
-                                           HorizontalTextAlignment="Center"
-                                           TextColor="White"
-                                           BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}">
-                                        <Label.GestureRecognizers>
-                                            <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ShowEquipmentDetailsCommand}"
-                                                                  CommandParameter="{Binding .}" />
-                                        </Label.GestureRecognizers>
-                                    </Label>
-                                </Grid>
+                                <!-- Row 0: Name + QR Code -->
+                                <Label Grid.Row="0" Grid.Column="0"
+                                       Text="{Binding Name}"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="{StaticResource OnBackground}"
+                                       VerticalOptions="Center" />
+                                <Label Grid.Row="0" Grid.Column="1"
+                                       Text="{Binding QRCode}"
+                                       FontSize="12"
+                                       TextColor="{StaticResource Gray300}"
+                                       VerticalOptions="Center" />
+
+                                <!-- Row 1: Type -->
+                                <Label Grid.Row="1" Grid.Column="0"
+                                       Text="{Binding Type, StringFormat='Type: {0}'}"
+                                       FontSize="13"
+                                       TextColor="{StaticResource Gray300}" />
+
+                                <!-- Row 2: Status (now wrapped and left-aligned) -->
+                                <Label Grid.Row="2" Grid.Column="0"
+                                       Text="{Binding Status}"
+                                       FontSize="13"
+                                       TextColor="White"
+                                       Padding="6,2"
+                                       Margin="0,4,0,0"
+                                       HorizontalOptions="Start"
+                                       HorizontalTextAlignment="Start"
+                                       BackgroundColor="{Binding Status, Converter={StaticResource StatusToColorConverter}}" />
 
                                 <!-- Row 3: Assigned To -->
-                                <Label Text="{Binding AssignedToUsername, StringFormat='Assigned to: {0}'}"
+                                <Label Grid.Row="3" Grid.Column="0"
+                                       Text="{Binding AssignedToUsername, StringFormat='Assigned to: {0}'}"
                                        FontSize="12"
                                        TextColor="{StaticResource Gray300}" />
 
-                                <!-- Row 4: Action Buttons -->
-                                <Grid ColumnDefinitions="*, *, *" ColumnSpacing="10" Margin="0,5,0,0">
-                                    <Button Text="✏️ Edit"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditEquipmentCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource PrimaryButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                    <Button Grid.Column="1"
-                                            Text="📜 History"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ViewHistoryCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource PrimaryButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                    <Button Grid.Column="2"
-                                            Text="🗑️ Delete"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteEquipmentCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource DangerButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                </Grid>
-                            </VerticalStackLayout>
+                                <!-- Tap gesture to navigate to detail page -->
+                                <Grid.GestureRecognizers>
+                                    <TapGestureRecognizer Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ItemTappedCommand}"
+                                                          CommandParameter="{Binding .}" />
+                                </Grid.GestureRecognizers>
+
+                            </Grid>
                         </Border>
                     </DataTemplate>
                 </CollectionView.ItemTemplate>
             </CollectionView>
         </RefreshView>
+
     </Grid>
 </ContentPage>

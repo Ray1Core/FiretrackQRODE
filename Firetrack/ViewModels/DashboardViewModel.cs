@@ -67,7 +67,7 @@ namespace Firetrack.ViewModels
             ToggleFlyoutCommand = new Command(ToggleFlyout);
             LogoutCommand = new Command(OnLogout);
 
-            // Navigation commands (absolute routes for root pages, relative for others)
+            // Navigation commands (relative routes for non‑root pages)
             GoToScannerCommand = new Command(async () => await Shell.Current.GoToAsync("ScannerPage"));
             GoToGenerateCommand = new Command(async () => await Shell.Current.GoToAsync("GenerateQRPage"));
             GoToTransferCommand = new Command(async () => await Shell.Current.GoToAsync("TransferPage"));
@@ -138,7 +138,9 @@ namespace Firetrack.ViewModels
             IsAdmin = user?.Role == "Admin";
             OnPropertyChanged(nameof(FullName));
             OnPropertyChanged(nameof(IsAdmin));
-            OnPropertyChanged(nameof(UserRole));
+            // Only update UserRole if user is not null (otherwise it’s "Guest" by default)
+            if (user != null)
+                OnPropertyChanged(nameof(UserRole));
             LoadData();
         }
 
@@ -186,7 +188,6 @@ namespace Firetrack.ViewModels
                 await db.SaveEquipmentAsync(equipment);
                 await db.SaveTransactionAsync(transaction);
 
-                // ✅ Log the action
                 if (App.CurrentUser != null)
                 {
                     await db.LogActionAsync(

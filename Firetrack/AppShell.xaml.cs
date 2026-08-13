@@ -40,7 +40,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("IcsPage", typeof(IcsPage));
         Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));
         Routing.RegisterRoute("AuditLogPage", typeof(AuditLogPage));
-        // Add any other page that gives "unable to figure out route" error
+        Routing.RegisterRoute("EquipmentDetailPage", typeof(EquipmentDetailPage));   // ✅ New
 
         UpdateUserRoleVisibility();
     }
