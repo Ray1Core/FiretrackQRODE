@@ -36,10 +36,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
         Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
         Routing.RegisterRoute("IcsPage", typeof(IcsPage));
-        Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));
+        Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));   // only once
         Routing.RegisterRoute("AuditLogPage", typeof(AuditLogPage));
         Routing.RegisterRoute("EquipmentDetailPage", typeof(EquipmentDetailPage));
-        Routing.RegisterRoute("EquipmentRequestDetailPage", typeof(EquipmentRequestDetailPage));   // ✅ New
+        Routing.RegisterRoute("EquipmentRequestDetailPage", typeof(EquipmentRequestDetailPage));
 
         UpdateUserRoleVisibility();
     }
@@ -76,6 +76,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         if (!isLoggedIn)
             return route == "LoginPage" || route == "ForgotPasswordPage";
 
+        // Allow back navigation
+        if (route == "..")
+            return true;
+
         if (route == "LoginPage" || route == "ForgotPasswordPage")
             return false;
 
@@ -84,15 +88,16 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         var allowedForPersonnel = new[]
         {
-            "DashboardPage",
-            "ProfilePage",
-            "RequestEquipmentPage",
-            "ReportDamagePage",
-            "ScannerPage",
-            "NotificationsPage",
-            "TransactionHistoryPage",
-            "IcsPage"
-        };
+        "DashboardPage",
+        "ProfilePage",
+        "RequestEquipmentPage",
+        "ReportDamagePage",
+        "ScannerPage",
+        "NotificationsPage",
+        "TransactionHistoryPage",
+        "IcsPage",
+        "EquipmentRequestDetailPage"
+    };
 
         return allowedForPersonnel.Contains(route);
     }

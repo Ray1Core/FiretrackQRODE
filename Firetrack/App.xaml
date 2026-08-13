@@ -18,6 +18,8 @@
             <converters:IsGreaterThanZeroConverter x:Key="IsGreaterThanZero" />
             <converters:BoolToStatusColorConverter x:Key="BoolToStatusColorConverter" />
             <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
+            <converters:IsNotDamagedConverter x:Key="IsNotDamagedConverter" />
+            
             <!-- NEW -->
         </ResourceDictionary>
     </Application.Resources>

@@ -67,18 +67,18 @@ namespace Firetrack.ViewModels
             ToggleFlyoutCommand = new Command(ToggleFlyout);
             LogoutCommand = new Command(OnLogout);
 
-            // Navigation commands (relative routes for non‑root pages)
-            GoToScannerCommand = new Command(async () => await Shell.Current.GoToAsync("ScannerPage"));
-            GoToGenerateCommand = new Command(async () => await Shell.Current.GoToAsync("GenerateQRPage"));
-            GoToTransferCommand = new Command(async () => await Shell.Current.GoToAsync("TransferPage"));
-            GoToAddUserCommand = new Command(async () => await Shell.Current.GoToAsync("AddUserPage"));
-            GoToClearanceCommand = new Command(async () => await Shell.Current.GoToAsync("ClearancePage"));
-            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("InventoryPage"));
-            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("RequestEquipmentPage"));
-            GoToProfileCommand = new Command(async () => await Shell.Current.GoToAsync("ProfilePage"));
-            GoToUserManagementCommand = new Command(async () => await Shell.Current.GoToAsync("UserManagementPage"));
-            GoToPendingRequestsCommand = new Command(async () => await Shell.Current.GoToAsync("PendingRequestsPage"));
-            GoToNotificationsCommand = new Command(async () => await Shell.Current.GoToAsync("NotificationsPage"));
+            // ✅ ALL navigation commands must use absolute routes (prefix "//")
+            GoToScannerCommand = new Command(async () => await Shell.Current.GoToAsync("//ScannerPage"));
+            GoToGenerateCommand = new Command(async () => await Shell.Current.GoToAsync("//GenerateQRPage"));
+            GoToTransferCommand = new Command(async () => await Shell.Current.GoToAsync("//TransferPage"));
+            GoToAddUserCommand = new Command(async () => await Shell.Current.GoToAsync("//AddUserPage"));
+            GoToClearanceCommand = new Command(async () => await Shell.Current.GoToAsync("//ClearancePage"));
+            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("//InventoryPage"));
+            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("//RequestEquipmentPage"));   // ✅ fixed
+            GoToProfileCommand = new Command(async () => await Shell.Current.GoToAsync("//ProfilePage"));
+            GoToUserManagementCommand = new Command(async () => await Shell.Current.GoToAsync("//UserManagementPage"));
+            GoToPendingRequestsCommand = new Command(async () => await Shell.Current.GoToAsync("//PendingRequestsPage"));
+            GoToNotificationsCommand = new Command(async () => await Shell.Current.GoToAsync("//NotificationsPage"));
 
             ReturnEquipmentCommand = new Command<EquipmentModel>(OnReturnEquipment);
             ReportDamageCommand = new Command<EquipmentModel>(OnReportDamage);
@@ -138,9 +138,7 @@ namespace Firetrack.ViewModels
             IsAdmin = user?.Role == "Admin";
             OnPropertyChanged(nameof(FullName));
             OnPropertyChanged(nameof(IsAdmin));
-            // Only update UserRole if user is not null (otherwise it’s "Guest" by default)
-            if (user != null)
-                OnPropertyChanged(nameof(UserRole));
+            OnPropertyChanged(nameof(UserRole));
             LoadData();
         }
 
@@ -210,11 +208,13 @@ namespace Firetrack.ViewModels
             }
         }
 
+        
+
         private async void OnReportDamage(EquipmentModel equipment)
         {
             if (equipment == null) return;
             var navigationParams = new Dictionary<string, object> { { "equipment", equipment } };
-            await Shell.Current.GoToAsync("ReportDamagePage", navigationParams);
+            await Shell.Current.GoToAsync("//ReportDamagePage", navigationParams);
         }
 
         private async void OnShowEquipmentDetails(EquipmentModel? equipment)

@@ -43,10 +43,15 @@
                   Route="EquipmentDetailPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ✅ Hidden page for Request detail (navigated from RequestEquipmentPage) -->
     <ShellContent Title="Equipment Request Detail"
                   ContentTemplate="{DataTemplate views:EquipmentRequestDetailPage}"
                   Route="EquipmentRequestDetailPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ReportDamagePage is hidden – only accessible via Report button on assigned equipment -->
+    <ShellContent Title="Report Damage"
+                  ContentTemplate="{DataTemplate views:ReportDamagePage}"
+                  Route="ReportDamagePage"
                   Shell.FlyoutItemIsVisible="False" />
 
     <!-- ICS is hidden – only accessible via Transfer navigation -->
@@ -119,9 +124,7 @@
                       ContentTemplate="{DataTemplate views:RequestEquipmentPage}"
                       Route="RequestEquipmentPage" />
 
-        <ShellContent Title="Report Damage"
-                      ContentTemplate="{DataTemplate views:ReportDamagePage}"
-                      Route="ReportDamagePage" />
+        <!-- ReportDamagePage REMOVED from flyout – now hidden -->
 
         <ShellContent Title="Profile"
                       ContentTemplate="{DataTemplate views:ProfilePage}"

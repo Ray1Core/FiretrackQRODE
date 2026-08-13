@@ -6,8 +6,6 @@ namespace Firetrack.Views;
 
 public partial class ReportDamagePage : ContentPage, IQueryAttributable
 {
-    private EquipmentModel? _passedEquipment;
-
     public ReportDamagePage()
     {
         InitializeComponent();
@@ -15,10 +13,16 @@ public partial class ReportDamagePage : ContentPage, IQueryAttributable
 
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
-        if (query.ContainsKey("equipment"))
+        if (query.TryGetValue("equipment", out var eqObj) && eqObj is EquipmentModel equipment)
         {
-            _passedEquipment = query["equipment"] as EquipmentModel;
-            BindingContext = new ReportDamageViewModel(_passedEquipment!);
+            // Create a fresh ViewModel for this equipment
+            BindingContext = new ReportDamageViewModel(equipment);
+        }
+        else
+        {
+            // If no equipment is passed, show error and go back
+            DisplayAlert("Error", "Equipment not found.", "OK");
+            _ = Shell.Current.GoToAsync("..");
         }
     }
 }

@@ -175,6 +175,7 @@
                                             CornerRadius="6"
                                             Padding="8,4"
                                             HeightRequest="30" />
+                                    <!-- ===== Report Button (hidden if status = Damaged) ===== -->
                                     <Button Grid.Column="3"
                                             Text="⚠️ Report"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReportDamageCommand}"
@@ -184,7 +185,8 @@
                                             FontSize="11"
                                             CornerRadius="6"
                                             Padding="8,4"
-                                            HeightRequest="30" />
+                                            HeightRequest="30"
+                                            IsVisible="{Binding Status, Converter={StaticResource IsNotDamagedConverter}}" />
                                 </Grid>
                             </DataTemplate>
                         </CollectionView.ItemTemplate>
