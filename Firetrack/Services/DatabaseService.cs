@@ -13,7 +13,198 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
-            // No auto‑creation – tables must exist already
+            InitializeDatabase();
+        }
+
+        private void InitializeDatabase()
+        {
+            using var connection = new SqlConnection(_connectionString);
+            connection.Open();
+
+            // ===== CREATE TABLES IF MISSING =====
+
+            // Users
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Users' AND xtype='U')
+                CREATE TABLE Users (
+                    UserId INT IDENTITY(1,1) PRIMARY KEY,
+                    Username NVARCHAR(50) UNIQUE NOT NULL,
+                    Password NVARCHAR(100) NOT NULL,
+                    FullName NVARCHAR(100) NOT NULL,
+                    Role NVARCHAR(20) NOT NULL DEFAULT 'Personnel',
+                    IsActive BIT NOT NULL DEFAULT 1
+                )");
+
+            // Equipment
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Equipment' AND xtype='U')
+                CREATE TABLE Equipment (
+                    EquipmentId INT IDENTITY(1,1) PRIMARY KEY,
+                    QRCode NVARCHAR(50) UNIQUE NOT NULL,
+                    Name NVARCHAR(100) NOT NULL,
+                    Type NVARCHAR(50) NOT NULL,
+                    Status NVARCHAR(20) NOT NULL DEFAULT 'Available',
+                    AssignedToUsername NVARCHAR(50) NULL,
+                    PhotoPath NVARCHAR(500) NULL,
+                    Remarks NVARCHAR(500) NULL,
+                    LastUpdated DATETIME NULL,
+                    RequestedByUsername NVARCHAR(50) NULL,
+                    RequestStatus NVARCHAR(20) NULL
+                )");
+
+            // Transactions
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Transactions' AND xtype='U')
+                CREATE TABLE Transactions (
+                    TransactionId INT IDENTITY(1,1) PRIMARY KEY,
+                    EquipmentQR NVARCHAR(50) NOT NULL,
+                    FromUser NVARCHAR(50) NOT NULL,
+                    ToUser NVARCHAR(50) NOT NULL,
+                    Timestamp DATETIME NOT NULL DEFAULT GETDATE(),
+                    Action NVARCHAR(50) NOT NULL,
+                    Remarks NVARCHAR(500) NULL
+                )");
+
+            // Notifications
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Notifications' AND xtype='U')
+                CREATE TABLE Notifications (
+                    NotificationId INT IDENTITY(1,1) PRIMARY KEY,
+                    Username NVARCHAR(50) NOT NULL,
+                    Title NVARCHAR(100) NOT NULL,
+                    Message NVARCHAR(500) NOT NULL,
+                    IsRead BIT NOT NULL DEFAULT 0,
+                    Timestamp DATETIME NOT NULL DEFAULT GETDATE()
+                )");
+
+            // PasswordResetOtps
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='PasswordResetOtps' AND xtype='U')
+                CREATE TABLE PasswordResetOtps (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    Username NVARCHAR(50) NOT NULL,
+                    OtpCode NVARCHAR(6) NOT NULL,
+                    Expiry DATETIME NOT NULL,
+                    IsUsed BIT NOT NULL DEFAULT 0,
+                    CONSTRAINT FK_PasswordResetOtps_Users FOREIGN KEY (Username)
+                        REFERENCES Users(Username) ON DELETE CASCADE
+                )");
+
+            // AuditLogs
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='AuditLogs' AND xtype='U')
+                CREATE TABLE AuditLogs (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    Username NVARCHAR(50) NOT NULL,
+                    Action NVARCHAR(100) NOT NULL,
+                    Details NVARCHAR(500) NULL,
+                    Timestamp DATETIME NOT NULL DEFAULT GETDATE()
+                )");
+
+            // ===== ADD FOREIGN KEYS (if missing) =====
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Equipment_AssignedToUser')
+                    ALTER TABLE Equipment ADD CONSTRAINT FK_Equipment_AssignedToUser FOREIGN KEY (AssignedToUsername) REFERENCES Users(Username);
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Equipment_RequestedByUser')
+                    ALTER TABLE Equipment ADD CONSTRAINT FK_Equipment_RequestedByUser FOREIGN KEY (RequestedByUsername) REFERENCES Users(Username);
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Transactions_FromUser')
+                    ALTER TABLE Transactions ADD CONSTRAINT FK_Transactions_FromUser FOREIGN KEY (FromUser) REFERENCES Users(Username);
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Transactions_ToUser')
+                    ALTER TABLE Transactions ADD CONSTRAINT FK_Transactions_ToUser FOREIGN KEY (ToUser) REFERENCES Users(Username);
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Notifications_User')
+                    ALTER TABLE Notifications ADD CONSTRAINT FK_Notifications_User FOREIGN KEY (Username) REFERENCES Users(Username);
+                IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_AuditLogs_User')
+                    ALTER TABLE AuditLogs ADD CONSTRAINT FK_AuditLogs_User FOREIGN KEY (Username) REFERENCES Users(Username);
+            ");
+
+            // ===== ADD INDEXES (if missing) =====
+            connection.Execute(@"
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Equipment_AssignedToUsername' AND object_id = OBJECT_ID('Equipment'))
+                    CREATE INDEX IX_Equipment_AssignedToUsername ON Equipment(AssignedToUsername);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Equipment_RequestStatus' AND object_id = OBJECT_ID('Equipment'))
+                    CREATE INDEX IX_Equipment_RequestStatus ON Equipment(RequestStatus);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Transactions_EquipmentQR' AND object_id = OBJECT_ID('Transactions'))
+                    CREATE INDEX IX_Transactions_EquipmentQR ON Transactions(EquipmentQR);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Notifications_Username' AND object_id = OBJECT_ID('Notifications'))
+                    CREATE INDEX IX_Notifications_Username ON Notifications(Username);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AuditLogs_Username' AND object_id = OBJECT_ID('AuditLogs'))
+                    CREATE INDEX IX_AuditLogs_Username ON AuditLogs(Username);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_AuditLogs_Timestamp' AND object_id = OBJECT_ID('AuditLogs'))
+                    CREATE INDEX IX_AuditLogs_Timestamp ON AuditLogs(Timestamp DESC);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Equipment_Name' AND object_id = OBJECT_ID('Equipment'))
+                    CREATE INDEX IX_Equipment_Name ON Equipment(Name);
+                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Transactions_Timestamp' AND object_id = OBJECT_ID('Transactions'))
+                    CREATE INDEX IX_Transactions_Timestamp ON Transactions(Timestamp);
+            ");
+
+            // ===== SEED USERS =====
+            var admin = connection.QueryFirstOrDefault<UserModel>(
+                "SELECT * FROM Users WHERE Username = @Username", new { Username = "admin" });
+            if (admin == null)
+            {
+                connection.Execute(
+                    "INSERT INTO Users (Username, Password, FullName, Role, IsActive) VALUES (@Username, @Password, @FullName, @Role, @IsActive)",
+                    new { Username = "admin", Password = "admin123", FullName = "Admin Chief", Role = "Admin", IsActive = true });
+            }
+
+            var user = connection.QueryFirstOrDefault<UserModel>(
+                "SELECT * FROM Users WHERE Username = @Username", new { Username = "user" });
+            if (user == null)
+            {
+                connection.Execute(
+                    "INSERT INTO Users (Username, Password, FullName, Role, IsActive) VALUES (@Username, @Password, @FullName, @Role, @IsActive)",
+                    new { Username = "user", Password = "user123", FullName = "John Firefighter", Role = "Personnel", IsActive = true });
+            }
+
+            // ===== SEED EQUIPMENT =====
+            var eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
+            if (eqCount == 0)
+            {
+                var items = new List<EquipmentModel>
+                {
+                    new EquipmentModel { QRCode = "HOSE001", Name = "Fire Hose 1.5\" x 15m", Type = "Hose", Status = "Available" },
+                    new EquipmentModel { QRCode = "HOSE002", Name = "Fire Hose 2.5\" x 15m", Type = "Hose", Status = "Available" },
+                    new EquipmentModel { QRCode = "HOSE003", Name = "Fire Hose 2.5\" x 30m", Type = "Hose", Status = "Issued", AssignedToUsername = "user" },
+                    new EquipmentModel { QRCode = "NOZZLE001", Name = "Combination Nozzle", Type = "Nozzle", Status = "Available" },
+                    new EquipmentModel { QRCode = "NOZZLE002", Name = "Fog Nozzle", Type = "Nozzle", Status = "Available" },
+                    new EquipmentModel { QRCode = "TOOL001", Name = "Halligan Tool", Type = "Rescue Tool", Status = "Available" },
+                    new EquipmentModel { QRCode = "TOOL002", Name = "Flathead Axe", Type = "Rescue Tool", Status = "Available" },
+                    new EquipmentModel { QRCode = "TOOL003", Name = "Pry Bar", Type = "Rescue Tool", Status = "Issued", AssignedToUsername = "user" },
+                    new EquipmentModel { QRCode = "TOOL004", Name = "Bolt Cutter", Type = "Rescue Tool", Status = "Available" },
+                    new EquipmentModel { QRCode = "TOOL005", Name = "Search & Rescue Rope", Type = "Rescue Tool", Status = "Available" }
+                };
+                foreach (var eq in items)
+                {
+                    eq.LastUpdated = DateTime.Now;
+                    connection.Execute(
+                        @"INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated)
+                          VALUES (@QRCode, @Name, @Type, @Status, @AssignedToUsername, @LastUpdated)",
+                        eq);
+                }
+            }
+
+            // ===== SEED TRANSACTIONS (for dashboard chart) =====
+            var txCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Transactions");
+            if (txCount == 0)
+            {
+                var now = DateTime.Now;
+                var issues = new List<TransactionModel>
+                {
+                    new TransactionModel { EquipmentQR = "HOSE001", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-6), Action = "Issue" },
+                    new TransactionModel { EquipmentQR = "HOSE002", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-5), Action = "Issue" },
+                    new TransactionModel { EquipmentQR = "HOSE003", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-4), Action = "Issue" },
+                    new TransactionModel { EquipmentQR = "NOZZLE001", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-3), Action = "Issue" },
+                    new TransactionModel { EquipmentQR = "NOZZLE002", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-2), Action = "Issue" },
+                    new TransactionModel { EquipmentQR = "TOOL001", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-1), Action = "Issue" }
+                };
+                foreach (var tx in issues)
+                {
+                    connection.Execute(
+                        @"INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action, Remarks)
+                          VALUES (@EquipmentQR, @FromUser, @ToUser, @Timestamp, @Action, @Remarks)",
+                        tx);
+                }
+            }
         }
 
         // ---------- Equipment ----------
