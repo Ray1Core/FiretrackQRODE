@@ -13,8 +13,8 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
-            EnsureDatabaseExists();
-            InitializeDatabase();
+            EnsureDatabaseExists();   // ✅ Creates the database if missing
+            InitializeDatabase();    // Creates tables and seeds
         }
 
         /// <summary>
@@ -32,7 +32,6 @@ namespace Firetrack.Services
             using var connection = new SqlConnection(masterConnectionString);
             connection.Open();
 
-            // Check if the database exists
             int dbExists = connection.ExecuteScalar<int>(
                 "SELECT COUNT(*) FROM sys.databases WHERE name = 'FiretrackDB'");
             if (dbExists == 0)
@@ -43,6 +42,7 @@ namespace Firetrack.Services
 
         private void InitializeDatabase()
         {
+            // Now we can safely open the target database
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
 
