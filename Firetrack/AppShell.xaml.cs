@@ -40,8 +40,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("AuditLogPage", typeof(AuditLogPage));
         Routing.RegisterRoute("EquipmentDetailPage", typeof(EquipmentDetailPage));
         Routing.RegisterRoute("EquipmentRequestDetailPage", typeof(EquipmentRequestDetailPage));
-        Routing.RegisterRoute("CategoryItemsPage", typeof(CategoryItemsPage));    
-        Routing.RegisterRoute("InventoryCategoryGridPage", typeof(InventoryCategoryGridPage));
+        Routing.RegisterRoute("CategoryItemsPage", typeof(CategoryItemsPage));
+        Routing.RegisterRoute("EquipmentCategoryPage", typeof(EquipmentCategoryPage));
 
         UpdateUserRoleVisibility();
     }
@@ -78,7 +78,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         if (!isLoggedIn)
             return route == "LoginPage" || route == "ForgotPasswordPage";
 
-        // Allow back navigation
         if (route == "..")
             return true;
 
@@ -92,13 +91,15 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         {
         "DashboardPage",
         "ProfilePage",
-        "RequestEquipmentPage",
+        "RequestEquipmentPage",        // keep for any direct navigation
         "ReportDamagePage",
         "ScannerPage",
         "NotificationsPage",
         "TransactionHistoryPage",
         "IcsPage",
-        "EquipmentRequestDetailPage"
+        "EquipmentRequestDetailPage",
+        "EquipmentCategoryPage",        // ✅ added
+        "CategoryItemsPage"            // ✅ added (for drill-down)
     };
 
         return allowedForPersonnel.Contains(route);

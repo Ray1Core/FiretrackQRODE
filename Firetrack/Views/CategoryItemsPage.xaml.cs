@@ -1,3 +1,4 @@
+using Firetrack.Models;
 using Firetrack.ViewModels;
 using Microsoft.Maui.Controls;
 
@@ -10,7 +11,7 @@ public partial class CategoryItemsPage : ContentPage, IQueryAttributable
     public CategoryItemsPage()
     {
         InitializeComponent();
-        _viewModel = new CategoryItemsViewModel("", "inventory");
+        _viewModel = new CategoryItemsViewModel("");
         BindingContext = _viewModel;
     }
 
@@ -19,8 +20,6 @@ public partial class CategoryItemsPage : ContentPage, IQueryAttributable
         if (query.TryGetValue("categoryName", out var nameObj) && nameObj is string categoryName)
         {
             _viewModel.CategoryName = categoryName;
-            if (query.TryGetValue("mode", out var modeObj) && modeObj is string mode)
-                _viewModel.Mode = mode;
             _viewModel.LoadItemsCommand.Execute(null);
         }
     }

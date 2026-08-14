@@ -7,12 +7,12 @@ public partial class RequestEquipmentPage : ContentPage
     public RequestEquipmentPage()
     {
         InitializeComponent();
-        // No BindingContext needed – we redirect immediately
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        await Shell.Current.GoToAsync("InventoryCategoryGridPage?mode=request");
+        // Redirect to the new category grid (no mode needed – role filters automatically)
+        await Shell.Current.GoToAsync("EquipmentCategoryPage");
     }
 }

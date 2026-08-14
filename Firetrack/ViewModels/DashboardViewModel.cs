@@ -73,9 +73,9 @@ namespace Firetrack.ViewModels
             GoToAddUserCommand = new Command(async () => await Shell.Current.GoToAsync("//AddUserPage"));
             GoToClearanceCommand = new Command(async () => await Shell.Current.GoToAsync("//ClearancePage"));
 
-            // ✅ Updated to use the new grid page
-            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("InventoryCategoryGridPage?mode=inventory"));
-            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("InventoryCategoryGridPage?mode=request"));
+            // ✅ Updated: navigate to EquipmentCategoryPage (role filters automatically)
+            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("EquipmentCategoryPage"));
+            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("EquipmentCategoryPage"));
 
             GoToProfileCommand = new Command(async () => await Shell.Current.GoToAsync("//ProfilePage"));
             GoToUserManagementCommand = new Command(async () => await Shell.Current.GoToAsync("//UserManagementPage"));

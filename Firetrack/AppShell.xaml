@@ -48,25 +48,23 @@
                   Route="EquipmentRequestDetailPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ReportDamagePage is hidden – only accessible via Report button -->
     <ShellContent Title="Report Damage"
                   ContentTemplate="{DataTemplate views:ReportDamagePage}"
                   Route="ReportDamagePage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ICS is hidden – only accessible via Transfer navigation -->
     <ShellContent Title="ICS"
                   ContentTemplate="{DataTemplate views:IcsPage}"
                   Route="IcsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== NEW: Category Grid (hidden, navigated via redirect) ===== -->
-    <ShellContent Title="Inventory Grid"
-                  ContentTemplate="{DataTemplate views:InventoryCategoryGridPage}"
-                  Route="InventoryCategoryGridPage"
+    <!-- ===== Category Grid (hidden, used as content of flyout entries) ===== -->
+    <ShellContent Title="Equipment Category"
+                  ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
+                  Route="EquipmentCategoryPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== NEW: Category Items (hidden, navigated from category grid) ===== -->
+    <!-- ===== Category Items (hidden, navigated from category grid) ===== -->
     <ShellContent Title="Category Items"
                   ContentTemplate="{DataTemplate views:CategoryItemsPage}"
                   Route="CategoryItemsPage"
@@ -82,8 +80,8 @@
                       Route="DashboardPage" />
 
         <ShellContent Title="Inventory"
-                      ContentTemplate="{DataTemplate views:InventoryPage}"
-                      Route="InventoryPage" />
+                      ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
+                      Route="EquipmentCategoryPage" />
 
         <ShellContent Title="Transfer"
                       ContentTemplate="{DataTemplate views:TransferPage}"
@@ -133,8 +131,8 @@
                       Route="DashboardPage" />
 
         <ShellContent Title="Request Equipment"
-                      ContentTemplate="{DataTemplate views:RequestEquipmentPage}"
-                      Route="RequestEquipmentPage" />
+                      ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
+                      Route="EquipmentCategoryPage" />
 
         <ShellContent Title="Profile"
                       ContentTemplate="{DataTemplate views:ProfilePage}"

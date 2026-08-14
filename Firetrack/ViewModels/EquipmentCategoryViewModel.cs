@@ -6,18 +6,11 @@ using Microsoft.Maui.Controls;
 
 namespace Firetrack.ViewModels
 {
-    public class InventoryCategoryGridViewModel : ViewModelBase
+    public class EquipmentCategoryViewModel : ViewModelBase
     {
         private readonly DatabaseService _db;
-        private string _mode = "inventory";
         private ObservableCollection<CategoryGroup> _categories = new();
         private bool _isBusy;
-
-        public string Mode
-        {
-            get => _mode;
-            set { _mode = value; OnPropertyChanged(); }
-        }
 
         public ObservableCollection<CategoryGroup> Categories
         {
@@ -35,10 +28,9 @@ namespace Firetrack.ViewModels
         public ICommand CategoryTappedCommand { get; }
         public ICommand GoToAddEquipmentCommand { get; }
 
-        public InventoryCategoryGridViewModel(string mode = "inventory")
+        public EquipmentCategoryViewModel()
         {
             _db = App.Database!;
-            Mode = mode;
 
             LoadCategoriesCommand = new Command(OnLoadCategories);
             CategoryTappedCommand = new Command<CategoryGroup>(OnCategoryTapped);
@@ -56,7 +48,9 @@ namespace Firetrack.ViewModels
             {
                 var all = await _db.GetEquipmentsAsync();
 
-                var filtered = Mode == "request"
+                // Filter based on user role
+                var isPersonnel = App.CurrentUser?.Role == "Personnel";
+                var filtered = isPersonnel
                     ? all.Where(e => e.Status == "Available" && string.IsNullOrEmpty(e.RequestStatus))
                     : all;
 
@@ -92,8 +86,7 @@ namespace Firetrack.ViewModels
 
             var navParams = new Dictionary<string, object>
             {
-                { "categoryName", category.Name },
-                { "mode", Mode }
+                { "categoryName", category.Name }
             };
             await Shell.Current.GoToAsync("CategoryItemsPage", navParams);
         }

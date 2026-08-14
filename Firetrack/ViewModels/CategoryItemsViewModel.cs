@@ -10,7 +10,6 @@ namespace Firetrack.ViewModels
     {
         private readonly DatabaseService _db;
         private string _categoryName = string.Empty;
-        private string _mode = "inventory";
         private ObservableCollection<EquipmentModel> _items = new();
         private bool _isBusy;
 
@@ -18,12 +17,6 @@ namespace Firetrack.ViewModels
         {
             get => _categoryName;
             set { _categoryName = value; OnPropertyChanged(); }
-        }
-
-        public string Mode
-        {
-            get => _mode;
-            set { _mode = value; OnPropertyChanged(); }
         }
 
         public ObservableCollection<EquipmentModel> Items
@@ -41,11 +34,10 @@ namespace Firetrack.ViewModels
         public ICommand LoadItemsCommand { get; }
         public ICommand ItemTappedCommand { get; }
 
-        public CategoryItemsViewModel(string categoryName, string mode = "inventory")
+        public CategoryItemsViewModel(string categoryName)
         {
             _db = App.Database!;
             CategoryName = categoryName;
-            Mode = mode;
 
             LoadItemsCommand = new Command(OnLoadItems);
             ItemTappedCommand = new Command<EquipmentModel>(OnItemTapped);
@@ -63,7 +55,9 @@ namespace Firetrack.ViewModels
                 var all = await _db.GetEquipmentsAsync();
 
                 var filtered = all.Where(e => e.Name == CategoryName);
-                if (Mode == "request")
+
+                // Personnel sees only available items (no pending requests)
+                if (App.CurrentUser?.Role == "Personnel")
                     filtered = filtered.Where(e => e.Status == "Available" && string.IsNullOrEmpty(e.RequestStatus));
 
                 Items.Clear();
@@ -86,7 +80,8 @@ namespace Firetrack.ViewModels
 
             var navParams = new Dictionary<string, object> { { "equipment", item } };
 
-            if (Mode == "request")
+            // Navigate based on role
+            if (App.CurrentUser?.Role == "Personnel")
                 await Shell.Current.GoToAsync("EquipmentRequestDetailPage", navParams);
             else
                 await Shell.Current.GoToAsync("EquipmentDetailPage", navParams);

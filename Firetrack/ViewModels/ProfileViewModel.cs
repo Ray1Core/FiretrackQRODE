@@ -9,21 +9,28 @@ namespace Firetrack.ViewModels
     {
         private readonly DatabaseService _db;
         private UserModel? _currentUser;
+        private bool _isBusy;
 
         public string FullName => _currentUser?.FullName ?? "Unknown";
         public string Username => _currentUser?.Username ?? "Unknown";
         public string Role => _currentUser?.Role ?? "Unknown";
         public string Status => _currentUser?.IsActive == true ? "Active" : "Inactive";
 
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set { _isBusy = value; OnPropertyChanged(); }
+        }
+
         public ICommand ChangePasswordCommand { get; }
-        public ICommand LogoutCommand { get; }  // ✅ New
+        public ICommand LogoutCommand { get; }
 
         public ProfileViewModel()
         {
             _db = App.Database!;
             _currentUser = App.CurrentUser;
             ChangePasswordCommand = new Command(OnChangePassword);
-            LogoutCommand = new Command(OnLogout);  // ✅ New
+            LogoutCommand = new Command(OnLogout);
         }
 
         private async void OnChangePassword()
@@ -51,6 +58,7 @@ namespace Firetrack.ViewModels
                 return;
             }
 
+            IsBusy = true;
             try
             {
                 bool success = await _db.ResetPasswordAsync(_currentUser.Username, newPassword);
@@ -68,9 +76,12 @@ namespace Firetrack.ViewModels
             {
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
-        // ✅ New Logout method
         private async void OnLogout()
         {
             if (_currentUser != null)
