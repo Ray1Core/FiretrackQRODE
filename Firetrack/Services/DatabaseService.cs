@@ -13,7 +13,32 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
+            EnsureDatabaseExists();
             InitializeDatabase();
+        }
+
+        /// <summary>
+        /// Creates the database if it does not already exist.
+        /// </summary>
+        private void EnsureDatabaseExists()
+        {
+            // Build a connection string to the 'master' database
+            var builder = new SqlConnectionStringBuilder(_connectionString)
+            {
+                InitialCatalog = "master"
+            };
+            string masterConnectionString = builder.ConnectionString;
+
+            using var connection = new SqlConnection(masterConnectionString);
+            connection.Open();
+
+            // Check if the database exists
+            int dbExists = connection.ExecuteScalar<int>(
+                "SELECT COUNT(*) FROM sys.databases WHERE name = 'FiretrackDB'");
+            if (dbExists == 0)
+            {
+                connection.Execute("CREATE DATABASE FiretrackDB");
+            }
         }
 
         private void InitializeDatabase()
