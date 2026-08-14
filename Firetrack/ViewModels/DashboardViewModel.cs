@@ -4,11 +4,12 @@ using Firetrack.Services;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
-
+using Firetrack.Converters; 
 namespace Firetrack.ViewModels
 {
     public class DashboardViewModel : ViewModelBase
     {
+        // ---- Existing properties ----
         private string _fullName = string.Empty;
         private ObservableCollection<EquipmentModel> _myEquipment = new();
         private ObservableCollection<UserModel> _personnelList = new();
@@ -40,6 +41,58 @@ namespace Firetrack.ViewModels
             set { _isAdmin = value; OnPropertyChanged(); }
         }
 
+        // ---- Metrics properties ----
+        private int _totalEquipment;
+        private int _availableCount;
+        private int _issuedCount;
+        private int _damagedCount;
+        private int _inRepairCount;     // ✅ NEW
+        private int _pendingRequests;
+        private ChartDrawable _chartDrawable = new();
+
+        public int TotalEquipment
+        {
+            get => _totalEquipment;
+            set { _totalEquipment = value; OnPropertyChanged(); }
+        }
+
+        public int AvailableCount
+        {
+            get => _availableCount;
+            set { _availableCount = value; OnPropertyChanged(); }
+        }
+
+        public int IssuedCount
+        {
+            get => _issuedCount;
+            set { _issuedCount = value; OnPropertyChanged(); }
+        }
+
+        public int DamagedCount
+        {
+            get => _damagedCount;
+            set { _damagedCount = value; OnPropertyChanged(); }
+        }
+
+        public int InRepairCount    // ✅ NEW
+        {
+            get => _inRepairCount;
+            set { _inRepairCount = value; OnPropertyChanged(); }
+        }
+
+        public int PendingRequests
+        {
+            get => _pendingRequests;
+            set { _pendingRequests = value; OnPropertyChanged(); }
+        }
+
+        public ChartDrawable ChartDrawable
+        {
+            get => _chartDrawable;
+            set { _chartDrawable = value; OnPropertyChanged(); }
+        }
+
+        // ---- Commands (unchanged) ----
         public ICommand ToggleFlyoutCommand { get; }
         public ICommand GoToScannerCommand { get; }
         public ICommand GoToGenerateCommand { get; }
@@ -58,6 +111,7 @@ namespace Firetrack.ViewModels
         public ICommand ReportDamageCommand { get; }
         public ICommand ShowEquipmentDetailsCommand { get; }
 
+        // ---- Constructor ----
         public DashboardViewModel()
         {
             var user = App.CurrentUser;
@@ -72,11 +126,8 @@ namespace Firetrack.ViewModels
             GoToTransferCommand = new Command(async () => await Shell.Current.GoToAsync("//TransferPage"));
             GoToAddUserCommand = new Command(async () => await Shell.Current.GoToAsync("//AddUserPage"));
             GoToClearanceCommand = new Command(async () => await Shell.Current.GoToAsync("//ClearancePage"));
-
-            // ✅ Updated: navigate to EquipmentCategoryPage (role filters automatically)
             GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("EquipmentCategoryPage"));
             GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("EquipmentCategoryPage"));
-
             GoToProfileCommand = new Command(async () => await Shell.Current.GoToAsync("//ProfilePage"));
             GoToUserManagementCommand = new Command(async () => await Shell.Current.GoToAsync("//UserManagementPage"));
             GoToPendingRequestsCommand = new Command(async () => await Shell.Current.GoToAsync("//PendingRequestsPage"));
@@ -87,8 +138,10 @@ namespace Firetrack.ViewModels
             ShowEquipmentDetailsCommand = new Command<EquipmentModel>(OnShowEquipmentDetails);
 
             LoadData();
+            LoadMetrics();
         }
 
+        // ---- Methods ----
         private void ToggleFlyout() => Shell.Current.FlyoutIsPresented = !Shell.Current.FlyoutIsPresented;
 
         private async void OnLogout()
@@ -100,21 +153,14 @@ namespace Firetrack.ViewModels
 
         private async void LoadData()
         {
-            if (App.CurrentUser == null)
-                return;
-
+            if (App.CurrentUser == null) return;
             var db = App.Database;
-            if (db == null)
-                return;
+            if (db == null) return;
 
             if (IsAdmin)
-            {
                 await LoadPersonnelList(db);
-            }
             else
-            {
                 await LoadMyEquipment(db);
-            }
         }
 
         private async Task LoadPersonnelList(DatabaseService db)
@@ -140,11 +186,48 @@ namespace Firetrack.ViewModels
             IsAdmin = user?.Role == "Admin";
             OnPropertyChanged(nameof(FullName));
             OnPropertyChanged(nameof(IsAdmin));
-            // UserRole is a property that uses null-conditional, so it's safe to call OnPropertyChanged on it
             OnPropertyChanged(nameof(UserRole));
             LoadData();
+            LoadMetrics();
         }
 
+        // ---- NEW: Load Metrics & Chart ----
+        private async void LoadMetrics()
+        {
+            var db = App.Database;
+            if (db == null) return;
+
+            try
+            {
+                var all = await db.GetEquipmentsAsync();
+                TotalEquipment = all.Count;
+                AvailableCount = all.Count(e => e.Status == "Available");
+                IssuedCount = all.Count(e => e.Status == "Issued");
+                DamagedCount = all.Count(e => e.Status == "Damaged");
+                InRepairCount = all.Count(e => e.Status == "InRepair");   // ✅ NEW
+                PendingRequests = all.Count(e => e.RequestStatus == "Pending");
+
+                // Chart: last 7 days issued count
+                var allTx = await db.GetTransactionsAsync();
+                var issues = allTx.Where(t => t.Action == "Issue" && t.Timestamp >= DateTime.Now.AddDays(-7));
+
+                var counts = new List<float>();
+                for (int i = 6; i >= 0; i--)
+                {
+                    var date = DateTime.Now.Date.AddDays(-i);
+                    var count = issues.Count(t => t.Timestamp.Date == date);
+                    counts.Add(count);
+                }
+                ChartDrawable.DataPoints = counts;
+                OnPropertyChanged(nameof(ChartDrawable));
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+        }
+
+        // ---- Existing methods (OnReturnEquipment, OnReportDamage, OnShowEquipmentDetails) ----
         private async void OnReturnEquipment(EquipmentModel? equipment)
         {
             if (equipment == null) return;
@@ -162,12 +245,7 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            bool confirm = await Shell.Current.DisplayAlert(
-                "Confirm Return",
-                $"Return '{equipment.Name}'?",
-                "Yes",
-                "Cancel");
-
+            bool confirm = await Shell.Current.DisplayAlert("Confirm Return", $"Return '{equipment.Name}'?", "Yes", "Cancel");
             if (!confirm) return;
 
             try
@@ -191,17 +269,10 @@ namespace Firetrack.ViewModels
 
                 if (App.CurrentUser != null)
                 {
-                    await db.LogActionAsync(
-                        App.CurrentUser.Username,
-                        "Return Equipment",
-                        $"Returned '{equipment.Name}' ({equipment.QRCode})");
+                    await db.LogActionAsync(App.CurrentUser.Username, "Return Equipment", $"Returned '{equipment.Name}' ({equipment.QRCode})");
                 }
 
-                await db.SendNotificationAsync(
-                    "admin",
-                    "↩️ Equipment Returned",
-                    $"{App.CurrentUser?.FullName} returned '{equipment.Name}'.");
-
+                await db.SendNotificationAsync("admin", "↩️ Equipment Returned", $"{App.CurrentUser?.FullName} returned '{equipment.Name}'.");
                 await Shell.Current.DisplayAlert("Success", $"'{equipment.Name}' returned successfully.", "OK");
                 LoadData();
             }
@@ -210,8 +281,6 @@ namespace Firetrack.ViewModels
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
         }
-
-        
 
         private async void OnReportDamage(EquipmentModel equipment)
         {
@@ -223,7 +292,6 @@ namespace Firetrack.ViewModels
         private async void OnShowEquipmentDetails(EquipmentModel? equipment)
         {
             if (equipment == null) return;
-
             await Shell.Current.DisplayAlert(
                 "Equipment Details",
                 $"Name: {equipment.Name}\n" +

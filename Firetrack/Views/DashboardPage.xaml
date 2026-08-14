@@ -8,10 +8,9 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <!-- ========== HEADER (Centered) ========== -->
+            <!-- ========== HEADER (unchanged) ========== -->
             <Grid ColumnDefinitions="Auto, *, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
-
-                <!-- LEFT: Flyout Menu Button (hamburger) -->
+                <!-- LEFT: Hamburger -->
                 <Button Grid.Column="0"
                         Text="☰"
                         BackgroundColor="Transparent"
@@ -31,8 +30,6 @@
                       ColumnSpacing="10"
                       HorizontalOptions="Center"
                       VerticalOptions="Center">
-
-                    <!-- Profile Picture -->
                     <Border Grid.Row="0" Grid.RowSpan="2"
                             Grid.Column="0"
                             Stroke="Transparent"
@@ -50,8 +47,6 @@
                                HorizontalOptions="Center"
                                VerticalOptions="Center" />
                     </Border>
-
-                    <!-- Full Name -->
                     <Label Grid.Row="0"
                            Grid.Column="1"
                            Text="{Binding FullName}"
@@ -60,8 +55,6 @@
                            TextColor="{StaticResource OnBackground}"
                            VerticalOptions="End"
                            HorizontalOptions="Start" />
-
-                    <!-- Role -->
                     <Label Grid.Row="1"
                            Grid.Column="1"
                            Text="{Binding UserRole, StringFormat='Role: {0}'}"
@@ -83,7 +76,6 @@
                         CornerRadius="0"
                         HorizontalOptions="Center"
                         VerticalOptions="Center" />
-
                 <Button Grid.Column="3"
                         Text="🚪"
                         BackgroundColor="Transparent"
@@ -95,10 +87,63 @@
                         CornerRadius="0"
                         HorizontalOptions="Center"
                         VerticalOptions="Center" />
-
             </Grid>
 
-            
+            <!-- ========== METRICS CARDS ========== -->
+            <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="12">
+                <!-- Total -->
+                <Border Style="{StaticResource CardStyle}" Padding="10">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                        <Label Text="📦 Total" FontSize="14" TextColor="{StaticResource Gray300}" />
+                        <Label Text="{Binding TotalEquipment}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
+                    </VerticalStackLayout>
+                </Border>
+                <!-- Available -->
+                <Border Style="{StaticResource CardStyle}" Padding="10">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                        <Label Text="✅ Available" FontSize="14" TextColor="{StaticResource Gray300}" />
+                        <Label Text="{Binding AvailableCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SuccessColor}" />
+                    </VerticalStackLayout>
+                </Border>
+                <!-- Issued -->
+                <Border Style="{StaticResource CardStyle}" Padding="10">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                        <Label Text="🔄 Issued" FontSize="14" TextColor="{StaticResource Gray300}" />
+                        <Label Text="{Binding IssuedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
+                    </VerticalStackLayout>
+                </Border>
+                <!-- Damaged -->
+                <Border Style="{StaticResource CardStyle}" Padding="10">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                        <Label Text="⚠️ Damaged" FontSize="14" TextColor="{StaticResource Gray300}" />
+                        <Label Text="{Binding DamagedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
+                    </VerticalStackLayout>
+                </Border>
+                <!-- In Repair -->
+                <Border Style="{StaticResource CardStyle}" Padding="10">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                        <Label Text="🔧 In Repair" FontSize="14" TextColor="{StaticResource Gray300}" />
+                        <Label Text="{Binding InRepairCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SecondaryColor}" />
+                    </VerticalStackLayout>
+                </Border>
+                <!-- Pending Requests -->
+                <Border Style="{StaticResource CardStyle}" Padding="10">
+                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                        <Label Text="📋 Pending Requests" FontSize="14" TextColor="{StaticResource Gray300}" />
+                        <Label Text="{Binding PendingRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource WarningColor}" />
+                    </VerticalStackLayout>
+                </Border>
+            </Grid>
+
+            <!-- ========== CHART ========== -->
+            <Border Style="{StaticResource CardStyle}" Padding="10">
+                <VerticalStackLayout>
+                    <Label Text="📈 Issued Trend (Last 7 Days)" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" Margin="0,0,0,10" />
+                    <GraphicsView Drawable="{Binding ChartDrawable}"
+                                  HeightRequest="200"
+                                  BackgroundColor="Transparent" />
+                </VerticalStackLayout>
+            </Border>
 
             <!-- ========== ASSIGNED EQUIPMENT (Personnel only) ========== -->
             <Border Style="{StaticResource CardStyle}" Padding="0"
@@ -140,7 +185,7 @@
                                             CornerRadius="6"
                                             Padding="8,4"
                                             HeightRequest="30" />
-                                    <!-- ===== Report Button (hidden if status = Damaged) ===== -->
+                                    <!-- Report Button (hidden if status = Damaged) -->
                                     <Button Grid.Column="3"
                                             Text="⚠️ Report"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReportDamageCommand}"
@@ -161,14 +206,12 @@
 
             <!-- ========== QUICK ACTIONS ========== -->
             <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="12">
-
                 <!-- Admin: Transfer + Scan QR -->
                 <Button Grid.Row="0" Grid.Column="0"
                         Text="🔄 Transfer"
                         Command="{Binding GoToTransferCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin}" />
-
                 <Button Grid.Row="0" Grid.Column="1"
                         Text="📷 Scan QR"
                         Command="{Binding GoToScannerCommand}"
@@ -187,13 +230,11 @@
                         Command="{Binding GoToClearanceCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin}" />
-
                 <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                         Text="👤 Profile"
                         Command="{Binding GoToProfileCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}" />
-
             </Grid>
 
         </VerticalStackLayout>

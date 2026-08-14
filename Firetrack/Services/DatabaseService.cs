@@ -13,171 +13,7 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
-            InitializeDatabase();
-        }
-
-        private void InitializeDatabase()
-        {
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-
-            // ===== CREATE TABLES IF MISSING =====
-
-            // Users (with IsActive)
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Users' AND xtype='U')
-                CREATE TABLE Users (
-                    UserId INT IDENTITY(1,1) PRIMARY KEY,
-                    Username NVARCHAR(50) UNIQUE NOT NULL,
-                    Password NVARCHAR(100) NOT NULL,
-                    FullName NVARCHAR(100) NOT NULL,
-                    Role NVARCHAR(20) NOT NULL DEFAULT 'Personnel',
-                    IsActive BIT NOT NULL DEFAULT 1
-                )");
-
-            // Add IsActive if missing
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
-                               WHERE TABLE_NAME = 'Users' AND COLUMN_NAME = 'IsActive')
-                BEGIN
-                    ALTER TABLE Users ADD IsActive BIT NOT NULL DEFAULT 1;
-                END");
-
-            // Equipment (with request columns)
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Equipment' AND xtype='U')
-                CREATE TABLE Equipment (
-                    EquipmentId INT IDENTITY(1,1) PRIMARY KEY,
-                    QRCode NVARCHAR(50) UNIQUE NOT NULL,
-                    Name NVARCHAR(100) NOT NULL,
-                    Type NVARCHAR(50) NOT NULL,
-                    Status NVARCHAR(20) NOT NULL DEFAULT 'Available',
-                    AssignedToUsername NVARCHAR(50) NULL,
-                    PhotoPath NVARCHAR(500) NULL,
-                    Remarks NVARCHAR(500) NULL,
-                    LastUpdated DATETIME NULL,
-                    RequestedByUsername NVARCHAR(50) NULL,
-                    RequestStatus NVARCHAR(20) NULL
-                )");
-
-            // Add RequestedByUsername if missing
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
-                               WHERE TABLE_NAME = 'Equipment' AND COLUMN_NAME = 'RequestedByUsername')
-                BEGIN
-                    ALTER TABLE Equipment ADD RequestedByUsername NVARCHAR(50) NULL;
-                END");
-
-            // Add RequestStatus if missing
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.COLUMNS 
-                               WHERE TABLE_NAME = 'Equipment' AND COLUMN_NAME = 'RequestStatus')
-                BEGIN
-                    ALTER TABLE Equipment ADD RequestStatus NVARCHAR(20) NULL;
-                END");
-
-            // PasswordResetOtps
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='PasswordResetOtps' AND xtype='U')
-                CREATE TABLE PasswordResetOtps (
-                    Id INT IDENTITY(1,1) PRIMARY KEY,
-                    Username NVARCHAR(50) NOT NULL,
-                    OtpCode NVARCHAR(6) NOT NULL,
-                    Expiry DATETIME NOT NULL,
-                    IsUsed BIT NOT NULL DEFAULT 0,
-                    CONSTRAINT FK_PasswordResetOtps_Users FOREIGN KEY (Username)
-                        REFERENCES Users(Username) ON DELETE CASCADE
-                )");
-
-            // Add index if missing
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_PasswordResetOtps_Username' AND object_id = OBJECT_ID('PasswordResetOtps'))
-                BEGIN
-                    CREATE INDEX IX_PasswordResetOtps_Username ON PasswordResetOtps(Username);
-                END");
-
-            // Transactions
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Transactions' AND xtype='U')
-                CREATE TABLE Transactions (
-                    TransactionId INT IDENTITY(1,1) PRIMARY KEY,
-                    EquipmentQR NVARCHAR(50) NOT NULL,
-                    FromUser NVARCHAR(50) NOT NULL,
-                    ToUser NVARCHAR(50) NOT NULL,
-                    Timestamp DATETIME NOT NULL DEFAULT GETDATE(),
-                    Action NVARCHAR(50) NOT NULL,
-                    Remarks NVARCHAR(500) NULL
-                )");
-
-            // Notifications
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Notifications' AND xtype='U')
-                CREATE TABLE Notifications (
-                    NotificationId INT IDENTITY(1,1) PRIMARY KEY,
-                    Username NVARCHAR(50) NOT NULL,
-                    Title NVARCHAR(100) NOT NULL,
-                    Message NVARCHAR(500) NOT NULL,
-                    IsRead BIT NOT NULL DEFAULT 0,
-                    Timestamp DATETIME NOT NULL DEFAULT GETDATE()
-                )");
-
-            // ===== NEW: AUDIT LOGS =====
-            connection.Execute(@"
-                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='AuditLogs' AND xtype='U')
-                CREATE TABLE AuditLogs (
-                    Id INT IDENTITY(1,1) PRIMARY KEY,
-                    Username NVARCHAR(50) NOT NULL,
-                    Action NVARCHAR(100) NOT NULL,
-                    Details NVARCHAR(500) NULL,
-                    Timestamp DATETIME NOT NULL DEFAULT GETDATE()
-                )");
-
-            // ===== SEED USERS =====
-            var admin = connection.QueryFirstOrDefault<UserModel>(
-                "SELECT * FROM Users WHERE Username = @Username", new { Username = "admin" });
-            if (admin == null)
-            {
-                connection.Execute(
-                    "INSERT INTO Users (Username, Password, FullName, Role, IsActive) VALUES (@Username, @Password, @FullName, @Role, @IsActive)",
-                    new { Username = "admin", Password = "admin123", FullName = "Admin Chief", Role = "Admin", IsActive = true });
-            }
-
-            var user = connection.QueryFirstOrDefault<UserModel>(
-                "SELECT * FROM Users WHERE Username = @Username", new { Username = "user" });
-            if (user == null)
-            {
-                connection.Execute(
-                    "INSERT INTO Users (Username, Password, FullName, Role, IsActive) VALUES (@Username, @Password, @FullName, @Role, @IsActive)",
-                    new { Username = "user", Password = "user123", FullName = "John Firefighter", Role = "Personnel", IsActive = true });
-            }
-
-            // ===== SEED EQUIPMENT =====
-            var count = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
-            if (count == 0)
-            {
-                var items = new List<EquipmentModel>
-                {
-                    new EquipmentModel { QRCode = "HOSE001", Name = "Fire Hose 1.5\" x 15m", Type = "Hose", Status = "Available" },
-                    new EquipmentModel { QRCode = "HOSE002", Name = "Fire Hose 2.5\" x 15m", Type = "Hose", Status = "Available" },
-                    new EquipmentModel { QRCode = "HOSE003", Name = "Fire Hose 2.5\" x 30m", Type = "Hose", Status = "Issued", AssignedToUsername = "user" },
-                    new EquipmentModel { QRCode = "NOZZLE001", Name = "Combination Nozzle", Type = "Nozzle", Status = "Available" },
-                    new EquipmentModel { QRCode = "NOZZLE002", Name = "Fog Nozzle", Type = "Nozzle", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL001", Name = "Halligan Tool", Type = "Rescue Tool", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL002", Name = "Flathead Axe", Type = "Rescue Tool", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL003", Name = "Pry Bar", Type = "Rescue Tool", Status = "Issued", AssignedToUsername = "user" },
-                    new EquipmentModel { QRCode = "TOOL004", Name = "Bolt Cutter", Type = "Rescue Tool", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL005", Name = "Search & Rescue Rope", Type = "Rescue Tool", Status = "Available" }
-                };
-
-                foreach (var eq in items)
-                {
-                    eq.LastUpdated = DateTime.Now;
-                    connection.Execute(
-                        @"INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated)
-                          VALUES (@QRCode, @Name, @Type, @Status, @AssignedToUsername, @LastUpdated)",
-                        eq);
-                }
-            }
+            // No auto‑creation – tables must exist already
         }
 
         // ---------- Equipment ----------
@@ -241,6 +77,14 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
+        public async Task<List<TransactionModel>> GetTransactionsAsync()
+        {
+            using var connection = new SqlConnection(_connectionString);
+            var result = await connection.QueryAsync<TransactionModel>(
+                "SELECT * FROM Transactions ORDER BY Timestamp DESC");
+            return result.ToList();
+        }
+
         // ---------- Users ----------
         public async Task<UserModel?> GetUserByUsernameAsync(string username)
         {
@@ -271,7 +115,6 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ===== USER MANAGEMENT METHODS =====
         public async Task<int> UpdateUserAsync(UserModel user)
         {
             using var connection = new SqlConnection(_connectionString);
@@ -291,22 +134,18 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
-        // ===== OTP / PASSWORD RESET METHODS =====
+        // ===== OTP / PASSWORD RESET =====
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = new SqlConnection(_connectionString);
-
-            // Delete old OTPs for this user
             await connection.ExecuteAsync(
                 "DELETE FROM PasswordResetOtps WHERE Username = @Username OR Expiry < GETDATE()",
                 new { Username = username });
 
-            // Generate 6-digit OTP
             var random = new Random();
             string otpCode = random.Next(100000, 999999).ToString();
-
-            // Insert new OTP
             var expiry = DateTime.Now.AddMinutes(10);
+
             await connection.ExecuteAsync(
                 @"INSERT INTO PasswordResetOtps (Username, OtpCode, Expiry, IsUsed)
                   VALUES (@Username, @OtpCode, @Expiry, 0)",
@@ -322,7 +161,6 @@ namespace Firetrack.Services
                 @"SELECT * FROM PasswordResetOtps 
                   WHERE Username = @Username AND OtpCode = @OtpCode AND IsUsed = 0 AND Expiry > GETDATE()",
                 new { Username = username, OtpCode = otpCode });
-
             return result != null;
         }
 
@@ -333,9 +171,8 @@ namespace Firetrack.Services
                 "UPDATE PasswordResetOtps SET IsUsed = 1 WHERE Username = @Username AND OtpCode = @OtpCode",
                 new { Username = username, OtpCode = otpCode });
         }
-        // ===========================
 
-        // ===== REQUEST METHODS =====
+        // ===== REQUESTS =====
         public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
         {
             using var connection = new SqlConnection(_connectionString);
@@ -376,10 +213,8 @@ namespace Firetrack.Services
 
             await SaveEquipmentAsync(equipment);
             await SaveTransactionAsync(transaction);
-
             await SendNotificationAsync(user.Username, "✅ Request Approved",
                 $"Your request for '{equipment.Name}' has been approved.");
-
             return 1;
         }
 
@@ -398,11 +233,9 @@ namespace Firetrack.Services
             equipment.RequestedByUsername = null;
             equipment.RequestStatus = null;
             equipment.LastUpdated = DateTime.Now;
-
             await SaveEquipmentAsync(equipment);
             return 1;
         }
-        // ==========================
 
         public async Task<EquipmentModel?> GetEquipmentByQRAsync(string qrCode)
         {
@@ -459,7 +292,7 @@ namespace Firetrack.Services
             });
         }
 
-        // ===== NEW: AUDIT LOGS =====
+        // ===== AUDIT LOGS =====
         public async Task LogActionAsync(string username, string action, string? details = null)
         {
             using var connection = new SqlConnection(_connectionString);

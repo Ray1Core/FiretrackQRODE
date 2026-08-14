@@ -3,26 +3,21 @@
 -- Complete schema with all tables, constraints, indexes, and seed data
 -- ============================================================
 
--- 1. CREATE DATABASE (if it doesn't exist)
-IF NOT EXISTS (SELECT * FROM sys.databases WHERE name = 'FiretrackDB')
+-- Drop the database if it exists
+IF EXISTS (SELECT * FROM sys.databases WHERE name = 'FiretrackDB')
 BEGIN
-    CREATE DATABASE FiretrackDB;
+    ALTER DATABASE FiretrackDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE FiretrackDB;
 END
+GO
+
+CREATE DATABASE FiretrackDB;
 GO
 
 USE FiretrackDB;
 GO
 
--- 2. DROP TABLES (in correct dependency order)
-IF OBJECT_ID('PasswordResetOtps', 'U') IS NOT NULL DROP TABLE PasswordResetOtps;
-IF OBJECT_ID('AuditLogs', 'U') IS NOT NULL DROP TABLE AuditLogs;
-IF OBJECT_ID('Notifications', 'U') IS NOT NULL DROP TABLE Notifications;
-IF OBJECT_ID('Transactions', 'U') IS NOT NULL DROP TABLE Transactions;
-IF OBJECT_ID('Equipment', 'U') IS NOT NULL DROP TABLE Equipment;
-IF OBJECT_ID('Users', 'U') IS NOT NULL DROP TABLE Users;
-GO
-
--- 3. CREATE TABLES
+-- ===== CREATE TABLES =====
 CREATE TABLE Users (
     UserId INT IDENTITY(1,1) PRIMARY KEY,
     Username NVARCHAR(50) UNIQUE NOT NULL,
@@ -87,7 +82,7 @@ CREATE TABLE AuditLogs (
 );
 GO
 
--- 4. ADD FOREIGN KEYS
+-- ===== ADD FOREIGN KEYS =====
 ALTER TABLE PasswordResetOtps
 ADD CONSTRAINT FK_PasswordResetOtps_Users FOREIGN KEY (Username) REFERENCES Users(Username) ON DELETE CASCADE;
 
@@ -110,7 +105,7 @@ ALTER TABLE AuditLogs
 ADD CONSTRAINT FK_AuditLogs_User FOREIGN KEY (Username) REFERENCES Users(Username);
 GO
 
--- 5. INDEXES
+-- ===== ADD INDEXES =====
 CREATE INDEX IX_PasswordResetOtps_Username ON PasswordResetOtps(Username);
 CREATE INDEX IX_Equipment_AssignedToUsername ON Equipment(AssignedToUsername);
 CREATE INDEX IX_Equipment_RequestStatus ON Equipment(RequestStatus);
@@ -118,23 +113,19 @@ CREATE INDEX IX_Transactions_EquipmentQR ON Transactions(EquipmentQR);
 CREATE INDEX IX_Notifications_Username ON Notifications(Username);
 CREATE INDEX IX_AuditLogs_Username ON AuditLogs(Username);
 CREATE INDEX IX_AuditLogs_Timestamp ON AuditLogs(Timestamp DESC);
-
--- Optional: indexes for new features (if not already present)
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_Equipment_Name' AND object_id = OBJECT_ID('Equipment'))
-    CREATE INDEX IX_Equipment_Name ON Equipment(Name);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_Equipment_Type' AND object_id = OBJECT_ID('Equipment'))
-    CREATE INDEX IX_Equipment_Type ON Equipment(Type);
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name='IX_Transactions_Timestamp' AND object_id = OBJECT_ID('Transactions'))
-    CREATE INDEX IX_Transactions_Timestamp ON Transactions(Timestamp);
+CREATE INDEX IX_Equipment_Name ON Equipment(Name);
+CREATE INDEX IX_Equipment_Type ON Equipment(Type);
+CREATE INDEX IX_Transactions_Timestamp ON Transactions(Timestamp);
 GO
 
--- 6. SEED DATA
+-- ===== SEED USERS =====
 INSERT INTO Users (Username, Password, FullName, Role, IsActive)
 VALUES 
     ('admin', 'admin123', 'Admin Chief', 'Admin', 1),
     ('user', 'user123', 'John Firefighter', 'Personnel', 1);
 GO
 
+-- ===== SEED EQUIPMENT =====
 INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated)
 VALUES
     ('HOSE001', 'Fire Hose 1.5" x 15m', 'Hose', 'Available', NULL, GETDATE()),
@@ -149,24 +140,30 @@ VALUES
     ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Available', NULL, GETDATE());
 GO
 
--- 7. VERIFICATION
--- 5. INDEXES
--- (Existing indexes – some may already exist, so we check)
-
-USE FiretrackDB;
+-- ===== SEED TRANSACTIONS (for dashboard chart) =====
+DECLARE @now DATETIME = GETDATE();
+INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action, Remarks)
+VALUES
+    ('HOSE001', 'admin', 'user', DATEADD(DAY, -6, @now), 'Issue', NULL),
+    ('HOSE002', 'admin', 'user', DATEADD(DAY, -5, @now), 'Issue', NULL),
+    ('HOSE003', 'admin', 'user', DATEADD(DAY, -4, @now), 'Issue', NULL),
+    ('NOZZLE001', 'admin', 'user', DATEADD(DAY, -3, @now), 'Issue', NULL),
+    ('NOZZLE002', 'admin', 'user', DATEADD(DAY, -2, @now), 'Issue', NULL),
+    ('TOOL001', 'admin', 'user', DATEADD(DAY, -1, @now), 'Issue', NULL);
 GO
 
--- Add only the indexes we need for the new features (if they don't already exist)
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Equipment_Name' AND object_id = OBJECT_ID('Equipment'))
-    CREATE INDEX IX_Equipment_Name ON Equipment(Name);
+-- ===== VERIFICATION (Fixed) =====
+SELECT 'Users', COUNT(*) FROM Users
+UNION ALL
+SELECT 'Equipment', COUNT(*) FROM Equipment
+UNION ALL
+SELECT 'Transactions', COUNT(*) FROM Transactions
+UNION ALL
+SELECT 'Notifications', COUNT(*) FROM Notifications
+UNION ALL
+SELECT 'PasswordResetOtps', COUNT(*) FROM PasswordResetOtps
+UNION ALL
+SELECT 'AuditLogs', COUNT(*) FROM AuditLogs;
 GO
 
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Equipment_Type' AND object_id = OBJECT_ID('Equipment'))
-    CREATE INDEX IX_Equipment_Type ON Equipment(Type);
-GO
-
-IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Transactions_Timestamp' AND object_id = OBJECT_ID('Transactions'))
-    CREATE INDEX IX_Transactions_Timestamp ON Transactions(Timestamp);
-GO
-
-PRINT '✅ New indexes added successfully.';
+PRINT '✅ FiretrackDB created and seeded successfully.';
