@@ -48,7 +48,7 @@
                   Route="EquipmentRequestDetailPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ReportDamagePage is hidden – only accessible via Report button on assigned equipment -->
+    <!-- ReportDamagePage is hidden – only accessible via Report button -->
     <ShellContent Title="Report Damage"
                   ContentTemplate="{DataTemplate views:ReportDamagePage}"
                   Route="ReportDamagePage"
@@ -58,6 +58,18 @@
     <ShellContent Title="ICS"
                   ContentTemplate="{DataTemplate views:IcsPage}"
                   Route="IcsPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ===== NEW: Category Grid (hidden, navigated via redirect) ===== -->
+    <ShellContent Title="Inventory Grid"
+                  ContentTemplate="{DataTemplate views:InventoryCategoryGridPage}"
+                  Route="InventoryCategoryGridPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ===== NEW: Category Items (hidden, navigated from category grid) ===== -->
+    <ShellContent Title="Category Items"
+                  ContentTemplate="{DataTemplate views:CategoryItemsPage}"
+                  Route="CategoryItemsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
     <!-- ===== ADMIN FLYOUT GROUP ===== -->
@@ -123,8 +135,6 @@
         <ShellContent Title="Request Equipment"
                       ContentTemplate="{DataTemplate views:RequestEquipmentPage}"
                       Route="RequestEquipmentPage" />
-
-        <!-- ReportDamagePage REMOVED from flyout – now hidden -->
 
         <ShellContent Title="Profile"
                       ContentTemplate="{DataTemplate views:ProfilePage}"

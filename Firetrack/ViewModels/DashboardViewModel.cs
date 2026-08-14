@@ -67,14 +67,16 @@ namespace Firetrack.ViewModels
             ToggleFlyoutCommand = new Command(ToggleFlyout);
             LogoutCommand = new Command(OnLogout);
 
-            // ✅ ALL navigation commands must use absolute routes (prefix "//")
             GoToScannerCommand = new Command(async () => await Shell.Current.GoToAsync("//ScannerPage"));
             GoToGenerateCommand = new Command(async () => await Shell.Current.GoToAsync("//GenerateQRPage"));
             GoToTransferCommand = new Command(async () => await Shell.Current.GoToAsync("//TransferPage"));
             GoToAddUserCommand = new Command(async () => await Shell.Current.GoToAsync("//AddUserPage"));
             GoToClearanceCommand = new Command(async () => await Shell.Current.GoToAsync("//ClearancePage"));
-            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("//InventoryPage"));
-            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("//RequestEquipmentPage"));   // ✅ fixed
+
+            // ✅ Updated to use the new grid page
+            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("InventoryCategoryGridPage?mode=inventory"));
+            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("InventoryCategoryGridPage?mode=request"));
+
             GoToProfileCommand = new Command(async () => await Shell.Current.GoToAsync("//ProfilePage"));
             GoToUserManagementCommand = new Command(async () => await Shell.Current.GoToAsync("//UserManagementPage"));
             GoToPendingRequestsCommand = new Command(async () => await Shell.Current.GoToAsync("//PendingRequestsPage"));
@@ -138,6 +140,7 @@ namespace Firetrack.ViewModels
             IsAdmin = user?.Role == "Admin";
             OnPropertyChanged(nameof(FullName));
             OnPropertyChanged(nameof(IsAdmin));
+            // UserRole is a property that uses null-conditional, so it's safe to call OnPropertyChanged on it
             OnPropertyChanged(nameof(UserRole));
             LoadData();
         }

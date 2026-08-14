@@ -36,10 +36,12 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
         Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
         Routing.RegisterRoute("IcsPage", typeof(IcsPage));
-        Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));   // only once
+        Routing.RegisterRoute("ReportDamagePage", typeof(ReportDamagePage));
         Routing.RegisterRoute("AuditLogPage", typeof(AuditLogPage));
         Routing.RegisterRoute("EquipmentDetailPage", typeof(EquipmentDetailPage));
         Routing.RegisterRoute("EquipmentRequestDetailPage", typeof(EquipmentRequestDetailPage));
+        Routing.RegisterRoute("CategoryItemsPage", typeof(CategoryItemsPage));    
+        Routing.RegisterRoute("InventoryCategoryGridPage", typeof(InventoryCategoryGridPage));
 
         UpdateUserRoleVisibility();
     }

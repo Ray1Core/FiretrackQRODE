@@ -19,6 +19,8 @@
             <converters:BoolToStatusColorConverter x:Key="BoolToStatusColorConverter" />
             <converters:InvertedBoolConverter x:Key="InvertedBoolConverter" />
             <converters:IsNotDamagedConverter x:Key="IsNotDamagedConverter" />
+            <converters:StringToEmojiConverter x:Key="StringToEmojiConverter" />
+            <converters:IsInventoryModeConverter x:Key="IsInventoryModeConverter" />
             
             <!-- NEW -->
         </ResourceDictionary>
