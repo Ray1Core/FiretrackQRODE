@@ -1,9 +1,20 @@
+USE FiretrackDB;
+SELECT * FROM Users;   -- should show admin/user
+SELECT * FROM Equipment; -- should show 10 items
+SELECT * FROM Transactions; -- should show 6 rows (for chart)
+
+
+
+
+
+
+
 -- ============================================================
 -- DATABASE: FiretrackDB
 -- Complete schema with all tables, constraints, indexes, and seed data
 -- ============================================================
 
--- Drop the database if it exists
+-- Drop the database if it exists (to avoid file conflicts)
 IF EXISTS (SELECT * FROM sys.databases WHERE name = 'FiretrackDB')
 BEGIN
     ALTER DATABASE FiretrackDB SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
@@ -18,6 +29,7 @@ USE FiretrackDB;
 GO
 
 -- ===== CREATE TABLES =====
+
 CREATE TABLE Users (
     UserId INT IDENTITY(1,1) PRIMARY KEY,
     Username NVARCHAR(50) UNIQUE NOT NULL,
@@ -83,6 +95,7 @@ CREATE TABLE AuditLogs (
 GO
 
 -- ===== ADD FOREIGN KEYS =====
+
 ALTER TABLE PasswordResetOtps
 ADD CONSTRAINT FK_PasswordResetOtps_Users FOREIGN KEY (Username) REFERENCES Users(Username) ON DELETE CASCADE;
 
@@ -106,6 +119,7 @@ ADD CONSTRAINT FK_AuditLogs_User FOREIGN KEY (Username) REFERENCES Users(Usernam
 GO
 
 -- ===== ADD INDEXES =====
+
 CREATE INDEX IX_PasswordResetOtps_Username ON PasswordResetOtps(Username);
 CREATE INDEX IX_Equipment_AssignedToUsername ON Equipment(AssignedToUsername);
 CREATE INDEX IX_Equipment_RequestStatus ON Equipment(RequestStatus);
@@ -119,6 +133,7 @@ CREATE INDEX IX_Transactions_Timestamp ON Transactions(Timestamp);
 GO
 
 -- ===== SEED USERS =====
+
 INSERT INTO Users (Username, Password, FullName, Role, IsActive)
 VALUES 
     ('admin', 'admin123', 'Admin Chief', 'Admin', 1),
@@ -126,6 +141,7 @@ VALUES
 GO
 
 -- ===== SEED EQUIPMENT =====
+
 INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated)
 VALUES
     ('HOSE001', 'Fire Hose 1.5" x 15m', 'Hose', 'Available', NULL, GETDATE()),
@@ -141,6 +157,7 @@ VALUES
 GO
 
 -- ===== SEED TRANSACTIONS (for dashboard chart) =====
+
 DECLARE @now DATETIME = GETDATE();
 INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action, Remarks)
 VALUES
@@ -152,7 +169,8 @@ VALUES
     ('TOOL001', 'admin', 'user', DATEADD(DAY, -1, @now), 'Issue', NULL);
 GO
 
--- ===== VERIFICATION (Fixed) =====
+-- ===== VERIFICATION =====
+
 SELECT 'Users', COUNT(*) FROM Users
 UNION ALL
 SELECT 'Equipment', COUNT(*) FROM Equipment
