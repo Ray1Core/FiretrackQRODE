@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.Logging;
 using Firetrack.Services;
 using SQLitePCL;
+using ZXing.Net.Maui.Controls;   // ✅ Required for .UseBarcodeReader()
 
 namespace Firetrack;
 
@@ -17,6 +18,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
+            .UseBarcodeReader()   // ✅ ESSENTIAL – enables ZXing QR scanning
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");

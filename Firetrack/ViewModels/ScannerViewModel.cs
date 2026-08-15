@@ -15,6 +15,7 @@ namespace Firetrack.ViewModels
         private bool _isScanning;
         private string _scanResult = string.Empty;
         private EquipmentModel? _foundEquipment;
+        private bool _isBusy;
 
         public bool IsScanning
         {
@@ -34,47 +35,60 @@ namespace Firetrack.ViewModels
             set { _foundEquipment = value; OnPropertyChanged(); }
         }
 
-        public ICommand ScanCommand { get; }
-        // GoBackCommand removed – navigation handled by Shell
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set { _isBusy = value; OnPropertyChanged(); }
+        }
+
+        public ICommand CancelCommand { get; }
 
         public ScannerViewModel()
         {
             _db = App.Database;
             IsScanning = true;
-            ScanCommand = new Command<BarcodeResult>(OnScanResult);
-            // GoBackCommand assignment removed
+            CancelCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
         }
 
-        private async void OnScanResult(BarcodeResult? result)
+        public async Task ProcessScannedQR(string qrValue)
         {
-            if (result == null || string.IsNullOrEmpty(result.Value))
-                return;
-
             if (_db == null)
             {
                 await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
                 return;
             }
 
-            IsScanning = false;
-            ScanResult = $"Scanned: {result.Value}";
+            IsBusy = true;
+            ScanResult = $"Scanned: {qrValue}";
 
-            var equipmentList = await _db.GetEquipmentsAsync();
-            var found = equipmentList.FirstOrDefault(e => e.QRCode == result.Value);
-
-            if (found != null)
+            try
             {
-                FoundEquipment = found;
-                await Shell.Current.DisplayAlert(
-                    "Equipment Found",
-                    $"Name: {found.Name}\nType: {found.Type}\nStatus: {found.Status}\nAssigned to: {found.AssignedToUsername ?? "None"}",
-                    "OK");
+                var equipmentList = await _db.GetEquipmentsAsync();
+                var found = equipmentList.FirstOrDefault(e => e.QRCode == qrValue);
+
+                if (found != null)
+                {
+                    FoundEquipment = found;
+                    await Shell.Current.DisplayAlert(
+                        "Equipment Found",
+                        $"Name: {found.Name}\nType: {found.Type}\nStatus: {found.Status}\nAssigned to: {found.AssignedToUsername ?? "None"}",
+                        "OK");
+                }
+                else
+                {
+                    await Shell.Current.DisplayAlert("Not Found", "No equipment matches this QR code.", "OK");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                await Shell.Current.DisplayAlert("Not Found", "No equipment matches this QR code.", "OK");
-                await Task.Delay(2000);
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+            finally
+            {
+                IsBusy = false;
+                await Task.Delay(1500);
                 IsScanning = true;
+                ScanResult = string.Empty;
             }
         }
 

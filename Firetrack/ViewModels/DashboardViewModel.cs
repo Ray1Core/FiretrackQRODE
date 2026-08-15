@@ -274,6 +274,9 @@ namespace Firetrack.ViewModels
 
         private async Task LoadMyEquipment(DatabaseService db)
         {
+            // ✅ Guard against null user
+            if (App.CurrentUser == null) return;
+
             var equipment = await db.GetEquipmentsAssignedToUserAsync(App.CurrentUser.Username);
             MyEquipment.Clear();
             foreach (var item in equipment)

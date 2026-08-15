@@ -1,25 +1,43 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:zxing="clr-namespace:ZXing.Net.Maui.Controls;assembly=ZXing.Net.Maui.Controls"
              x:Class="Firetrack.Views.ScannerPage"
              Title="Scan QR Code"
-             Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="{StaticResource Background}">
 
-    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20" Padding="30">
-        <Label Text="📷 QR Scanner"
-               FontSize="32"
-               FontAttributes="Bold"
-               TextColor="{StaticResource PrimaryColor}"
-               HorizontalOptions="Center" />
-        <Label Text="Scanner is currently disabled."
-               FontSize="18"
-               TextColor="{StaticResource TextSecondaryColor}"
-               HorizontalOptions="Center" />
-        <Label Text="We are working on a stable scanning library."
-               FontSize="14"
-               TextColor="{StaticResource TextSecondaryColor}"
-               HorizontalOptions="Center" />
-        <!-- Back button removed – users can use Shell back or flyout -->
-    </VerticalStackLayout>
+    <Grid>
+        <!-- Camera preview -->
+        <zxing:CameraBarcodeReaderView x:Name="cameraBarcodeReaderView"
+                                       BarcodesDetected="OnBarcodesDetected"
+                                       IsTorchOn="False"
+                                       CameraLocation="Rear" />
+
+        <!-- Overlay UI -->
+        <VerticalStackLayout VerticalOptions="End"
+                             HorizontalOptions="Fill"
+                             Padding="20"
+                             Spacing="10"
+                             BackgroundColor="#80000000">
+            <Label Text="Point camera at QR code"
+                   TextColor="White"
+                   FontSize="16"
+                   HorizontalOptions="Center" />
+            <Label Text="{Binding ScanResult}"
+                   TextColor="{StaticResource PrimaryColor}"
+                   FontSize="14"
+                   HorizontalOptions="Center" />
+            <Button Text="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Style="{StaticResource SecondaryButton}"
+                    Margin="0,0,0,10" />
+        </VerticalStackLayout>
+
+        <ActivityIndicator IsVisible="{Binding IsBusy}"
+                           IsRunning="{Binding IsBusy}"
+                           Color="{StaticResource PrimaryColor}"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+    </Grid>
 </ContentPage>
