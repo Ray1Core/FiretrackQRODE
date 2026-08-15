@@ -15,8 +15,9 @@ namespace Firetrack.ViewModels
         private string _status = "Available";
         private bool _isBusy;
 
+        // ✅ Added "Disposed" to the list
         public ObservableCollection<string> Types { get; } = new() { "Hose", "Nozzle", "Rescue Tool" };
-        public ObservableCollection<string> Statuses { get; } = new() { "Available", "Issued", "Damaged", "InRepair" };
+        public ObservableCollection<string> Statuses { get; } = new() { "Available", "Issued", "Damaged", "InRepair", "Disposed" };
 
         public string QRCode
         {
@@ -88,7 +89,6 @@ namespace Firetrack.ViewModels
 
                 await _db.SaveEquipmentAsync(newEquipment);
 
-                // ✅ Log the action
                 if (App.CurrentUser != null)
                 {
                     await _db.LogActionAsync(
@@ -99,7 +99,6 @@ namespace Firetrack.ViewModels
 
                 await Shell.Current.DisplayAlert("Success", $"Equipment '{newEquipment.Name}' added successfully!", "OK");
 
-                // Clear fields
                 QRCode = string.Empty;
                 Name = string.Empty;
                 Type = string.Empty;

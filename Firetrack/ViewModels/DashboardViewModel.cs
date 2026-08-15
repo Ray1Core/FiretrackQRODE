@@ -4,7 +4,8 @@ using Firetrack.Services;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
-using Firetrack.Converters; 
+using Firetrack.Converters;
+
 namespace Firetrack.ViewModels
 {
     public class DashboardViewModel : ViewModelBase
@@ -46,8 +47,10 @@ namespace Firetrack.ViewModels
         private int _availableCount;
         private int _issuedCount;
         private int _damagedCount;
-        private int _inRepairCount;     // ✅ NEW
+        private int _inRepairCount;
         private int _pendingRequests;
+        private int _rejectedRequests;      // counts "Rejected" requests (displayed as "Cancelled")
+        private int _disposedCount;         // counts "Disposed" equipment
         private ChartDrawable _chartDrawable = new();
 
         public int TotalEquipment
@@ -74,7 +77,7 @@ namespace Firetrack.ViewModels
             set { _damagedCount = value; OnPropertyChanged(); }
         }
 
-        public int InRepairCount    // ✅ NEW
+        public int InRepairCount
         {
             get => _inRepairCount;
             set { _inRepairCount = value; OnPropertyChanged(); }
@@ -84,6 +87,18 @@ namespace Firetrack.ViewModels
         {
             get => _pendingRequests;
             set { _pendingRequests = value; OnPropertyChanged(); }
+        }
+
+        public int RejectedRequests
+        {
+            get => _rejectedRequests;
+            set { _rejectedRequests = value; OnPropertyChanged(); }
+        }
+
+        public int DisposedCount
+        {
+            get => _disposedCount;
+            set { _disposedCount = value; OnPropertyChanged(); }
         }
 
         public ChartDrawable ChartDrawable
@@ -191,7 +206,7 @@ namespace Firetrack.ViewModels
             LoadMetrics();
         }
 
-        // ---- NEW: Load Metrics & Chart ----
+        // ---- Load Metrics & Chart ----
         private async void LoadMetrics()
         {
             var db = App.Database;
@@ -204,8 +219,10 @@ namespace Firetrack.ViewModels
                 AvailableCount = all.Count(e => e.Status == "Available");
                 IssuedCount = all.Count(e => e.Status == "Issued");
                 DamagedCount = all.Count(e => e.Status == "Damaged");
-                InRepairCount = all.Count(e => e.Status == "InRepair");   // ✅ NEW
+                InRepairCount = all.Count(e => e.Status == "InRepair");
                 PendingRequests = all.Count(e => e.RequestStatus == "Pending");
+                RejectedRequests = all.Count(e => e.RequestStatus == "Rejected");
+                DisposedCount = all.Count(e => e.Status == "Disposed");
 
                 // Chart: last 7 days issued count
                 var allTx = await db.GetTransactionsAsync();

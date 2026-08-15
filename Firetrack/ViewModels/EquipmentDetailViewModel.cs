@@ -8,7 +8,7 @@ namespace Firetrack.ViewModels
     public class EquipmentDetailViewModel : ViewModelBase
     {
         private readonly DatabaseService _db;
-        private EquipmentModel _equipment = null!;  // ✅ null-forgiving
+        private EquipmentModel _equipment = null!;
         private bool _isBusy;
 
         public EquipmentModel Equipment
@@ -51,11 +51,12 @@ namespace Firetrack.ViewModels
             if (!string.IsNullOrWhiteSpace(newName) && newName != Equipment.Name)
                 Equipment.Name = newName.Trim();
 
+            // ✅ Added "Disposed" to the action sheet
             string newStatus = await Shell.Current.DisplayActionSheet(
                 "Select Status",
                 "Cancel",
                 null,
-                "Available", "Issued", "Damaged", "InRepair");
+                "Available", "Issued", "Damaged", "InRepair", "Disposed");
 
             if (!string.IsNullOrEmpty(newStatus) && newStatus != "Cancel")
                 Equipment.Status = newStatus;
