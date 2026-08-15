@@ -23,19 +23,35 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
-            InitializeDatabase();
+            try
+            {
+                InitializeDatabase();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Database initialization failed: {ex}");
+                throw; // Re-throw to let App.xaml.cs handle it
+            }
         }
 
         private void InitializeDatabase()
         {
 #if ANDROID
-            // SQLite – ensure database file exists and tables are created
+            // ✅ Ensure SQLite provider is set (redundant but safe)
+            SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
+
+            // Ensure the directory exists (should already exist)
+            var dbPath = _connectionString.Replace("Data Source=", "");
+            var directory = System.IO.Path.GetDirectoryName(dbPath);
+            if (!string.IsNullOrEmpty(directory) && !System.IO.Directory.Exists(directory))
+                System.IO.Directory.CreateDirectory(directory);
+
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
             SeedData(connection);
 #else
-            // SQL Server – use existing logic with EnsureDatabaseExists
+            // SQL Server – existing logic with EnsureDatabaseExists
             EnsureDatabaseExists();
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
@@ -136,7 +152,8 @@ namespace Firetrack.Services
         private void SeedData(IDbConnection connection)
         {
             // Users
-            if (!connection.QueryFirstOrDefault<UserModel>("SELECT 1 FROM Users LIMIT 1")?.Equals(null) ?? true)
+            var userCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
+            if (userCount == 0)
             {
                 connection.Execute(
                     "INSERT INTO Users (Username, Password, FullName, Role, IsActive) VALUES (@Username, @Password, @FullName, @Role, @IsActive)",
@@ -148,7 +165,8 @@ namespace Firetrack.Services
             }
 
             // Equipment
-            if (!connection.QueryFirstOrDefault<EquipmentModel>("SELECT 1 FROM Equipment LIMIT 1")?.Equals(null) ?? true)
+            var eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
+            if (eqCount == 0)
             {
                 var items = new List<EquipmentModel>
                 {
@@ -173,8 +191,9 @@ namespace Firetrack.Services
                 }
             }
 
-            // Transactions – seed with 365 days of random data (only if empty)
-            if (!connection.QueryFirstOrDefault<TransactionModel>("SELECT 1 FROM Transactions LIMIT 1")?.Equals(null) ?? true)
+            // Transactions – seed with 365 days of random data
+            var txCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Transactions");
+            if (txCount == 0)
             {
                 var random = new Random();
                 var now = DateTime.Now;
@@ -194,7 +213,7 @@ namespace Firetrack.Services
             }
         }
 
-        // ---- All the data methods (unchanged logic, but use DbConnection) ----
+        // ---- Data methods (unchanged) ----
 
         public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
@@ -299,7 +318,7 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
-        // OTP methods...
+        // OTP methods
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = CreateConnection();

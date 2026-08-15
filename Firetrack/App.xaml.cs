@@ -23,7 +23,22 @@ namespace Firetrack
             string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=FiretrackDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=True;";
 #endif
 
-            Database = new DatabaseService(connectionString);
+            try
+            {
+                Database = new DatabaseService(connectionString);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Database initialization failed: {ex}");
+                // Optionally display an alert to the user
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Application.Current!.MainPage!.DisplayAlert("Error",
+                        $"Database error: {ex.Message}\nCheck logs for details.", "OK");
+                });
+                throw; // or continue without database, but we re-throw to stop the app
+            }
+
             return new Window(new AppShell());
         }
     }

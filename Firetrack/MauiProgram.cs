@@ -8,7 +8,11 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        Batteries_V2.Init();  // ✅ Required for SQLite on Android
+        // ✅ Must be called before any database code
+        Batteries_V2.Init();
+
+        // ✅ Explicitly set the SQLite provider for Android
+        SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 
         var builder = MauiApp.CreateBuilder();
         builder
