@@ -7,6 +7,6 @@ public partial class NotificationsPage : ContentPage
     public NotificationsPage()
     {
         InitializeComponent();
-        BindingContext = new NotificationsViewModel();   // ✅ Add this
+        BindingContext = new NotificationsViewModel();
     }
 }

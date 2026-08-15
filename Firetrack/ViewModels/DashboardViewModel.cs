@@ -107,7 +107,7 @@ namespace Firetrack.ViewModels
             set { _chartDrawable = value; OnPropertyChanged(); }
         }
 
-        // ---- NEW: Time range picker ----
+        // ---- Time range picker (if still used) ----
         private string _selectedTimeRange = "Last 7 Days";
         public string SelectedTimeRange
         {
@@ -118,7 +118,7 @@ namespace Firetrack.ViewModels
                 {
                     _selectedTimeRange = value;
                     OnPropertyChanged();
-                    LoadMetrics(); // refresh chart when selection changes
+                    LoadMetrics();
                 }
             }
         }
@@ -131,7 +131,6 @@ namespace Firetrack.ViewModels
             "Last Year"
         };
 
-        // ---- Chart label (dynamic) ----
         private string _chartTitle = "📈 Issued Trend (Last 7 Days)";
         public string ChartTitle
         {
@@ -139,7 +138,7 @@ namespace Firetrack.ViewModels
             set { _chartTitle = value; OnPropertyChanged(); }
         }
 
-        // ---- Commands (unchanged) ----
+        // ---- Commands ----
         public ICommand ToggleFlyoutCommand { get; }
         public ICommand GoToScannerCommand { get; }
         public ICommand GoToGenerateCommand { get; }
@@ -158,7 +157,7 @@ namespace Firetrack.ViewModels
         public ICommand ReportDamageCommand { get; }
         public ICommand ShowEquipmentDetailsCommand { get; }
 
-        // ---- Constructor ----
+        // ---- Constructor (with error handling for all nav commands) ----
         public DashboardViewModel()
         {
             var user = App.CurrentUser;
@@ -168,17 +167,72 @@ namespace Firetrack.ViewModels
             ToggleFlyoutCommand = new Command(ToggleFlyout);
             LogoutCommand = new Command(OnLogout);
 
-            GoToScannerCommand = new Command(async () => await Shell.Current.GoToAsync("//ScannerPage"));
-            GoToGenerateCommand = new Command(async () => await Shell.Current.GoToAsync("//GenerateQRPage"));
-            GoToTransferCommand = new Command(async () => await Shell.Current.GoToAsync("//TransferPage"));
-            GoToAddUserCommand = new Command(async () => await Shell.Current.GoToAsync("//AddUserPage"));
-            GoToClearanceCommand = new Command(async () => await Shell.Current.GoToAsync("//ClearancePage"));
-            GoToInventoryCommand = new Command(async () => await Shell.Current.GoToAsync("EquipmentCategoryPage"));
-            GoToRequestEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("EquipmentCategoryPage"));
-            GoToProfileCommand = new Command(async () => await Shell.Current.GoToAsync("//ProfilePage"));
-            GoToUserManagementCommand = new Command(async () => await Shell.Current.GoToAsync("//UserManagementPage"));
-            GoToPendingRequestsCommand = new Command(async () => await Shell.Current.GoToAsync("//PendingRequestsPage"));
-            GoToNotificationsCommand = new Command(async () => await Shell.Current.GoToAsync("//NotificationsPage"));
+            // ✅ All navigation commands with try-catch
+            GoToScannerCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("ScannerPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToGenerateCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("GenerateQRPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToTransferCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("TransferPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToAddUserCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("AddUserPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToClearanceCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("ClearancePage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToInventoryCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("EquipmentCategoryPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToRequestEquipmentCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("EquipmentCategoryPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToProfileCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("ProfilePage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToUserManagementCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("UserManagementPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToPendingRequestsCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("PendingRequestsPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
+
+            GoToNotificationsCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync("NotificationsPage"); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
+            });
 
             ReturnEquipmentCommand = new Command<EquipmentModel>(OnReturnEquipment);
             ReportDamageCommand = new Command<EquipmentModel>(OnReportDamage);
@@ -195,7 +249,7 @@ namespace Firetrack.ViewModels
         {
             App.CurrentUser = null;
             if (Shell.Current is AppShell shell) shell.UpdateUserRoleVisibility();
-            await Shell.Current.GoToAsync("//LoginPage");
+            await Shell.Current.GoToAsync("//LoginPage"); // absolute route – OK for root
         }
 
         private async void LoadData()
@@ -238,7 +292,7 @@ namespace Firetrack.ViewModels
             LoadMetrics();
         }
 
-        // ---- Load Metrics & Chart (UPDATED) ----
+        // ---- Load Metrics & Chart ----
         private async void LoadMetrics()
         {
             var db = App.Database;
@@ -256,7 +310,6 @@ namespace Firetrack.ViewModels
                 RejectedRequests = all.Count(e => e.RequestStatus == "Rejected");
                 DisposedCount = all.Count(e => e.Status == "Disposed");
 
-                // ---- CHART: use selected time range ----
                 int days = SelectedTimeRange switch
                 {
                     "Last 7 Days" => 7,
@@ -265,19 +318,15 @@ namespace Firetrack.ViewModels
                     "Last Year" => 365,
                     _ => 7
                 };
-
-                // Update chart title
                 ChartTitle = $"📈 Issued Trend (Last {days} Days)";
 
                 var allTx = await db.GetTransactionsAsync();
                 var issues = allTx.Where(t => t.Action == "Issue" && t.Timestamp >= DateTime.Now.AddDays(-days));
-
                 var counts = new List<float>();
                 for (int i = days - 1; i >= 0; i--)
                 {
                     var date = DateTime.Now.Date.AddDays(-i);
-                    var count = issues.Count(t => t.Timestamp.Date == date);
-                    counts.Add(count);
+                    counts.Add(issues.Count(t => t.Timestamp.Date == date));
                 }
                 ChartDrawable.DataPoints = counts;
                 OnPropertyChanged(nameof(ChartDrawable));
@@ -289,24 +338,21 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- Existing methods (OnReturnEquipment, OnReportDamage, OnShowEquipmentDetails) ----
+        // ---- OnReturnEquipment (unchanged) ----
         private async void OnReturnEquipment(EquipmentModel? equipment)
         {
             if (equipment == null) return;
-
             var db = App.Database;
             if (db == null)
             {
                 await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
                 return;
             }
-
             if (App.CurrentUser == null || equipment.AssignedToUsername != App.CurrentUser.Username)
             {
                 await Shell.Current.DisplayAlert("Error", "This equipment is not assigned to you.", "OK");
                 return;
             }
-
             bool confirm = await Shell.Current.DisplayAlert("Confirm Return", $"Return '{equipment.Name}'?", "Yes", "Cancel");
             if (!confirm) return;
 
@@ -330,9 +376,7 @@ namespace Firetrack.ViewModels
                 await db.SaveTransactionAsync(transaction);
 
                 if (App.CurrentUser != null)
-                {
                     await db.LogActionAsync(App.CurrentUser.Username, "Return Equipment", $"Returned '{equipment.Name}' ({equipment.QRCode})");
-                }
 
                 await db.SendNotificationAsync("admin", "↩️ Equipment Returned", $"{App.CurrentUser?.FullName} returned '{equipment.Name}'.");
                 await Shell.Current.DisplayAlert("Success", $"'{equipment.Name}' returned successfully.", "OK");
@@ -344,24 +388,28 @@ namespace Firetrack.ViewModels
             }
         }
 
+        // ---- OnReportDamage (UPDATED: relative route + try-catch) ----
         private async void OnReportDamage(EquipmentModel equipment)
         {
             if (equipment == null) return;
-            var navigationParams = new Dictionary<string, object> { { "equipment", equipment } };
-            await Shell.Current.GoToAsync("//ReportDamagePage", navigationParams);
+            try
+            {
+                var navigationParams = new Dictionary<string, object> { { "equipment", equipment } };
+                await Shell.Current.GoToAsync("ReportDamagePage", navigationParams);
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK");
+            }
         }
 
+        // ---- OnShowEquipmentDetails (unchanged) ----
         private async void OnShowEquipmentDetails(EquipmentModel? equipment)
         {
             if (equipment == null) return;
             await Shell.Current.DisplayAlert(
                 "Equipment Details",
-                $"Name: {equipment.Name}\n" +
-                $"QR: {equipment.QRCode}\n" +
-                $"Type: {equipment.Type}\n" +
-                $"Status: {equipment.Status}\n" +
-                $"Assigned to: {equipment.AssignedToUsername ?? "None"}\n" +
-                $"Remarks: {equipment.Remarks ?? "None"}",
+                $"Name: {equipment.Name}\nQR: {equipment.QRCode}\nType: {equipment.Type}\nStatus: {equipment.Status}\nAssigned to: {equipment.AssignedToUsername ?? "None"}\nRemarks: {equipment.Remarks ?? "None"}",
                 "OK");
         }
     }

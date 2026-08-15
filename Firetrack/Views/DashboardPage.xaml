@@ -8,7 +8,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <!-- ========== HEADER (unchanged) ========== -->
+            <!-- ========== HEADER ========== -->
             <Grid ColumnDefinitions="Auto, *, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
                 <Button Grid.Column="0"
                         Text="☰"
@@ -86,66 +86,70 @@
                         VerticalOptions="Center" />
             </Grid>
 
-            <!-- ========== METRICS CARDS (4 rows × 2 columns) ========== -->
-            <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="12">
-                <!-- Row 0 -->
-                <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="📦 Total" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding TotalEquipment}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="✅ Available" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding AvailableCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SuccessColor}" />
-                    </VerticalStackLayout>
-                </Border>
+            <!-- ========== METRICS CARDS (Admin only) ========== -->
+            <!-- The entire metrics grid is hidden for Personnel -->
+            <Border IsVisible="{Binding IsAdmin}" Padding="0">
+                <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="12">
+                    <!-- Row 0 -->
+                    <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="📦 Total" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding TotalEquipment}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="✅ Available" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding AvailableCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SuccessColor}" />
+                        </VerticalStackLayout>
+                    </Border>
 
-                <!-- Row 1 -->
-                <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="🔄 Issued" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding IssuedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="⚠️ Damaged" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding DamagedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
-                    </VerticalStackLayout>
-                </Border>
+                    <!-- Row 1 -->
+                    <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="🔄 Issued" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding IssuedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="⚠️ Damaged" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding DamagedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
+                        </VerticalStackLayout>
+                    </Border>
 
-                <!-- Row 2 -->
-                <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="🔧 In Repair" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding InRepairCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SecondaryColor}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="📋 Pending Requests" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding PendingRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource WarningColor}" />
-                    </VerticalStackLayout>
-                </Border>
+                    <!-- Row 2 -->
+                    <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="🔧 In Repair" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding InRepairCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SecondaryColor}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="📋 Pending Requests" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding PendingRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource WarningColor}" />
+                        </VerticalStackLayout>
+                    </Border>
 
-                <!-- Row 3 -->
-                <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="🚫 Cancelled" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding RejectedRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
-                    </VerticalStackLayout>
-                </Border>
-                <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
-                    <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                        <Label Text="🗑️ Disposed" FontSize="14" TextColor="{StaticResource Gray300}" />
-                        <Label Text="{Binding DisposedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource Gray500}" />
-                    </VerticalStackLayout>
-                </Border>
-            </Grid>
+                    <!-- Row 3 -->
+                    <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="🚫 Cancelled" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding RejectedRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
+                        <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
+                            <Label Text="🗑️ Disposed" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding DisposedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource Gray500}" />
+                        </VerticalStackLayout>
+                    </Border>
+                </Grid>
+            </Border>
 
-            
+            <!-- ========== CHART (optional – currently removed) ========== -->
+            <!-- If you keep the chart, wrap it similarly or hide for Personnel -->
 
             <!-- ========== ASSIGNED EQUIPMENT (Personnel only) ========== -->
             <Border Style="{StaticResource CardStyle}" Padding="0"

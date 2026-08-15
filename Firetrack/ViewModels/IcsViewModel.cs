@@ -99,7 +99,6 @@ namespace Firetrack.ViewModels
 
                 var fileName = $"ICS_{Equipment.QRCode}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "ICS");
-
                 if (!Directory.Exists(downloadsPath))
                     Directory.CreateDirectory(downloadsPath);
 
@@ -115,7 +114,8 @@ namespace Firetrack.ViewModels
             }
             catch (Exception ex)
             {
-                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+                await Shell.Current.DisplayAlert("Error", $"Failed to generate PDF: {ex.Message}", "OK");
+                System.Diagnostics.Debug.WriteLine($"❌ PDF error: {ex}");
             }
             finally
             {

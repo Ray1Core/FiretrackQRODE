@@ -24,15 +24,18 @@ namespace Firetrack.ViewModels
 
         private async void LoadNotifications()
         {
-            if (App.CurrentUser == null || App.Database == null) return;
-
-            var all = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Username);
-            Notifications.Clear();
-            foreach (var n in all)
-                Notifications.Add(n);
-
-            // Mark all as read
-            await App.Database.MarkAllNotificationsAsReadAsync(App.CurrentUser.Username);
+            try
+            {
+                if (App.CurrentUser == null || App.Database == null) return;
+                var all = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Username);
+                Notifications.Clear();
+                foreach (var n in all) Notifications.Add(n);
+                await App.Database.MarkAllNotificationsAsReadAsync(App.CurrentUser.Username);
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", $"Could not load notifications: {ex.Message}", "OK");
+            }
         }
     }
 }

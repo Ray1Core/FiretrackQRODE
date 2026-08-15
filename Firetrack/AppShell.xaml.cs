@@ -32,7 +32,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         InitializeComponent();
         BindingContext = this;
 
+        // ✅ Register ALL pages (including the ones you're navigating to)
         Routing.RegisterRoute("AddEquipmentPage", typeof(AddEquipmentPage));
+        Routing.RegisterRoute("AddUserPage", typeof(AddUserPage));           // ✅ ADD THIS
+        Routing.RegisterRoute("UserManagementPage", typeof(UserManagementPage)); // ✅ ADD THIS
         Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
         Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
         Routing.RegisterRoute("IcsPage", typeof(IcsPage));
@@ -42,6 +45,13 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("EquipmentRequestDetailPage", typeof(EquipmentRequestDetailPage));
         Routing.RegisterRoute("CategoryItemsPage", typeof(CategoryItemsPage));
         Routing.RegisterRoute("EquipmentCategoryPage", typeof(EquipmentCategoryPage));
+        Routing.RegisterRoute("PendingRequestsPage", typeof(PendingRequestsPage));
+        Routing.RegisterRoute("TransferPage", typeof(TransferPage));
+        Routing.RegisterRoute("ClearancePage", typeof(ClearancePage));
+        Routing.RegisterRoute("ProfilePage", typeof(ProfilePage));
+        Routing.RegisterRoute("DashboardPage", typeof(DashboardPage));
+        Routing.RegisterRoute("LoginPage", typeof(LoginPage));
+        Routing.RegisterRoute("ForgotPasswordPage", typeof(ForgotPasswordPage));
 
         UpdateUserRoleVisibility();
     }
