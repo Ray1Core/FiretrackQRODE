@@ -16,10 +16,14 @@ namespace Firetrack
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
+#if ANDROID
+            string dbPath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
+            string connectionString = $"Data Source={dbPath}";
+#else
             string connectionString = @"Data Source=(localdb)\MSSQLLocalDB;Initial Catalog=FiretrackDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;TrustServerCertificate=True;";
+#endif
 
             Database = new DatabaseService(connectionString);
-
             return new Window(new AppShell());
         }
     }

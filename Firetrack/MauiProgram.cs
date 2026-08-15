@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using Firetrack.Services;
+using SQLitePCL;
 
 namespace Firetrack;
 
@@ -7,6 +8,8 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        Batteries_V2.Init();  // ✅ Required for SQLite on Android
+
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
@@ -16,7 +19,6 @@ public static class MauiProgram
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });
 
-        // Register services (no BCrypt!)
         builder.Services.AddSingleton<PdfGenerationService>();
 
 #if DEBUG
