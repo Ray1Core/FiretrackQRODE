@@ -49,8 +49,8 @@ namespace Firetrack.ViewModels
         private int _damagedCount;
         private int _inRepairCount;
         private int _pendingRequests;
-        private int _rejectedRequests;      // counts "Rejected" requests (displayed as "Cancelled")
-        private int _disposedCount;         // counts "Disposed" equipment
+        private int _rejectedRequests;
+        private int _disposedCount;
         private ChartDrawable _chartDrawable = new();
 
         public int TotalEquipment
@@ -105,6 +105,38 @@ namespace Firetrack.ViewModels
         {
             get => _chartDrawable;
             set { _chartDrawable = value; OnPropertyChanged(); }
+        }
+
+        // ---- NEW: Time range picker ----
+        private string _selectedTimeRange = "Last 7 Days";
+        public string SelectedTimeRange
+        {
+            get => _selectedTimeRange;
+            set
+            {
+                if (_selectedTimeRange != value)
+                {
+                    _selectedTimeRange = value;
+                    OnPropertyChanged();
+                    LoadMetrics(); // refresh chart when selection changes
+                }
+            }
+        }
+
+        public ObservableCollection<string> TimeRangeOptions { get; } = new()
+        {
+            "Last 7 Days",
+            "Last 30 Days",
+            "Last 90 Days",
+            "Last Year"
+        };
+
+        // ---- Chart label (dynamic) ----
+        private string _chartTitle = "📈 Issued Trend (Last 7 Days)";
+        public string ChartTitle
+        {
+            get => _chartTitle;
+            set { _chartTitle = value; OnPropertyChanged(); }
         }
 
         // ---- Commands (unchanged) ----
@@ -206,7 +238,7 @@ namespace Firetrack.ViewModels
             LoadMetrics();
         }
 
-        // ---- Load Metrics & Chart ----
+        // ---- Load Metrics & Chart (UPDATED) ----
         private async void LoadMetrics()
         {
             var db = App.Database;
@@ -224,12 +256,24 @@ namespace Firetrack.ViewModels
                 RejectedRequests = all.Count(e => e.RequestStatus == "Rejected");
                 DisposedCount = all.Count(e => e.Status == "Disposed");
 
-                // Chart: last 7 days issued count
+                // ---- CHART: use selected time range ----
+                int days = SelectedTimeRange switch
+                {
+                    "Last 7 Days" => 7,
+                    "Last 30 Days" => 30,
+                    "Last 90 Days" => 90,
+                    "Last Year" => 365,
+                    _ => 7
+                };
+
+                // Update chart title
+                ChartTitle = $"📈 Issued Trend (Last {days} Days)";
+
                 var allTx = await db.GetTransactionsAsync();
-                var issues = allTx.Where(t => t.Action == "Issue" && t.Timestamp >= DateTime.Now.AddDays(-7));
+                var issues = allTx.Where(t => t.Action == "Issue" && t.Timestamp >= DateTime.Now.AddDays(-days));
 
                 var counts = new List<float>();
-                for (int i = 6; i >= 0; i--)
+                for (int i = days - 1; i >= 0; i--)
                 {
                     var date = DateTime.Now.Date.AddDays(-i);
                     var count = issues.Count(t => t.Timestamp.Date == date);
@@ -237,6 +281,7 @@ namespace Firetrack.ViewModels
                 }
                 ChartDrawable.DataPoints = counts;
                 OnPropertyChanged(nameof(ChartDrawable));
+                OnPropertyChanged(nameof(ChartTitle));
             }
             catch (Exception ex)
             {

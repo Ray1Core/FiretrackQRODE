@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFrameworks></TargetFrameworks>
-        <TargetFrameworks>net8.0-windows10.0.19041.0</TargetFrameworks>
+        <TargetFrameworks>net8.0-windows10.0.19041.0;net8.0-android</TargetFrameworks>
 		<NoWarn>CA1416</NoWarn>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->

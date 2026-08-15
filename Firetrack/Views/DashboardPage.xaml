@@ -8,7 +8,7 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <!-- ========== HEADER ========== -->
+            <!-- ========== HEADER (unchanged) ========== -->
             <Grid ColumnDefinitions="Auto, *, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
                 <Button Grid.Column="0"
                         Text="☰"
@@ -88,7 +88,6 @@
 
             <!-- ========== METRICS CARDS (4 rows × 2 columns) ========== -->
             <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="12">
-
                 <!-- Row 0 -->
                 <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
@@ -131,7 +130,7 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Row 3 (NEW) -->
+                <!-- Row 3 -->
                 <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
                     <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
                         <Label Text="🚫 Cancelled" FontSize="14" TextColor="{StaticResource Gray300}" />
@@ -144,18 +143,9 @@
                         <Label Text="{Binding DisposedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource Gray500}" />
                     </VerticalStackLayout>
                 </Border>
-
             </Grid>
 
-            <!-- ========== CHART ========== -->
-            <Border Style="{StaticResource CardStyle}" Padding="10">
-                <VerticalStackLayout>
-                    <Label Text="📈 Issued Trend (Last 7 Days)" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" Margin="0,0,0,10" />
-                    <GraphicsView Drawable="{Binding ChartDrawable}"
-                                  HeightRequest="200"
-                                  BackgroundColor="Transparent" />
-                </VerticalStackLayout>
-            </Border>
+            
 
             <!-- ========== ASSIGNED EQUIPMENT (Personnel only) ========== -->
             <Border Style="{StaticResource CardStyle}" Padding="0"

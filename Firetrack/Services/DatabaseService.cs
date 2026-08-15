@@ -13,16 +13,12 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
-            EnsureDatabaseExists();   // ✅ Creates the database if missing
-            InitializeDatabase();    // Creates tables and seeds
+            EnsureDatabaseExists();
+            InitializeDatabase();
         }
 
-        /// <summary>
-        /// Creates the database if it does not already exist.
-        /// </summary>
         private void EnsureDatabaseExists()
         {
-            // Build a connection string to the 'master' database
             var builder = new SqlConnectionStringBuilder(_connectionString)
             {
                 InitialCatalog = "master"
@@ -42,13 +38,10 @@ namespace Firetrack.Services
 
         private void InitializeDatabase()
         {
-            // Now we can safely open the target database
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
 
-            // ===== CREATE TABLES IF MISSING =====
-
-            // Users
+            // ===== CREATE TABLES =====
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Users' AND xtype='U')
                 CREATE TABLE Users (
@@ -60,7 +53,6 @@ namespace Firetrack.Services
                     IsActive BIT NOT NULL DEFAULT 1
                 )");
 
-            // Equipment
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Equipment' AND xtype='U')
                 CREATE TABLE Equipment (
@@ -77,7 +69,6 @@ namespace Firetrack.Services
                     RequestStatus NVARCHAR(20) NULL
                 )");
 
-            // Transactions
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Transactions' AND xtype='U')
                 CREATE TABLE Transactions (
@@ -90,7 +81,6 @@ namespace Firetrack.Services
                     Remarks NVARCHAR(500) NULL
                 )");
 
-            // Notifications
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Notifications' AND xtype='U')
                 CREATE TABLE Notifications (
@@ -102,7 +92,6 @@ namespace Firetrack.Services
                     Timestamp DATETIME NOT NULL DEFAULT GETDATE()
                 )");
 
-            // PasswordResetOtps
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='PasswordResetOtps' AND xtype='U')
                 CREATE TABLE PasswordResetOtps (
@@ -115,7 +104,6 @@ namespace Firetrack.Services
                         REFERENCES Users(Username) ON DELETE CASCADE
                 )");
 
-            // AuditLogs
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='AuditLogs' AND xtype='U')
                 CREATE TABLE AuditLogs (
@@ -126,7 +114,7 @@ namespace Firetrack.Services
                     Timestamp DATETIME NOT NULL DEFAULT GETDATE()
                 )");
 
-            // ===== ADD FOREIGN KEYS (if missing) =====
+            // ===== FOREIGN KEYS =====
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sys.foreign_keys WHERE name = 'FK_Equipment_AssignedToUser')
                     ALTER TABLE Equipment ADD CONSTRAINT FK_Equipment_AssignedToUser FOREIGN KEY (AssignedToUsername) REFERENCES Users(Username);
@@ -142,7 +130,7 @@ namespace Firetrack.Services
                     ALTER TABLE AuditLogs ADD CONSTRAINT FK_AuditLogs_User FOREIGN KEY (Username) REFERENCES Users(Username);
             ");
 
-            // ===== ADD INDEXES (if missing) =====
+            // ===== INDEXES =====
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sys.indexes WHERE name = 'IX_Equipment_AssignedToUsername' AND object_id = OBJECT_ID('Equipment'))
                     CREATE INDEX IX_Equipment_AssignedToUsername ON Equipment(AssignedToUsername);
@@ -208,26 +196,37 @@ namespace Firetrack.Services
                 }
             }
 
-            // ===== SEED TRANSACTIONS (for dashboard chart) =====
+            // ===== SEED TRANSACTIONS (UPDATED: 365 days of random issues) =====
             var txCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Transactions");
             if (txCount == 0)
             {
+                var random = new Random();
                 var now = DateTime.Now;
-                var issues = new List<TransactionModel>
+
+                // List of equipment QR codes to use for random issues
+                var qrCodes = new[] { "HOSE001", "HOSE002", "HOSE003", "NOZZLE001", "NOZZLE002", "TOOL001", "TOOL002", "TOOL003", "TOOL004", "TOOL005" };
+
+                // Insert 0–3 issues per day for the last 365 days
+                for (int day = 0; day < 365; day++)
                 {
-                    new TransactionModel { EquipmentQR = "HOSE001", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-6), Action = "Issue" },
-                    new TransactionModel { EquipmentQR = "HOSE002", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-5), Action = "Issue" },
-                    new TransactionModel { EquipmentQR = "HOSE003", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-4), Action = "Issue" },
-                    new TransactionModel { EquipmentQR = "NOZZLE001", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-3), Action = "Issue" },
-                    new TransactionModel { EquipmentQR = "NOZZLE002", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-2), Action = "Issue" },
-                    new TransactionModel { EquipmentQR = "TOOL001", FromUser = "admin", ToUser = "user", Timestamp = now.AddDays(-1), Action = "Issue" }
-                };
-                foreach (var tx in issues)
-                {
-                    connection.Execute(
-                        @"INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action, Remarks)
-                          VALUES (@EquipmentQR, @FromUser, @ToUser, @Timestamp, @Action, @Remarks)",
-                        tx);
+                    int issuesToday = random.Next(0, 4); // 0, 1, 2, or 3
+                    for (int i = 0; i < issuesToday; i++)
+                    {
+                        string qr = qrCodes[random.Next(qrCodes.Length)];
+                        var tx = new TransactionModel
+                        {
+                            EquipmentQR = qr,
+                            FromUser = "admin",
+                            ToUser = "user",
+                            Timestamp = now.AddDays(-day),
+                            Action = "Issue",
+                            Remarks = null
+                        };
+                        connection.Execute(
+                            @"INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action, Remarks)
+                              VALUES (@EquipmentQR, @FromUser, @ToUser, @Timestamp, @Action, @Remarks)",
+                            tx);
+                    }
                 }
             }
         }
@@ -350,7 +349,7 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
-        // ===== OTP / PASSWORD RESET =====
+        // ===== OTP =====
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = new SqlConnection(_connectionString);
