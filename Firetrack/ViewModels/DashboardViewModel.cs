@@ -167,70 +167,70 @@ namespace Firetrack.ViewModels
             ToggleFlyoutCommand = new Command(ToggleFlyout);
             LogoutCommand = new Command(OnLogout);
 
-            // ✅ All navigation commands with try-catch
+            // ✅ All navigation commands use absolute routes (//) to avoid "Relative routing to shell elements" errors
             GoToScannerCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("ScannerPage"); }
+                try { await Shell.Current.GoToAsync("//ScannerPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToGenerateCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("GenerateQRPage"); }
+                try { await Shell.Current.GoToAsync("//GenerateQRPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToTransferCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("TransferPage"); }
+                try { await Shell.Current.GoToAsync("//TransferPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToAddUserCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("AddUserPage"); }
+                try { await Shell.Current.GoToAsync("//AddUserPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToClearanceCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("ClearancePage"); }
+                try { await Shell.Current.GoToAsync("//ClearancePage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToInventoryCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("EquipmentCategoryPage"); }
+                try { await Shell.Current.GoToAsync("//EquipmentCategoryPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToRequestEquipmentCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("EquipmentCategoryPage"); }
+                try { await Shell.Current.GoToAsync("//EquipmentCategoryPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToProfileCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("ProfilePage"); }
+                try { await Shell.Current.GoToAsync("//ProfilePage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToUserManagementCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("UserManagementPage"); }
+                try { await Shell.Current.GoToAsync("//UserManagementPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToPendingRequestsCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("PendingRequestsPage"); }
+                try { await Shell.Current.GoToAsync("//PendingRequestsPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToNotificationsCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("NotificationsPage"); }
+                try { await Shell.Current.GoToAsync("//NotificationsPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
@@ -391,14 +391,14 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- OnReportDamage (UPDATED: relative route + try-catch) ----
+        // ---- OnReportDamage (UPDATED: absolute route + try-catch) ----
         private async void OnReportDamage(EquipmentModel equipment)
         {
             if (equipment == null) return;
             try
             {
                 var navigationParams = new Dictionary<string, object> { { "equipment", equipment } };
-                await Shell.Current.GoToAsync("ReportDamagePage", navigationParams);
+                await Shell.Current.GoToAsync("//ReportDamagePage", navigationParams);
             }
             catch (Exception ex)
             {

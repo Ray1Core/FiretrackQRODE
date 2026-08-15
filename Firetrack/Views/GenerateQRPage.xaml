@@ -3,23 +3,77 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.GenerateQRPage"
              Title="Generate QR Sticker"
-             Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
+             Shell.TabBarIsVisible="False"
+             BackgroundColor="{StaticResource Background}">
 
-    <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="20" Padding="30">
-        <Label Text="📱 QR Generator"
-               FontSize="32"
-               FontAttributes="Bold"
-               TextColor="{StaticResource PrimaryColor}"
-               HorizontalOptions="Center" />
-        <Label Text="QR generation is currently disabled."
-               FontSize="18"
-               TextColor="{StaticResource TextSecondaryColor}"
-               HorizontalOptions="Center" />
-        <Label Text="We are working on a stable QR generation library."
-               FontSize="14"
-               TextColor="{StaticResource TextSecondaryColor}"
-               HorizontalOptions="Center" />
-        <!-- Back button removed – users can use Shell back or flyout -->
-    </VerticalStackLayout>
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="16">
+
+            <Label Text="📱 QR Code Generator"
+                   FontSize="28"
+                   FontAttributes="Bold"
+                   TextColor="{StaticResource PrimaryColor}"
+                   HorizontalOptions="Center" />
+
+            <Label Text="Enter any text to generate a QR code sticker."
+                   FontSize="14"
+                   TextColor="{StaticResource Gray300}"
+                   HorizontalOptions="Center" />
+
+            <!-- Input -->
+            <Border Style="{StaticResource CardStyle}">
+                <VerticalStackLayout Spacing="12">
+                    <Label Text="Text / QR Code Value"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Entry Placeholder="e.g., HOSE001, TOOL002, or any text"
+                           Text="{Binding InputText}"
+                           TextColor="{StaticResource OnBackground}"
+                           PlaceholderColor="{StaticResource Gray300}"
+                           BackgroundColor="{StaticResource Surface}" />
+                    <Button Text="Generate QR Code"
+                            Command="{Binding GenerateCommand}"
+                            Style="{StaticResource PrimaryButton}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Generated QR Image -->
+            <Border Style="{StaticResource CardStyle}" IsVisible="{Binding IsImageVisible}">
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                    <Label Text="Generated QR Code"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}"
+                           HorizontalOptions="Center" />
+                    <Image Source="{Binding QrImageSource}"
+                           WidthRequest="200"
+                           HeightRequest="200"
+                           HorizontalOptions="Center" />
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                        <Button Text="💾 Save"
+                                Command="{Binding SaveCommand}"
+                                Style="{StaticResource SuccessButton}"
+                                HeightRequest="40" />
+                        <Button Grid.Column="1"
+                                Text="📤 Share"
+                                Command="{Binding ShareCommand}"
+                                Style="{StaticResource PrimaryButton}"
+                                HeightRequest="40" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Status Message -->
+            <Label Text="{Binding StatusMessage}"
+                   TextColor="{Binding StatusMessage, Converter={StaticResource StringToColorConverter}}"
+                   FontSize="14"
+                   HorizontalOptions="Center" />
+
+            <ActivityIndicator IsRunning="{Binding IsBusy}"
+                               Color="{StaticResource PrimaryColor}"
+                               HorizontalOptions="Center" />
+
+        </VerticalStackLayout>
+    </ScrollView>
 </ContentPage>

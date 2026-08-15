@@ -26,7 +26,8 @@ public partial class ScannerPage : ContentPage
         if (status != PermissionStatus.Granted)
         {
             await DisplayAlert("Permission Denied", "Camera permission is required to scan QR codes.", "OK");
-            await Shell.Current.GoToAsync("..");
+            // ✅ Use absolute route to Dashboard
+            await Shell.Current.GoToAsync("//DashboardPage");
             return;
         }
 

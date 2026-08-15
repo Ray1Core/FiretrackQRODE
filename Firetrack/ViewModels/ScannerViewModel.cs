@@ -47,7 +47,8 @@ namespace Firetrack.ViewModels
         {
             _db = App.Database;
             IsScanning = true;
-            CancelCommand = new Command(async () => await Shell.Current.GoToAsync(".."));
+            // ✅ Use absolute route to Dashboard
+            CancelCommand = new Command(async () => await Shell.Current.GoToAsync("//DashboardPage"));
         }
 
         public async Task ProcessScannedQR(string qrValue)
