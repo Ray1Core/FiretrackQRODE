@@ -10,12 +10,12 @@
         <VerticalStackLayout Padding="20" Spacing="20">
 
             <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
-                <Label Text="📋 Request Equipment"
+                <Label Text="📋 Equipment Details"
                        FontSize="28"
                        FontAttributes="Bold"
                        TextColor="{StaticResource PrimaryColor}"
                        HorizontalOptions="Center" />
-                <Label Text="Review details before requesting."
+                <Label Text="Request equipment or request disposal."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
                        HorizontalOptions="Center" />
@@ -43,9 +43,16 @@
                 </VerticalStackLayout>
             </Border>
 
-            <Button Text="✅ Request"
+            <!-- Request Equipment button -->
+            <Button Text="✅ Request Equipment"
                     Style="{StaticResource SuccessButton}"
                     Command="{Binding RequestCommand}" />
+
+            <!-- NEW: Request Disposal button (only visible if equipment is damaged) -->
+            <Button Text="🗑️ Request Disposal"
+                    Style="{StaticResource DangerButton}"
+                    Command="{Binding RequestDisposalCommand}"
+                    IsVisible="{Binding Equipment.Status, Converter={StaticResource IsDamagedConverter}}" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
 

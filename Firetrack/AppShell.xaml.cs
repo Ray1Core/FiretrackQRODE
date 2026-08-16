@@ -53,6 +53,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("ForgotPasswordPage", typeof(ForgotPasswordPage));
         Routing.RegisterRoute("ScannerPage", typeof(ScannerPage));
         Routing.RegisterRoute("GenerateQRPage", typeof(GenerateQRPage));
+        // NEW: Disposal Requests
+        Routing.RegisterRoute("DisposalRequestsPage", typeof(DisposalRequestsPage));
 
         UpdateUserRoleVisibility();
     }
@@ -91,7 +93,9 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
         "UserManagementPage",
         "AddEquipmentPage",
-        "PendingRequestsPage", "AuditLogPage"
+        "PendingRequestsPage",
+        "AuditLogPage",
+        "DisposalRequestsPage"  // NEW
     };
 
     private bool IsValidRoute(string route)

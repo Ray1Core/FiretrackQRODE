@@ -24,12 +24,14 @@ namespace Firetrack.ViewModels
         }
 
         public ICommand RequestCommand { get; }
+        public ICommand RequestDisposalCommand { get; }   // NEW
 
         public EquipmentRequestDetailViewModel(EquipmentModel equipment)
         {
             _db = App.Database!;
             Equipment = equipment;
             RequestCommand = new Command(OnRequest);
+            RequestDisposalCommand = new Command(OnRequestDisposal);   // NEW
         }
 
         private async void OnRequest()
@@ -64,6 +66,66 @@ namespace Firetrack.ViewModels
 
                 await Shell.Current.DisplayAlert("Success", $"Request for '{Equipment.Name}' submitted.", "OK");
                 await Shell.Current.GoToAsync("..");
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        // NEW: Request Disposal
+        private async void OnRequestDisposal()
+        {
+            if (App.CurrentUser == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "You must be logged in.", "OK");
+                return;
+            }
+
+            // Only allow if equipment is currently damaged
+            if (Equipment.Status != "Damaged")
+            {
+                await Shell.Current.DisplayAlert("Info", "Only damaged equipment can be marked for disposal.", "OK");
+                return;
+            }
+
+            bool confirm = await Shell.Current.DisplayAlert(
+                "Confirm Disposal Request",
+                $"Request disposal of '{Equipment.Name}'?\nReason: This equipment is damaged.",
+                "Yes",
+                "Cancel");
+
+            if (!confirm) return;
+
+            string reason = await Shell.Current.DisplayPromptAsync(
+                "Reason for Disposal",
+                "Please provide more detail (optional):",
+                "Submit",
+                "Cancel");
+
+            if (reason == null) return; // user cancelled
+
+            IsBusy = true;
+            try
+            {
+                bool success = await _db.RequestDisposalAsync(
+                    Equipment.QRCode,
+                    App.CurrentUser.Username,
+                    string.IsNullOrWhiteSpace(reason) ? "Damaged equipment" : reason);
+
+                if (success)
+                {
+                    await Shell.Current.DisplayAlert("Success", $"Disposal request for '{Equipment.Name}' submitted to Admin.", "OK");
+                    await Shell.Current.GoToAsync("..");
+                }
+                else
+                {
+                    await Shell.Current.DisplayAlert("Error", "Failed to submit disposal request.", "OK");
+                }
             }
             catch (Exception ex)
             {

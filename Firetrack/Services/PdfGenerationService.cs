@@ -211,5 +211,100 @@ namespace Firetrack.Services
                 throw new Exception($"Clearance PDF generation failed: {ex.Message}", ex);
             }
         }
+
+
+        // Services/PdfGenerationService.cs – add this method
+
+        public byte[] GenerateDisposalCertificate(EquipmentModel equipment, UserModel approvedBy, string remarks = "")
+        {
+            try
+            {
+                using var document = new PdfDocument();
+                var page = document.AddPage();
+                var gfx = XGraphics.FromPdfPage(page);
+
+                var titleFont = new XFont("Helvetica-Bold", 18);
+                var headerFont = new XFont("Helvetica-Bold", 12);
+                var bodyFont = new XFont("Helvetica", 10);
+
+                double yPos = 40;
+                const double leftMargin = 50;
+                const double rightMargin = 50;
+                double pageWidth = page.Width;
+
+                // Header
+                gfx.DrawString("BUREAU OF FIRE PROTECTION", titleFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 30), XStringFormats.TopCenter);
+                yPos += 35;
+
+                gfx.DrawString("CEBU CITY FIRE STATION", headerFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 25), XStringFormats.TopCenter);
+                yPos += 35;
+
+                gfx.DrawString("DISPOSAL CERTIFICATE", titleFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 30), XStringFormats.TopCenter);
+                yPos += 40;
+
+                // Details
+                gfx.DrawString($"Equipment Name: {equipment.Name}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"QR Code: {equipment.QRCode}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"Type: {equipment.Type}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"Reason for Disposal: {equipment.DisposalReason ?? "N/A"}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"Requested by: {equipment.DisposalRequestedBy ?? "N/A"}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"Requested on: {equipment.DisposalRequestDate?.ToString("MMMM dd, yyyy") ?? "N/A"}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"Approved by: {approvedBy.FullName} ({approvedBy.Username})", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"Approved on: {DateTime.Now:MMMM dd, yyyy}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                if (!string.IsNullOrEmpty(remarks))
+                {
+                    gfx.DrawString($"Remarks: {remarks}", bodyFont, XBrushes.Black,
+                        new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                    yPos += 25;
+                }
+
+                yPos += 20;
+
+                // Signatures
+                gfx.DrawLine(XPens.Black, leftMargin, yPos, leftMargin + 200, yPos);
+                gfx.DrawString("Disposal Officer", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos + 5, 200, 15), XStringFormats.TopCenter);
+
+                gfx.DrawLine(XPens.Black, pageWidth - rightMargin - 200, yPos, pageWidth - rightMargin, yPos);
+                gfx.DrawString("Authorized Signature", bodyFont, XBrushes.Black,
+                    new XRect(pageWidth - rightMargin - 200, yPos + 5, 200, 15), XStringFormats.TopCenter);
+
+                // Footer
+                yPos = page.Height - 40;
+                gfx.DrawLine(XPens.Black, leftMargin, yPos, pageWidth - rightMargin, yPos);
+                yPos += 15;
+                gfx.DrawString("This equipment is officially disposed and removed from active inventory.",
+                    bodyFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 15), XStringFormats.TopCenter);
+
+                using var stream = new MemoryStream();
+                document.Save(stream, false);
+                return stream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Disposal PDF generation failed: {ex}");
+                throw new Exception($"Disposal PDF generation failed: {ex.Message}", ex);
+            }
+        }
     }
 }

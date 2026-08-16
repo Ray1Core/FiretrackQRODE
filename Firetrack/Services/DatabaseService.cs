@@ -30,17 +30,15 @@ namespace Firetrack.Services
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Database initialization failed: {ex}");
-                throw; // Re-throw to let App.xaml.cs handle it
+                throw;
             }
         }
 
         private void InitializeDatabase()
         {
 #if ANDROID
-            // ✅ Ensure SQLite provider is set (redundant but safe)
             SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 
-            // Ensure the directory exists (should already exist)
             var dbPath = _connectionString.Replace("Data Source=", "");
             var directory = System.IO.Path.GetDirectoryName(dbPath);
             if (!string.IsNullOrEmpty(directory) && !System.IO.Directory.Exists(directory))
@@ -51,7 +49,6 @@ namespace Firetrack.Services
             CreateTables(connection);
             SeedData(connection);
 #else
-            // SQL Server – existing logic with EnsureDatabaseExists
             EnsureDatabaseExists();
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
@@ -89,7 +86,7 @@ namespace Firetrack.Services
                     IsActive INTEGER NOT NULL DEFAULT 1
                 )");
 
-            // Equipment
+            // Equipment – Updated with disposal fields
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Equipment (
                     EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -102,7 +99,16 @@ namespace Firetrack.Services
                     Remarks TEXT NULL,
                     LastUpdated DATETIME NULL,
                     RequestedByUsername TEXT NULL,
-                    RequestStatus TEXT NULL
+                    RequestStatus TEXT NULL,
+                    -- NEW disposal fields
+                    IsDisposalRequested INTEGER NOT NULL DEFAULT 0,
+                    DisposalStatus TEXT NULL,
+                    DisposalReason TEXT NULL,
+                    DisposalRequestedBy TEXT NULL,
+                    DisposalRequestDate DATETIME NULL,
+                    DisposalApprovedBy TEXT NULL,
+                    DisposalApprovalDate DATETIME NULL,
+                    DisposalRemarks TEXT NULL
                 )");
 
             // Transactions
@@ -164,7 +170,7 @@ namespace Firetrack.Services
                     });
             }
 
-            // Equipment
+            // Equipment – seed with disposal fields set to defaults
             var eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
             if (eqCount == 0)
             {
@@ -184,9 +190,14 @@ namespace Firetrack.Services
                 foreach (var eq in items)
                 {
                     eq.LastUpdated = DateTime.Now;
+                    // Disposal fields default to null/false
+                    eq.IsDisposalRequested = false;
                     connection.Execute(
-                        @"INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated)
-                          VALUES (@QRCode, @Name, @Type, @Status, @AssignedToUsername, @LastUpdated)",
+                        @"INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated,
+                            IsDisposalRequested, DisposalStatus, DisposalReason, DisposalRequestedBy, DisposalRequestDate,
+                            DisposalApprovedBy, DisposalApprovalDate, DisposalRemarks)
+                          VALUES (@QRCode, @Name, @Type, @Status, @AssignedToUsername, @LastUpdated,
+                            0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
                         eq);
                 }
             }
@@ -213,7 +224,7 @@ namespace Firetrack.Services
             }
         }
 
-        // ---- Data methods (unchanged) ----
+        // ---- Data methods ----
 
         public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
@@ -235,8 +246,17 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
             string sql = @"
-                INSERT OR REPLACE INTO Equipment (EquipmentId, QRCode, Name, Type, Status, AssignedToUsername, PhotoPath, Remarks, LastUpdated, RequestedByUsername, RequestStatus)
-                VALUES (@EquipmentId, @QRCode, @Name, @Type, @Status, @AssignedToUsername, @PhotoPath, @Remarks, @LastUpdated, @RequestedByUsername, @RequestStatus);
+                INSERT OR REPLACE INTO Equipment (
+                    EquipmentId, QRCode, Name, Type, Status, AssignedToUsername, PhotoPath, Remarks,
+                    LastUpdated, RequestedByUsername, RequestStatus,
+                    IsDisposalRequested, DisposalStatus, DisposalReason, DisposalRequestedBy,
+                    DisposalRequestDate, DisposalApprovedBy, DisposalApprovalDate, DisposalRemarks
+                ) VALUES (
+                    @EquipmentId, @QRCode, @Name, @Type, @Status, @AssignedToUsername, @PhotoPath, @Remarks,
+                    @LastUpdated, @RequestedByUsername, @RequestStatus,
+                    @IsDisposalRequested, @DisposalStatus, @DisposalReason, @DisposalRequestedBy,
+                    @DisposalRequestDate, @DisposalApprovedBy, @DisposalApprovalDate, @DisposalRemarks
+                );
                 SELECT last_insert_rowid();";
             return await connection.ExecuteScalarAsync<int>(sql, equipment);
         }
@@ -318,7 +338,7 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
-        // OTP methods
+        // ---- OTP Methods ----
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = CreateConnection();
@@ -356,7 +376,7 @@ namespace Firetrack.Services
                 new { Username = username, OtpCode = otpCode });
         }
 
-        // Requests
+        // ---- Equipment Request Methods ----
         public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
         {
             using var connection = CreateConnection();
@@ -430,7 +450,7 @@ namespace Firetrack.Services
                 new { QRCode = qrCode });
         }
 
-        // Notifications
+        // ---- Notifications ----
         public async Task<int> SaveNotificationAsync(NotificationModel notification)
         {
             using var connection = CreateConnection();
@@ -477,7 +497,7 @@ namespace Firetrack.Services
             });
         }
 
-        // Audit Logs
+        // ---- Audit Logs ----
         public async Task LogActionAsync(string username, string action, string? details = null)
         {
             using var connection = CreateConnection();
@@ -500,7 +520,103 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // Helper to create connection based on platform
+        // ---- NEW DISPOSAL METHODS ----
+
+        /// <summary>
+        /// Gets all disposal requests, optionally filtered by status.
+        /// </summary>
+        /// <param name="status">"Pending", "Approved", "Rejected", or null for all</param>
+        public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = null)
+        {
+            using var connection = CreateConnection();
+            var sql = "SELECT * FROM Equipment WHERE IsDisposalRequested = 1";
+            if (!string.IsNullOrEmpty(status))
+                sql += " AND DisposalStatus = @Status";
+            sql += " ORDER BY DisposalRequestDate DESC";
+            var result = await connection.QueryAsync<EquipmentModel>(sql, new { Status = status });
+            return result.ToList();
+        }
+
+        /// <summary>
+        /// Submits a disposal request for equipment.
+        /// </summary>
+        public async Task<bool> RequestDisposalAsync(string qrCode, string requestedBy, string reason)
+        {
+            using var connection = CreateConnection();
+            var equipment = await GetEquipmentByQRAsync(qrCode);
+            if (equipment == null) return false;
+
+            equipment.IsDisposalRequested = true;
+            equipment.DisposalStatus = "Pending";
+            equipment.DisposalReason = reason;
+            equipment.DisposalRequestedBy = requestedBy;
+            equipment.DisposalRequestDate = DateTime.Now;
+            equipment.LastUpdated = DateTime.Now;
+
+            await SaveEquipmentAsync(equipment);
+
+            // Notify Admin
+            await SendNotificationAsync("admin", "🗑️ Disposal Request",
+                $"{requestedBy} requested disposal for '{equipment.Name}' (QR: {equipment.QRCode})");
+
+            return true;
+        }
+
+        /// <summary>
+        /// Approves a disposal request, marking equipment as Disposed.
+        /// </summary>
+        public async Task<bool> ApproveDisposalAsync(string qrCode, string approvedBy, string remarks = "")
+        {
+            using var connection = CreateConnection();
+            var equipment = await GetEquipmentByQRAsync(qrCode);
+            if (equipment == null) return false;
+
+            equipment.DisposalStatus = "Approved";
+            equipment.DisposalApprovedBy = approvedBy;
+            equipment.DisposalApprovalDate = DateTime.Now;
+            equipment.DisposalRemarks = remarks;
+            equipment.Status = "Disposed";          // Final status
+            equipment.AssignedToUsername = null;    // Unassign if any
+            equipment.LastUpdated = DateTime.Now;
+
+            await SaveEquipmentAsync(equipment);
+
+            // Notify requester
+            if (!string.IsNullOrEmpty(equipment.DisposalRequestedBy))
+            {
+                await SendNotificationAsync(equipment.DisposalRequestedBy, "✅ Disposal Approved",
+                    $"Disposal of '{equipment.Name}' has been approved by {approvedBy}.");
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Rejects a disposal request, keeping equipment active.
+        /// </summary>
+        public async Task<bool> RejectDisposalAsync(string qrCode, string rejectedBy, string remarks = "")
+        {
+            using var connection = CreateConnection();
+            var equipment = await GetEquipmentByQRAsync(qrCode);
+            if (equipment == null) return false;
+
+            equipment.DisposalStatus = "Rejected";
+            equipment.DisposalRemarks = remarks;
+            equipment.IsDisposalRequested = false;  // Reset request flag
+            equipment.LastUpdated = DateTime.Now;
+
+            await SaveEquipmentAsync(equipment);
+
+            if (!string.IsNullOrEmpty(equipment.DisposalRequestedBy))
+            {
+                await SendNotificationAsync(equipment.DisposalRequestedBy, "❌ Disposal Rejected",
+                    $"Disposal of '{equipment.Name}' was rejected by {rejectedBy}. Reason: {remarks}");
+            }
+
+            return true;
+        }
+
+        // ---- Helper ----
         private IDbConnection CreateConnection()
         {
 #if ANDROID

@@ -21,7 +21,7 @@
             <converters:IsNotDamagedConverter x:Key="IsNotDamagedConverter" />
             <converters:StringToEmojiConverter x:Key="StringToEmojiConverter" />
             <converters:IsInventoryModeConverter x:Key="IsInventoryModeConverter" />
-            
+            <converters:IsDamagedConverter x:Key="IsDamagedConverter" />
             <!-- NEW -->
         </ResourceDictionary>
     </Application.Resources>

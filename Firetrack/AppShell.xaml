@@ -58,13 +58,13 @@
                   Route="IcsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== Category Grid (hidden, used as content of flyout entries) ===== -->
+    <!-- ===== Category Grid (hidden) ===== -->
     <ShellContent Title="Equipment Category"
                   ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
                   Route="EquipmentCategoryPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== Category Items (hidden, navigated from category grid) ===== -->
+    <!-- ===== Category Items (hidden) ===== -->
     <ShellContent Title="Category Items"
                   ContentTemplate="{DataTemplate views:CategoryItemsPage}"
                   Route="CategoryItemsPage"
@@ -74,6 +74,12 @@
     <ShellContent Title="Dual-Scan Handshake"
                   ContentTemplate="{DataTemplate views:TransferPage}"
                   Route="TransferPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ===== Disposal Requests (hidden, used from flyout) ===== -->
+    <ShellContent Title="Disposal Requests"
+                  ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
+                  Route="DisposalRequestsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
     <!-- ===== ADMIN FLYOUT GROUP ===== -->
@@ -108,6 +114,11 @@
         <ShellContent Title="Pending Requests"
                       ContentTemplate="{DataTemplate views:PendingRequestsPage}"
                       Route="PendingRequestsPage" />
+
+        <!-- NEW: Disposal Requests -->
+        <ShellContent Title="Disposal Requests"
+                      ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
+                      Route="DisposalRequestsPage" />
 
         <ShellContent Title="Generate QR"
                       ContentTemplate="{DataTemplate views:GenerateQRPage}"
