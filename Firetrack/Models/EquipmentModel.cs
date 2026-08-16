@@ -17,8 +17,8 @@ namespace Firetrack.Models
         public string? RequestStatus { get; set; }
 
         // NEW: Disposal fields
-        public bool IsDisposalRequested { get; set; }
-        public string? DisposalStatus { get; set; } // "Pending", "Approved", "Rejected"
+        public bool IsDisposalRequested { get; set; } = false;
+        public string? DisposalStatus { get; set; }     // "Pending", "Approved", "Rejected"
         public string? DisposalReason { get; set; }
         public string? DisposalRequestedBy { get; set; }
         public DateTime? DisposalRequestDate { get; set; }

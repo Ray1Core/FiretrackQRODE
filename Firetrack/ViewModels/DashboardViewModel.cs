@@ -229,7 +229,7 @@ namespace Firetrack.ViewModels
 
             GoToNotificationsCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//NotificationsPage"); }
+                try { await Shell.Current.GoToAsync("NotificationsPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
