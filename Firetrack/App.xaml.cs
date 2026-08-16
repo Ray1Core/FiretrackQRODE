@@ -12,6 +12,9 @@ namespace Firetrack
         public App()
         {
             InitializeComponent();
+
+            // ✅ Force Dark Theme (ensures consistent UI on all devices)
+            Current!.UserAppTheme = AppTheme.Dark;
         }
 
         protected override Window CreateWindow(IActivationState? activationState)

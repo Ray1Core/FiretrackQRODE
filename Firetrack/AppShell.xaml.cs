@@ -32,10 +32,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         InitializeComponent();
         BindingContext = this;
 
-        // ✅ Register ALL pages (including the ones you're navigating to)
+        // ✅ Register ALL pages
         Routing.RegisterRoute("AddEquipmentPage", typeof(AddEquipmentPage));
-        Routing.RegisterRoute("AddUserPage", typeof(AddUserPage));           // ✅ ADD THIS
-        Routing.RegisterRoute("UserManagementPage", typeof(UserManagementPage)); // ✅ ADD THIS
+        Routing.RegisterRoute("AddUserPage", typeof(AddUserPage));
+        Routing.RegisterRoute("UserManagementPage", typeof(UserManagementPage));
         Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
         Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
         Routing.RegisterRoute("IcsPage", typeof(IcsPage));
@@ -52,6 +52,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         Routing.RegisterRoute("DashboardPage", typeof(DashboardPage));
         Routing.RegisterRoute("LoginPage", typeof(LoginPage));
         Routing.RegisterRoute("ForgotPasswordPage", typeof(ForgotPasswordPage));
+        Routing.RegisterRoute("ScannerPage", typeof(ScannerPage));
+        Routing.RegisterRoute("GenerateQRPage", typeof(GenerateQRPage));
 
         UpdateUserRoleVisibility();
     }
@@ -79,6 +81,29 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         OnPropertyChanged(nameof(IsPersonnel));
     }
 
+    // ---- Route Validation (Anomaly Detection) ----
+    private readonly HashSet<string> _validRoutes = new()
+    {
+        "LoginPage", "ForgotPasswordPage", "DashboardPage",
+        "ScannerPage", "GenerateQRPage", "TransferPage",
+        "ClearancePage", "ProfilePage", "NotificationsPage",
+        "EquipmentCategoryPage", "CategoryItemsPage",
+        "EquipmentDetailPage", "EquipmentRequestDetailPage",
+        "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
+        "UserManagementPage", "AddUserPage", "AddEquipmentPage",
+        "PendingRequestsPage", "AuditLogPage"
+    };
+
+    private bool IsValidRoute(string route)
+    {
+        // Allow relative navigation
+        if (route == ".." || string.IsNullOrEmpty(route))
+            return true;
+
+        return _validRoutes.Contains(route);
+    }
+
+    // ---- Permission Check (Role-Based) ----
     private bool IsRouteAllowed(string route)
     {
         var user = App.CurrentUser;
@@ -99,37 +124,55 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         var allowedForPersonnel = new[]
         {
-        "DashboardPage",
-        "ProfilePage",
-        "RequestEquipmentPage",        // keep for any direct navigation
-        "ReportDamagePage",
-        "ScannerPage",
-        "NotificationsPage",
-        "TransactionHistoryPage",
-        "IcsPage",
-        "EquipmentRequestDetailPage",
-        "EquipmentCategoryPage",        // ✅ added
-        "CategoryItemsPage"            // ✅ added (for drill-down)
-    };
+            "DashboardPage",
+            "ProfilePage",
+            "RequestEquipmentPage",
+            "ReportDamagePage",
+            "ScannerPage",
+            "NotificationsPage",
+            "TransactionHistoryPage",
+            "IcsPage",
+            "EquipmentRequestDetailPage",
+            "EquipmentCategoryPage",
+            "CategoryItemsPage",
+            "GenerateQRPage"
+        };
 
         return allowedForPersonnel.Contains(route);
     }
 
+    // ---- Navigation Guard with Anomaly Detection ----
     protected override void OnNavigating(ShellNavigatingEventArgs args)
     {
         base.OnNavigating(args);
 
         var target = args.Target.Location.OriginalString;
         var route = target.Split('/').Last();
+        var user = App.CurrentUser;
 
-        System.Diagnostics.Debug.WriteLine($"🛡️ Navigation Guard: Route={route}, User={App.CurrentUser?.Username}, Role={App.CurrentUser?.Role}");
+        // ✅ LOG EVERY NAVIGATION ATTEMPT
+        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
+        System.Diagnostics.Debug.WriteLine($"[NAV] [{timestamp}] User: {user?.Username ?? "Anonymous"} | Role: {user?.Role ?? "None"} | Target: {target} | Route: {route}");
 
+        // ✅ ANOMALY CHECK 1: Invalid route (not in valid list)
+        if (!IsValidRoute(route))
+        {
+            System.Diagnostics.Debug.WriteLine($"[NAV ⚠️ ANOMALY] Invalid route detected: {route} from user {user?.Username ?? "Anonymous"}");
+            args.Cancel();
+            Application.Current?.MainPage?.DisplayAlert(
+                "Navigation Error",
+                $"The page '{route}' does not exist or is not accessible.",
+                "OK");
+            return;
+        }
+
+        // ✅ ANOMALY CHECK 2: Permission violation (role-based)
         if (!IsRouteAllowed(route))
         {
-            System.Diagnostics.Debug.WriteLine($"🚫 Blocked: {route}");
+            System.Diagnostics.Debug.WriteLine($"[NAV ⚠️ ANOMALY] Permission denied: {route} for user {user?.Username ?? "Anonymous"} (Role: {user?.Role ?? "None"})");
             args.Cancel();
 
-            if (App.CurrentUser == null)
+            if (user == null)
             {
                 GoToAsync("//LoginPage");
             }
@@ -141,10 +184,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
                     "You do not have permission to view this page.",
                     "OK");
             }
+            return;
         }
-        else
-        {
-            System.Diagnostics.Debug.WriteLine($"✅ Allowed: {route}");
-        }
+
+        // ✅ All checks passed
+        System.Diagnostics.Debug.WriteLine($"[NAV ✅] Allowed: {route}");
     }
 }
