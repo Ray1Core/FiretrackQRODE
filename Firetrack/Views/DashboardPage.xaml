@@ -8,21 +8,10 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <!-- ========== HEADER ========== -->
-            <Grid ColumnDefinitions="Auto, *, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
-                <Button Grid.Column="0"
-                        Text="☰"
-                        BackgroundColor="Transparent"
-                        TextColor="{StaticResource OnBackground}"
-                        WidthRequest="50"
-                        HeightRequest="50"
-                        FontSize="28"
-                        CornerRadius="0"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center"
-                        Command="{Binding ToggleFlyoutCommand}" />
-
-                <Grid Grid.Column="1"
+            <!-- ========== HEADER (no hamburger) ========== -->
+            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
+                <!-- Profile / Name area -->
+                <Grid Grid.Column="0"
                       ColumnDefinitions="Auto, *"
                       RowDefinitions="Auto, Auto"
                       ColumnSpacing="10"
@@ -62,7 +51,8 @@
                            HorizontalOptions="Start" />
                 </Grid>
 
-                <Button Grid.Column="2"
+                <!-- Notifications -->
+                <Button Grid.Column="1"
                         Text="🔔"
                         BackgroundColor="Transparent"
                         TextColor="{StaticResource OnBackground}"
@@ -73,7 +63,9 @@
                         CornerRadius="0"
                         HorizontalOptions="Center"
                         VerticalOptions="Center" />
-                <Button Grid.Column="3"
+
+                <!-- Logout -->
+                <Button Grid.Column="2"
                         Text="🚪"
                         BackgroundColor="Transparent"
                         TextColor="{StaticResource DangerColor}"
@@ -87,7 +79,6 @@
             </Grid>
 
             <!-- ========== METRICS CARDS (Admin only) ========== -->
-            <!-- The entire metrics grid is hidden for Personnel -->
             <Border IsVisible="{Binding IsAdmin}" Padding="0">
                 <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="12">
                     <!-- Row 0 -->
@@ -147,9 +138,6 @@
                     </Border>
                 </Grid>
             </Border>
-
-            <!-- ========== CHART (optional – currently removed) ========== -->
-            <!-- If you keep the chart, wrap it similarly or hide for Personnel -->
 
             <!-- ========== ASSIGNED EQUIPMENT (Personnel only) ========== -->
             <Border Style="{StaticResource CardStyle}" Padding="0"

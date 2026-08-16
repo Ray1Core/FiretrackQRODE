@@ -123,5 +123,93 @@ namespace Firetrack.Services
                 throw new Exception($"PDF generation failed: {ex.Message}", ex);
             }
         }
+
+        public byte[] GenerateClearanceCertificate(UserModel officer, List<EquipmentModel> equipment)
+        {
+            try
+            {
+                using var document = new PdfDocument();
+                var page = document.AddPage();
+                var gfx = XGraphics.FromPdfPage(page);
+
+                var titleFont = new XFont("Helvetica-Bold", 20);
+                var headerFont = new XFont("Helvetica-Bold", 14);
+                var bodyFont = new XFont("Helvetica", 10);
+
+                double yPos = 40;
+                const double leftMargin = 50;
+                const double rightMargin = 50;
+                double pageWidth = page.Width;
+
+                // Header
+                gfx.DrawString("BUREAU OF FIRE PROTECTION", titleFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 30), XStringFormats.TopCenter);
+                yPos += 35;
+
+                gfx.DrawString("CEBU CITY FIRE STATION", headerFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 25), XStringFormats.TopCenter);
+                yPos += 35;
+
+                gfx.DrawString("CLEARANCE CERTIFICATE", titleFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 30), XStringFormats.TopCenter);
+                yPos += 40;
+
+                // Officer details
+                gfx.DrawString($"This is to certify that {officer.FullName}", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 25;
+                gfx.DrawString($"({officer.Username}) has no outstanding equipment accountability.", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                yPos += 35;
+
+                // Equipment list (if any returned)
+                if (equipment.Any())
+                {
+                    gfx.DrawString("All equipment has been returned:", headerFont, XBrushes.Black,
+                        new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                    yPos += 25;
+
+                    foreach (var eq in equipment)
+                    {
+                        gfx.DrawString($"• {eq.Name} ({eq.QRCode})", bodyFont, XBrushes.Black,
+                            new XRect(leftMargin + 20, yPos, pageWidth - leftMargin - rightMargin - 20, 18), XStringFormats.TopLeft);
+                        yPos += 20;
+                    }
+                }
+                else
+                {
+                    gfx.DrawString("No equipment was ever assigned to this officer.", bodyFont, XBrushes.Black,
+                        new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
+                    yPos += 25;
+                }
+
+                yPos += 20;
+
+                // Signatures
+                gfx.DrawLine(XPens.Black, leftMargin, yPos, leftMargin + 200, yPos);
+                gfx.DrawString("Clearance Officer", bodyFont, XBrushes.Black,
+                    new XRect(leftMargin, yPos + 5, 200, 15), XStringFormats.TopCenter);
+
+                gfx.DrawLine(XPens.Black, pageWidth - rightMargin - 200, yPos, pageWidth - rightMargin, yPos);
+                gfx.DrawString("Officer Signature", bodyFont, XBrushes.Black,
+                    new XRect(pageWidth - rightMargin - 200, yPos + 5, 200, 15), XStringFormats.TopCenter);
+
+                // Footer
+                yPos = page.Height - 40;
+                gfx.DrawLine(XPens.Black, leftMargin, yPos, pageWidth - rightMargin, yPos);
+                yPos += 15;
+                gfx.DrawString($"Issued: {DateTime.Now:MMMM dd, yyyy}", bodyFont, XBrushes.Black,
+                    new XRect(0, yPos, pageWidth, 15), XStringFormats.TopCenter);
+
+                using var stream = new MemoryStream();
+                document.Save(stream, false);
+                return stream.ToArray();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Clearance PDF generation failed: {ex}");
+                throw new Exception($"Clearance PDF generation failed: {ex.Message}", ex);
+            }
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿// ViewModels/TransferViewModel.cs (overwrite)
+﻿// NEW: DualScanViewModel.cs
 using Firetrack.Models;
 using Firetrack.Services;
 using System.Windows.Input;
@@ -6,7 +6,7 @@ using Microsoft.Maui.Controls;
 
 namespace Firetrack.ViewModels
 {
-    public class TransferViewModel : ViewModelBase
+    public class DualScanViewModel : ViewModelBase
     {
         private readonly DatabaseService _db;
         private bool _isAdminScanComplete;
@@ -65,7 +65,7 @@ namespace Firetrack.ViewModels
         public ICommand ConfirmTransferCommand { get; }
         public ICommand ResetCommand { get; }
 
-        public TransferViewModel()
+        public DualScanViewModel()
         {
             _db = App.Database!;
             ScanAdminCommand = new Command(OnScanAdmin);
@@ -77,23 +77,26 @@ namespace Firetrack.ViewModels
 
         private async void OnScanAdmin()
         {
+            // Navigate to scanner for Admin QR
             var result = await Shell.Current.DisplayPromptAsync(
                 "Admin Verification",
-                "Enter Admin username or scan QR value:",
-                "Verify",
+                "Scan Admin QR Code:",
+                "Scan",
                 "Cancel");
-            if (string.IsNullOrWhiteSpace(result)) return;
 
-            var user = await _db.GetUserByUsernameAsync(result.Trim());
-            if (user != null && user.Role == "Admin")
+            if (!string.IsNullOrEmpty(result))
             {
-                AdminUsername = user.Username;
-                IsAdminScanComplete = true;
-                ScanStatus = "✅ Admin verified. Scan Personnel now.";
-            }
-            else
-            {
-                ScanStatus = "❌ Invalid Admin. Must be a valid Admin user.";
+                var user = await _db.GetUserByUsernameAsync(result);
+                if (user != null && user.Role == "Admin")
+                {
+                    AdminUsername = user.Username;
+                    IsAdminScanComplete = true;
+                    ScanStatus = "✅ Admin verified. Scan Personnel now.";
+                }
+                else
+                {
+                    ScanStatus = "❌ Invalid Admin QR. Try again.";
+                }
             }
         }
 
@@ -107,21 +110,23 @@ namespace Firetrack.ViewModels
 
             var result = await Shell.Current.DisplayPromptAsync(
                 "Personnel Verification",
-                "Enter Personnel username or scan QR value:",
-                "Verify",
+                "Scan Personnel QR Code:",
+                "Scan",
                 "Cancel");
-            if (string.IsNullOrWhiteSpace(result)) return;
 
-            var user = await _db.GetUserByUsernameAsync(result.Trim());
-            if (user != null && user.Role == "Personnel")
+            if (!string.IsNullOrEmpty(result))
             {
-                PersonnelUsername = user.Username;
-                IsPersonnelScanComplete = true;
-                ScanStatus = "✅ Personnel verified. Scan equipment now.";
-            }
-            else
-            {
-                ScanStatus = "❌ Invalid Personnel. Must be a Personnel user.";
+                var user = await _db.GetUserByUsernameAsync(result);
+                if (user != null && user.Role == "Personnel")
+                {
+                    PersonnelUsername = user.Username;
+                    IsPersonnelScanComplete = true;
+                    ScanStatus = "✅ Personnel verified. Scan equipment now.";
+                }
+                else
+                {
+                    ScanStatus = "❌ Invalid Personnel QR. Try again.";
+                }
             }
         }
 
@@ -135,20 +140,22 @@ namespace Firetrack.ViewModels
 
             var result = await Shell.Current.DisplayPromptAsync(
                 "Equipment Scan",
-                "Enter Equipment QR code or scan value:",
-                "Verify",
+                "Scan Equipment QR Code:",
+                "Scan",
                 "Cancel");
-            if (string.IsNullOrWhiteSpace(result)) return;
 
-            var equipment = await _db.GetEquipmentByQRAsync(result.Trim());
-            if (equipment != null && equipment.Status == "Available")
+            if (!string.IsNullOrEmpty(result))
             {
-                SelectedEquipment = equipment;
-                ScanStatus = $"✅ Equipment '{equipment.Name}' ready for transfer.";
-            }
-            else
-            {
-                ScanStatus = "❌ Equipment not available or invalid QR.";
+                var equipment = await _db.GetEquipmentByQRAsync(result);
+                if (equipment != null && equipment.Status == "Available")
+                {
+                    SelectedEquipment = equipment;
+                    ScanStatus = $"✅ Equipment '{equipment.Name}' ready for transfer.";
+                }
+                else
+                {
+                    ScanStatus = "❌ Equipment not available or invalid QR.";
+                }
             }
         }
 
@@ -165,13 +172,16 @@ namespace Firetrack.ViewModels
                 $"Transfer '{SelectedEquipment.Name}' from {AdminUsername} to {PersonnelUsername}?",
                 "Yes",
                 "Cancel");
+
             if (!confirm) return;
 
             IsBusy = true;
             try
             {
+                // Get the actual user objects
                 var admin = await _db.GetUserByUsernameAsync(AdminUsername);
                 var personnel = await _db.GetUserByUsernameAsync(PersonnelUsername);
+
                 if (admin == null || personnel == null)
                 {
                     ScanStatus = "❌ User not found.";
@@ -179,7 +189,7 @@ namespace Firetrack.ViewModels
                     return;
                 }
 
-                // Record transaction
+                // Record the transaction
                 var transaction = new TransactionModel
                 {
                     EquipmentQR = SelectedEquipment.QRCode,
@@ -187,9 +197,10 @@ namespace Firetrack.ViewModels
                     ToUser = personnel.Username,
                     Timestamp = DateTime.Now,
                     Action = "Issue",
-                    Remarks = $"Dual-scan handshake by {admin.FullName} → {personnel.FullName}"
+                    Remarks = $"Dual-scan handshake completed by {admin.FullName} → {personnel.FullName}"
                 };
 
+                // Update equipment
                 SelectedEquipment.AssignedToUsername = personnel.Username;
                 SelectedEquipment.Status = "Issued";
                 SelectedEquipment.LastUpdated = DateTime.Now;
@@ -197,22 +208,26 @@ namespace Firetrack.ViewModels
                 await _db.SaveTransactionAsync(transaction);
                 await _db.SaveEquipmentAsync(SelectedEquipment);
 
+                // Log the dual-scan event
                 await _db.LogActionAsync(
                     admin.Username,
                     "Dual-Scan Transfer",
                     $"Issued '{SelectedEquipment.Name}' to {personnel.Username} via dual-scan");
 
+                // Notify both parties
                 await _db.SendNotificationAsync(
                     personnel.Username,
                     "🔄 Equipment Issued",
-                    $"{admin.FullName} issued '{SelectedEquipment.Name}' to you via dual-scan.");
+                    $"{admin.FullName} issued '{SelectedEquipment.Name}' to you via dual-scan."
+                );
 
                 await _db.SendNotificationAsync(
                     admin.Username,
                     "✅ Transfer Complete",
-                    $"You issued '{SelectedEquipment.Name}' to {personnel.FullName} via dual-scan.");
+                    $"You issued '{SelectedEquipment.Name}' to {personnel.FullName} via dual-scan."
+                );
 
-                // Navigate to ICS generation
+                // Navigate to ICS page
                 var navParams = new Dictionary<string, object>
                 {
                     { "equipment", SelectedEquipment },

@@ -107,7 +107,7 @@ namespace Firetrack.ViewModels
             set { _chartDrawable = value; OnPropertyChanged(); }
         }
 
-        // ---- Time range picker (if still used) ----
+        // ---- Time range picker ----
         private string _selectedTimeRange = "Last 7 Days";
         public string SelectedTimeRange
         {
@@ -138,12 +138,11 @@ namespace Firetrack.ViewModels
             set { _chartTitle = value; OnPropertyChanged(); }
         }
 
-        // ---- Commands ----
-        public ICommand ToggleFlyoutCommand { get; }
+        // ---- Commands (removed ToggleFlyoutCommand) ----
         public ICommand GoToScannerCommand { get; }
         public ICommand GoToGenerateCommand { get; }
         public ICommand GoToTransferCommand { get; }
-        public ICommand GoToAddUserCommand { get; }
+        public ICommand GoToAddUserCommand { get; }      // ✅ Now navigates to UserManagementPage
         public ICommand GoToClearanceCommand { get; }
         public ICommand GoToInventoryCommand { get; }
         public ICommand GoToRequestEquipmentCommand { get; }
@@ -157,17 +156,16 @@ namespace Firetrack.ViewModels
         public ICommand ReportDamageCommand { get; }
         public ICommand ShowEquipmentDetailsCommand { get; }
 
-        // ---- Constructor (with error handling for all nav commands) ----
+        // ---- Constructor ----
         public DashboardViewModel()
         {
             var user = App.CurrentUser;
             FullName = user?.FullName ?? "Firefighter";
             IsAdmin = user?.Role == "Admin";
 
-            ToggleFlyoutCommand = new Command(ToggleFlyout);
             LogoutCommand = new Command(OnLogout);
 
-            // ✅ All navigation commands use absolute routes (//) to avoid "Relative routing to shell elements" errors
+            // ✅ All navigation commands use absolute routes (//)
             GoToScannerCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync("//ScannerPage"); }
@@ -186,9 +184,10 @@ namespace Firetrack.ViewModels
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
+            // ✅ UPDATED: Navigate to UserManagementPage instead of AddUserPage
             GoToAddUserCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//AddUserPage"); }
+                try { await Shell.Current.GoToAsync("//UserManagementPage"); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
@@ -243,13 +242,11 @@ namespace Firetrack.ViewModels
         }
 
         // ---- Methods ----
-        private void ToggleFlyout() => Shell.Current.FlyoutIsPresented = !Shell.Current.FlyoutIsPresented;
-
         private async void OnLogout()
         {
             App.CurrentUser = null;
             if (Shell.Current is AppShell shell) shell.UpdateUserRoleVisibility();
-            await Shell.Current.GoToAsync("//LoginPage"); // absolute route – OK for root
+            await Shell.Current.GoToAsync("//LoginPage");
         }
 
         private async void LoadData()
@@ -274,9 +271,7 @@ namespace Firetrack.ViewModels
 
         private async Task LoadMyEquipment(DatabaseService db)
         {
-            // ✅ Guard against null user
             if (App.CurrentUser == null) return;
-
             var equipment = await db.GetEquipmentsAssignedToUserAsync(App.CurrentUser.Username);
             MyEquipment.Clear();
             foreach (var item in equipment)
@@ -341,7 +336,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- OnReturnEquipment (unchanged) ----
+        // ---- OnReturnEquipment ----
         private async void OnReturnEquipment(EquipmentModel? equipment)
         {
             if (equipment == null) return;
@@ -391,7 +386,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- OnReportDamage (UPDATED: absolute route + try-catch) ----
+        // ---- OnReportDamage ----
         private async void OnReportDamage(EquipmentModel equipment)
         {
             if (equipment == null) return;
@@ -406,7 +401,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- OnShowEquipmentDetails (unchanged) ----
+        // ---- OnShowEquipmentDetails ----
         private async void OnShowEquipmentDetails(EquipmentModel? equipment)
         {
             if (equipment == null) return;

@@ -4,90 +4,83 @@
     xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml">
 
-    <!-- ===== LOGO COLOR PALETTE (from Firetrack Logo) ===== -->
-    <!-- Primary: F4E940 - Highlighter Yellow -->
-    <!-- Secondary: DDC156 - Cream Gold -->
-    <!-- Accent: 282054 - Port Gore (Deep Purple) -->
-    <!-- Highlight: FEF50A - Lahn Yellow -->
-    <!-- Warm: 4C2F1C - Brown Bramble -->
-    <!-- Muted: 7684A6 - Enchanting Sky -->
-    <!-- Deep: 30253D - Tolopea -->
-    <!-- Gold: 9C8149 - Heart of Gold -->
-    <!-- Light: E6D18A - Khaki -->
+    <!-- ========================================================== -->
+    <!-- NEW PALETTE – BLUE THEME (from provided colors)            -->
+    <!-- ========================================================== -->
+    <!-- true-cobalt: #082A83 (Deep blue)                           -->
+    <!-- black:       #000000                                       -->
+    <!-- ocean-twilight: #4445B1 (Purple-blue)                     -->
+    <!-- azure-blue:  #4183E1 (Bright blue)                        -->
+    <!-- light-blue:  #ABCDD7 (Soft light blue)                    -->
 
-    <!-- ===== BRAND COLORS (from logo) ===== -->
-    <Color x:Key="PrimaryColor">#F4E940</Color>
-    <!-- Highlighter Yellow - Main Brand -->
-    <Color x:Key="PrimaryColorDark">#DDC156</Color>
-    <!-- Cream Gold - Darker Brand -->
-    <Color x:Key="SecondaryColor">#282054</Color>
-    <!-- Port Gore - Deep Purple -->
-    <Color x:Key="AccentColor">#FEF50A</Color>
-    <!-- Lahn Yellow - Bright Accent -->
-    <Color x:Key="WarmColor">#4C2F1C</Color>
-    <!-- Brown Bramble - Warm Neutral -->
-    <Color x:Key="MutedBlue">#7684A6</Color>
-    <!-- Enchanting Sky - Muted Info -->
-    <Color x:Key="DeepColor">#30253D</Color>
-    <!-- Tolopea - Deep Background -->
-    <Color x:Key="GoldColor">#9C8149</Color>
-    <!-- Heart of Gold - Warm Gold -->
-    <Color x:Key="LightGold">#E6D18A</Color>
-    <!-- Khaki - Light Highlight -->
+    <!-- ===== BRAND COLORS ===== -->
+    <Color x:Key="PrimaryColor">#4183E1</Color>
+    <!-- Azure Blue - Main brand -->
+    <Color x:Key="PrimaryColorDark">#082A83</Color>
+    <!-- True Cobalt - Darker -->
+    <Color x:Key="SecondaryColor">#4445B1</Color>
+    <!-- Ocean Twilight - Secondary -->
+    <Color x:Key="AccentColor">#ABCDD7</Color>
+    <!-- Light Blue - Accent -->
+    <Color x:Key="WarmColor">#4445B1</Color>
+    <!-- (using same as secondary) -->
+    <Color x:Key="MutedBlue">#ABCDD7</Color>
+    <!-- Light blue for muted -->
 
     <!-- ===== UI COLORS (Dark Theme) ===== -->
-    <Color x:Key="Primary">#F4E940</Color>
-    <!-- Yellow Primary -->
-    <Color x:Key="PrimaryDark">#DDC156</Color>
-    <!-- Darker Yellow -->
-    <Color x:Key="Secondary">#282054</Color>
-    <!-- Deep Purple Background -->
-    <Color x:Key="Surface">#30253D</Color>
-    <!-- Tolopea - Card Background -->
-    <Color x:Key="Background">#1a1426</Color>
-    <!-- Darker Purple Base -->
-    <Color x:Key="OnBackground">#F5F0E8</Color>
-    <!-- Warm White -->
-    <Color x:Key="OnSurface">#E6D18A</Color>
-    <!-- Light Gold Text -->
-    <Color x:Key="MutedText">#9C8149</Color>
-    <!-- Gold Muted Text -->
-    <Color x:Key="BorderColor">#4C2F1C</Color>
-    <!-- Brown Border -->
+    <Color x:Key="Primary">#4183E1</Color>
+    <!-- Azure Blue -->
+    <Color x:Key="PrimaryDark">#082A83</Color>
+    <!-- True Cobalt -->
+    <Color x:Key="Secondary">#4445B1</Color>
+    <!-- Ocean Twilight -->
+    <Color x:Key="Surface">#0a1a2e</Color>
+    <!-- Very dark blue (base) -->
+    <Color x:Key="Background">#000000</Color>
+    <!-- True black -->
+    <Color x:Key="OnBackground">#E8F0F8</Color>
+    <!-- Almost white with blue tint -->
+    <Color x:Key="OnSurface">#C5D9E8</Color>
+    <!-- Light blue-grey -->
+    <Color x:Key="MutedText">#8FAECB</Color>
+    <!-- Muted light blue -->
+    <Color x:Key="BorderColor">#2A4B7A</Color>
+    <!-- Medium blue -->
 
-    <!-- ===== STATUS COLORS ===== -->
+    <!-- ===== STATUS COLORS (unchanged) ===== -->
     <Color x:Key="SuccessColor">#27AE60</Color>
-    <!-- Green - Success -->
     <Color x:Key="DangerColor">#E74C3C</Color>
-    <!-- Red - Danger -->
-    <Color x:Key="WarningColor">#FEF50A</Color>
-    <!-- Yellow - Warning -->
-    <Color x:Key="InfoColor">#7684A6</Color>
-    <!-- Blue - Info -->
+    <Color x:Key="WarningColor">#F39C12</Color>
+    <!-- Changed to a warm yellow -->
+    <Color x:Key="InfoColor">#4183E1</Color>
+    <!-- Using primary blue -->
 
-    <!-- ===== GRAY SCALE ===== -->
-    <Color x:Key="Gray100">#F5F0E8</Color>
-    <Color x:Key="Gray200">#E6D18A</Color>
-    <Color x:Key="Gray300">#9C8149</Color>
-    <Color x:Key="Gray400">#6B5B3A</Color>
-    <Color x:Key="Gray500">#4C2F1C</Color>
-    <Color x:Key="Gray600">#30253D</Color>
-    <Color x:Key="Gray900">#282054</Color>
-    <Color x:Key="Gray950">#1a1426</Color>
+    <!-- ===== GRAY SCALE (adjusted to blue tint) ===== -->
+    <Color x:Key="Gray100">#E8F0F8</Color>
+    <Color x:Key="Gray200">#C5D9E8</Color>
+    <Color x:Key="Gray300">#8FAECB</Color>
+    <Color x:Key="Gray400">#5A7D9E</Color>
+    <Color x:Key="Gray500">#2A4B7A</Color>
+    <Color x:Key="Gray600">#0F2440</Color>
+    <Color x:Key="Gray900">#050F1E</Color>
+    <Color x:Key="Gray950">#02070E</Color>
 
     <!-- ===== COMMON COLORS ===== -->
     <Color x:Key="White">#FFFFFF</Color>
     <Color x:Key="Black">#000000</Color>
     <Color x:Key="Magenta">#D600AA</Color>
     <Color x:Key="MidnightBlue">#190649</Color>
-    <Color x:Key="OffBlack">#1f1f1f</Color>
+    <Color x:Key="OffBlack">#0a0a0a</Color>
 
-    <!-- ===== COMPATIBILITY (for existing styles) ===== -->
-    <Color x:Key="PrimaryLightColor">#DDC156</Color>
-    <Color x:Key="BackgroundColor">#1a1426</Color>
-    <Color x:Key="CardBackgroundColor">#30253D</Color>
-    <Color x:Key="TextPrimaryColor">#F5F0E8</Color>
-    <Color x:Key="TextSecondaryColor">#E6D18A</Color>
+    <!-- ===== MAUI DEFAULT KEYS (needed by Styles.xaml) ===== -->
+    <Color x:Key="PrimaryDarkText">#E8F0F8</Color>
+    <Color x:Key="SecondaryDarkText">#C5D9E8</Color>
+    <Color x:Key="PrimaryLightColor">#4183E1</Color>
+    <Color x:Key="BackgroundColor">#000000</Color>
+    <Color x:Key="CardBackgroundColor">#0F2440</Color>
+    <Color x:Key="TextPrimaryColor">#E8F0F8</Color>
+    <Color x:Key="TextSecondaryColor">#C5D9E8</Color>
+    <Color x:Key="Tertiary">#4445B1</Color>
 
     <!-- ===== BRUSHES ===== -->
     <SolidColorBrush x:Key="PrimaryBrush" Color="{StaticResource Primary}"/>

@@ -5,64 +5,134 @@
              Title="User Management"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
-    <Grid RowDefinitions="Auto, *">
-        <!-- Header -->
-        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
-            <Label Text="👥 User Management"
-                   FontSize="24"
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   HorizontalOptions="Center" />
-            <Label Text="View, activate/deactivate, reset passwords, and manage roles."
-                   FontSize="14"
-                   TextColor="#E0E0E0"
-                   HorizontalOptions="Center" />
-        </VerticalStackLayout>
+    <Grid>
+        <!-- Main content -->
+        <Grid RowDefinitions="Auto, *">
+            <!-- Header with Add button -->
+            <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
+                <Grid ColumnDefinitions="*, Auto">
+                    <Label Text="👥 User Management"
+                           FontSize="24"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           VerticalOptions="Center" />
+                    <Button Grid.Column="1"
+                            Text="➕ Add User"
+                            Command="{Binding ToggleAddFormCommand}"
+                            BackgroundColor="White"
+                            TextColor="{StaticResource PrimaryColor}"
+                            CornerRadius="8"
+                            HeightRequest="40"
+                            FontSize="14"
+                            FontAttributes="Bold" />
+                </Grid>
+                <Label Text="View, activate/deactivate, reset passwords, and manage roles."
+                       FontSize="14"
+                       TextColor="#E0E0E0"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
 
-        <!-- List -->
-        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadUsersCommand}">
-            <CollectionView ItemsSource="{Binding Users}" EmptyView="No users found.">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
-                            <VerticalStackLayout Spacing="6">
-                                <Grid ColumnDefinitions="*, Auto">
-                                    <Label Text="{Binding FullName}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
-                                    <Label Grid.Column="1" Text="{Binding Role}" FontSize="12" Padding="6,2" HorizontalTextAlignment="Center" TextColor="White" BackgroundColor="{StaticResource PrimaryColor}" />
-                                </Grid>
-                                <Label Text="{Binding Username, StringFormat='Username: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
-                                <Label Text="{Binding IsActive, StringFormat='Status: {0}'}" FontSize="13" TextColor="{Binding IsActive, Converter={StaticResource BoolToStatusColorConverter}}" />
+            <!-- User List -->
+            <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadUsersCommand}">
+                <CollectionView ItemsSource="{Binding Users}" EmptyView="No users found.">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
+                                <VerticalStackLayout Spacing="6">
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Label Text="{Binding FullName}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                                        <Label Grid.Column="1" Text="{Binding Role}" FontSize="12" Padding="6,2" HorizontalTextAlignment="Center" TextColor="White" BackgroundColor="{StaticResource PrimaryColor}" />
+                                    </Grid>
+                                    <Label Text="{Binding Username, StringFormat='Username: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                                    <Label Text="{Binding IsActive, StringFormat='Status: {0}'}" FontSize="13" TextColor="{Binding IsActive, Converter={StaticResource BoolToStatusColorConverter}}" />
 
-                                <!-- Action Buttons -->
-                                <Grid ColumnDefinitions="*, *, *" ColumnSpacing="10" Margin="0,5,0,0">
-                                    <Button Text="🔑 Reset Password"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ResetPasswordCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource PrimaryButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                    <Button Grid.Column="1"
-                                            Text="🔄 Toggle Active"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleActiveCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource PrimaryButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                    <Button Grid.Column="2"
-                                            Text="✏️ Change Role"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditRoleCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource PrimaryButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                </Grid>
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
-        </RefreshView>
+                                    <!-- Action Buttons -->
+                                    <Grid ColumnDefinitions="*, *, *" ColumnSpacing="10" Margin="0,5,0,0">
+                                        <Button Text="🔑 Reset Password"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ResetPasswordCommand}"
+                                                CommandParameter="{Binding .}"
+                                                Style="{StaticResource PrimaryButton}"
+                                                HeightRequest="35"
+                                                FontSize="12" />
+                                        <Button Grid.Column="1"
+                                                Text="🔄 Toggle Active"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ToggleActiveCommand}"
+                                                CommandParameter="{Binding .}"
+                                                Style="{StaticResource PrimaryButton}"
+                                                HeightRequest="35"
+                                                FontSize="12" />
+                                        <Button Grid.Column="2"
+                                                Text="✏️ Change Role"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.EditRoleCommand}"
+                                                CommandParameter="{Binding .}"
+                                                Style="{StaticResource PrimaryButton}"
+                                                HeightRequest="35"
+                                                FontSize="12" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </RefreshView>
+        </Grid>
+
+        <!-- Modal Overlay for Add User Form -->
+        <Border IsVisible="{Binding IsAddingUser}"
+                BackgroundColor="#80000000"
+                Padding="20"
+                VerticalOptions="Center"
+                HorizontalOptions="Fill">
+            <Border Style="{StaticResource CardStyle}"
+                    Padding="20"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Center"
+                    WidthRequest="400">
+                <VerticalStackLayout Spacing="16">
+                    <Label Text="➕ Add New User"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource PrimaryColor}"
+                           HorizontalOptions="Center" />
+
+                    <Entry Placeholder="Username"
+                           Text="{Binding NewUsername}"
+                           Style="{StaticResource EntryStyle}" />
+
+                    <Entry Placeholder="Password"
+                           Text="{Binding NewPassword}"
+                           IsPassword="True"
+                           Style="{StaticResource EntryStyle}" />
+
+                    <Entry Placeholder="Full Name"
+                           Text="{Binding NewFullName}"
+                           Style="{StaticResource EntryStyle}" />
+
+                    <Picker Title="Select Role"
+                            ItemsSource="{Binding Roles}"
+                            SelectedItem="{Binding NewRole}"
+                            TextColor="{StaticResource OnBackground}"
+                            TitleColor="{StaticResource Gray300}"
+                            BackgroundColor="{StaticResource Surface}" />
+
+                    <Grid ColumnDefinitions="*, *" ColumnSpacing="10">
+                        <Button Text="Save"
+                                Command="{Binding SaveUserCommand}"
+                                Style="{StaticResource SuccessButton}" />
+                        <Button Grid.Column="1"
+                                Text="Cancel"
+                                Command="{Binding CancelAddCommand}"
+                                Style="{StaticResource SecondaryButton}" />
+                    </Grid>
+
+                    <Label Text="{Binding AddStatusMessage}"
+                           TextColor="{Binding AddStatusMessage, Converter={StaticResource StringToColorConverter}}"
+                           FontSize="14"
+                           HorizontalOptions="Center" />
+                    <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
+                </VerticalStackLayout>
+            </Border>
+        </Border>
     </Grid>
 </ContentPage>

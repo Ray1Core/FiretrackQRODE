@@ -34,7 +34,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         // ✅ Register ALL pages
         Routing.RegisterRoute("AddEquipmentPage", typeof(AddEquipmentPage));
-        Routing.RegisterRoute("AddUserPage", typeof(AddUserPage));
         Routing.RegisterRoute("UserManagementPage", typeof(UserManagementPage));
         Routing.RegisterRoute("NotificationsPage", typeof(NotificationsPage));
         Routing.RegisterRoute("TransactionHistoryPage", typeof(TransactionHistoryPage));
@@ -90,7 +89,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "EquipmentCategoryPage", "CategoryItemsPage",
         "EquipmentDetailPage", "EquipmentRequestDetailPage",
         "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
-        "UserManagementPage", "AddUserPage", "AddEquipmentPage",
+        "UserManagementPage",
+        "AddEquipmentPage",
         "PendingRequestsPage", "AuditLogPage"
     };
 
@@ -122,7 +122,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         if (isAdmin)
             return true;
 
-        var allowedForPersonnel = new[]
+        // Personnel-allowed routes
+        var allowedForPersonnel = new HashSet<string>
         {
             "DashboardPage",
             "ProfilePage",

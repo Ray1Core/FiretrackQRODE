@@ -70,6 +70,12 @@
                   Route="CategoryItemsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
+    <!-- ===== Dual-Scan Page (hidden, used from Transfer) ===== -->
+    <ShellContent Title="Dual-Scan Handshake"
+                  ContentTemplate="{DataTemplate views:TransferPage}"
+                  Route="TransferPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
     <!-- ===== ADMIN FLYOUT GROUP ===== -->
     <FlyoutItem Title="Admin"
                 FlyoutDisplayOptions="AsMultipleItems"
@@ -94,10 +100,6 @@
         <ShellContent Title="User Management"
                       ContentTemplate="{DataTemplate views:UserManagementPage}"
                       Route="UserManagementPage" />
-
-        <ShellContent Title="Add User"
-                      ContentTemplate="{DataTemplate views:AddUserPage}"
-                      Route="AddUserPage" />
 
         <ShellContent Title="Add Equipment"
                       ContentTemplate="{DataTemplate views:AddEquipmentPage}"
@@ -149,6 +151,10 @@
         <ShellContent Title="Scanner"
                       ContentTemplate="{DataTemplate views:ScannerPage}"
                       Route="ScannerPage" />
+
+        <ShellContent Title="Generate QR"
+                      ContentTemplate="{DataTemplate views:GenerateQRPage}"
+                      Route="GenerateQRPage" />
 
     </FlyoutItem>
 

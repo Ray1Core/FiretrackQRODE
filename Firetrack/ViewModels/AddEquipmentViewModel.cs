@@ -3,6 +3,8 @@ using Firetrack.Services;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
+using QRCoder;
+using System.IO;
 
 namespace Firetrack.ViewModels
 {
@@ -14,8 +16,8 @@ namespace Firetrack.ViewModels
         private string _type = string.Empty;
         private string _status = "Available";
         private bool _isBusy;
+        private ImageSource? _qrPreview;
 
-        // ✅ Added "Disposed" to the list
         public ObservableCollection<string> Types { get; } = new() { "Hose", "Nozzle", "Rescue Tool" };
         public ObservableCollection<string> Statuses { get; } = new() { "Available", "Issued", "Damaged", "InRepair", "Disposed" };
 
@@ -49,19 +51,54 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public ImageSource? QRPreview
+        {
+            get => _qrPreview;
+            set { _qrPreview = value; OnPropertyChanged(); }
+        }
+
         public ICommand SaveCommand { get; }
+        public ICommand GenerateQRCommand { get; }
 
         public AddEquipmentViewModel()
         {
             _db = App.Database!;
             SaveCommand = new Command(OnSave);
+            GenerateQRCommand = new Command(OnGenerateQR);
+        }
+
+        private void OnGenerateQR()
+        {
+            if (string.IsNullOrWhiteSpace(Name))
+            {
+                Shell.Current.DisplayAlert("Validation", "Enter equipment name first to generate QR.", "OK");
+                return;
+            }
+
+            try
+            {
+                // Build QR value: Name + Timestamp (ensures uniqueness)
+                string qrValue = $"{Name.Trim().ToUpper()}_{DateTime.Now:yyyyMMddHHmmss}";
+                QRCode = qrValue;
+
+                var generator = new QRCodeGenerator();
+                var qrCodeData = generator.CreateQrCode(qrValue, QRCodeGenerator.ECCLevel.Q);
+                var qrCode = new PngByteQRCode(qrCodeData);
+                var pngBytes = qrCode.GetGraphic(20);
+
+                QRPreview = ImageSource.FromStream(() => new MemoryStream(pngBytes));
+            }
+            catch (Exception ex)
+            {
+                Shell.Current.DisplayAlert("Error", $"QR generation failed: {ex.Message}", "OK");
+            }
         }
 
         private async void OnSave()
         {
             if (string.IsNullOrWhiteSpace(QRCode) || string.IsNullOrWhiteSpace(Name) || string.IsNullOrWhiteSpace(Type))
             {
-                await Shell.Current.DisplayAlert("Validation", "QR Code, Name, and Type are required.", "OK");
+                await Shell.Current.DisplayAlert("Validation", "Generate QR first, then fill all fields.", "OK");
                 return;
             }
 
@@ -69,7 +106,7 @@ namespace Firetrack.ViewModels
 
             try
             {
-                var existing = await _db.GetEquipmentByQRAsync(QRCode.Trim());
+                var existing = await _db.GetEquipmentByQRAsync(QRCode);
                 if (existing != null)
                 {
                     await Shell.Current.DisplayAlert("Error", "QR Code already exists.", "OK");
@@ -79,7 +116,7 @@ namespace Firetrack.ViewModels
 
                 var newEquipment = new EquipmentModel
                 {
-                    QRCode = QRCode.Trim(),
+                    QRCode = QRCode,
                     Name = Name.Trim(),
                     Type = Type.Trim(),
                     Status = Status,
@@ -99,12 +136,14 @@ namespace Firetrack.ViewModels
 
                 await Shell.Current.DisplayAlert("Success", $"Equipment '{newEquipment.Name}' added successfully!", "OK");
 
+                // Reset fields
                 QRCode = string.Empty;
                 Name = string.Empty;
                 Type = string.Empty;
                 Status = "Available";
+                QRPreview = null;
 
-                await Shell.Current.GoToAsync("InventoryPage");
+                await Shell.Current.GoToAsync("//EquipmentCategoryPage");
             }
             catch (Exception ex)
             {

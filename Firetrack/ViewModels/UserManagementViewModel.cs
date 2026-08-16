@@ -8,20 +8,22 @@ namespace Firetrack.ViewModels
 {
     public class UserManagementViewModel : ViewModelBase
     {
+        private readonly DatabaseService _db;
         private ObservableCollection<UserModel> _users = new();
-        private UserModel? _selectedUser;
         private bool _isBusy;
+        private bool _isAddingUser;
+
+        // Add user fields
+        private string _newUsername = string.Empty;
+        private string _newPassword = string.Empty;
+        private string _newFullName = string.Empty;
+        private string _newRole = "Personnel";
+        private string _addStatusMessage = string.Empty;
 
         public ObservableCollection<UserModel> Users
         {
             get => _users;
             set { _users = value; OnPropertyChanged(); }
-        }
-
-        public UserModel? SelectedUser
-        {
-            get => _selectedUser;
-            set { _selectedUser = value; OnPropertyChanged(); }
         }
 
         public bool IsBusy
@@ -30,31 +32,76 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public bool IsAddingUser
+        {
+            get => _isAddingUser;
+            set { _isAddingUser = value; OnPropertyChanged(); }
+        }
+
+        public string NewUsername
+        {
+            get => _newUsername;
+            set { _newUsername = value; OnPropertyChanged(); }
+        }
+
+        public string NewPassword
+        {
+            get => _newPassword;
+            set { _newPassword = value; OnPropertyChanged(); }
+        }
+
+        public string NewFullName
+        {
+            get => _newFullName;
+            set { _newFullName = value; OnPropertyChanged(); }
+        }
+
+        public string NewRole
+        {
+            get => _newRole;
+            set { _newRole = value; OnPropertyChanged(); }
+        }
+
+        public string AddStatusMessage
+        {
+            get => _addStatusMessage;
+            set { _addStatusMessage = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<string> Roles { get; } = new() { "Admin", "Personnel" };
+
         public ICommand LoadUsersCommand { get; }
+        public ICommand ToggleAddFormCommand { get; }
+        public ICommand SaveUserCommand { get; }
+        public ICommand CancelAddCommand { get; }
         public ICommand ToggleActiveCommand { get; }
         public ICommand ResetPasswordCommand { get; }
         public ICommand EditRoleCommand { get; }
-        // GoBackCommand removed – navigation handled by Shell
 
         public UserManagementViewModel()
         {
-            LoadUsersCommand = new Command(OnLoadUsers);
+            _db = App.Database!;
+
+            LoadUsersCommand = new Command(async () => await OnLoadUsers());
+            ToggleAddFormCommand = new Command(() => IsAddingUser = !IsAddingUser);
+            SaveUserCommand = new Command(OnSaveUser);
+            CancelAddCommand = new Command(CancelAdd);
             ToggleActiveCommand = new Command<UserModel>(OnToggleActive);
             ResetPasswordCommand = new Command<UserModel>(OnResetPassword);
             EditRoleCommand = new Command<UserModel>(OnEditRole);
-            // GoBackCommand assignment removed
 
-            OnLoadUsers();
+            Task.Run(async () => await OnLoadUsers());
         }
 
-        private async void OnLoadUsers()
+        // ✅ FIX: Changed from async void to async Task
+        private async Task OnLoadUsers()
         {
-            if (App.Database == null) return;
+            if (_db == null) return;
 
             IsBusy = true;
             try
             {
-                var list = await App.Database.GetUsersAsync();
+                var list = await _db.GetUsersAsync();
                 Users.Clear();
                 foreach (var u in list)
                     Users.Add(u);
@@ -69,6 +116,76 @@ namespace Firetrack.ViewModels
             }
         }
 
+        private void CancelAdd()
+        {
+            IsAddingUser = false;
+            ClearAddFields();
+            AddStatusMessage = string.Empty;
+        }
+
+        private void ClearAddFields()
+        {
+            NewUsername = string.Empty;
+            NewPassword = string.Empty;
+            NewFullName = string.Empty;
+            NewRole = "Personnel";
+        }
+
+        private async void OnSaveUser()
+        {
+            if (string.IsNullOrWhiteSpace(NewUsername) || string.IsNullOrWhiteSpace(NewPassword) || string.IsNullOrWhiteSpace(NewFullName))
+            {
+                AddStatusMessage = "All fields are required.";
+                return;
+            }
+
+            IsBusy = true;
+            AddStatusMessage = string.Empty;
+
+            try
+            {
+                var existing = await _db.GetUserByUsernameAsync(NewUsername);
+                if (existing != null)
+                {
+                    AddStatusMessage = "Username already exists.";
+                    IsBusy = false;
+                    return;
+                }
+
+                var newUser = new UserModel
+                {
+                    Username = NewUsername.Trim(),
+                    Password = NewPassword.Trim(),
+                    FullName = NewFullName.Trim(),
+                    Role = NewRole
+                };
+
+                await _db.SaveUserAsync(newUser);
+
+                if (App.CurrentUser != null)
+                {
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Add User",
+                        $"Added user '{newUser.Username}'");
+                }
+
+                AddStatusMessage = "✅ User created successfully!";
+                ClearAddFields();
+                IsAddingUser = false;
+                await OnLoadUsers(); // ✅ Now works – OnLoadUsers returns Task
+            }
+            catch (Exception ex)
+            {
+                AddStatusMessage = $"❌ Error: {ex.Message}";
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        // ---- Existing user actions (unchanged) ----
         private async void OnToggleActive(UserModel? user)
         {
             if (user == null) return;
@@ -81,14 +198,14 @@ namespace Firetrack.ViewModels
             user.IsActive = !user.IsActive;
             try
             {
-                await App.Database!.UpdateUserAsync(user);
+                await _db.UpdateUserAsync(user);
                 await Shell.Current.DisplayAlert("Success", $"User '{user.Username}' is now {(user.IsActive ? "Active" : "Inactive")}.", "OK");
-                OnLoadUsers(); // refresh
+                await OnLoadUsers(); // ✅ Fixed
             }
             catch (Exception ex)
             {
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
-                user.IsActive = !user.IsActive; // revert
+                user.IsActive = !user.IsActive;
             }
         }
 
@@ -109,7 +226,7 @@ namespace Firetrack.ViewModels
 
             try
             {
-                bool success = await App.Database!.ResetPasswordAsync(user.Username, newPassword);
+                bool success = await _db.ResetPasswordAsync(user.Username, newPassword);
                 if (success)
                     await Shell.Current.DisplayAlert("Success", $"Password for {user.Username} has been reset.", "OK");
                 else
@@ -143,9 +260,9 @@ namespace Firetrack.ViewModels
             user.Role = newRole;
             try
             {
-                await App.Database!.UpdateUserAsync(user);
+                await _db.UpdateUserAsync(user);
                 await Shell.Current.DisplayAlert("Success", $"Role for {user.Username} set to {newRole}.", "OK");
-                OnLoadUsers();
+                await OnLoadUsers(); // ✅ Fixed
             }
             catch (Exception ex)
             {

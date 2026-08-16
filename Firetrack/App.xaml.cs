@@ -13,8 +13,8 @@ namespace Firetrack
         {
             InitializeComponent();
 
-            // ✅ Force Dark Theme (ensures consistent UI on all devices)
-            Current!.UserAppTheme = AppTheme.Dark;
+            // ❌ Removed forced Dark Theme – let system decide.
+            // Current!.UserAppTheme = AppTheme.Dark;
         }
 
         protected override Window CreateWindow(IActivationState? activationState)
@@ -33,13 +33,12 @@ namespace Firetrack
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Database initialization failed: {ex}");
-                // Optionally display an alert to the user
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Application.Current!.MainPage!.DisplayAlert("Error",
                         $"Database error: {ex.Message}\nCheck logs for details.", "OK");
                 });
-                throw; // or continue without database, but we re-throw to stop the app
+                throw;
             }
 
             return new Window(new AppShell());

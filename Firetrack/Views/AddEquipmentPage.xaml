@@ -5,10 +5,10 @@
              Title="Add Equipment"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
+
             <!-- Header -->
             <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
                 <Label Text="➕ Add New Equipment"
@@ -16,7 +16,7 @@
                        FontAttributes="Bold"
                        TextColor="{StaticResource OnBackground}"
                        HorizontalOptions="Center" />
-                <Label Text="Fill in the details to add a new equipment."
+                <Label Text="Enter name &amp; click Generate QR, then fill the rest."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
                        HorizontalOptions="Center" />
@@ -25,13 +25,8 @@
             <!-- Form Card -->
             <Border Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="16">
-                    <Entry Style="{StaticResource EntryStyle}"
-                           Placeholder="QR Code (e.g., HOSE005)"
-                           Text="{Binding QRCode}"
-                           TextColor="{StaticResource OnBackground}"
-                           PlaceholderColor="{StaticResource Gray300}"
-                           BackgroundColor="{StaticResource Surface}" />
 
+                    <!-- Equipment Name -->
                     <Entry Style="{StaticResource EntryStyle}"
                            Placeholder="Equipment Name"
                            Text="{Binding Name}"
@@ -39,6 +34,34 @@
                            PlaceholderColor="{StaticResource Gray300}"
                            BackgroundColor="{StaticResource Surface}" />
 
+                    <!-- Generate QR Button -->
+                    <Button Text="🔄 Generate QR Code"
+                            Command="{Binding GenerateQRCommand}"
+                            Style="{StaticResource PrimaryButton}" />
+
+                    <!-- QR Preview -->
+                    <Border IsVisible="{Binding QRPreview, Converter={StaticResource IsNotNullConverter}}"
+                            Stroke="{StaticResource BorderColor}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="10"
+                            BackgroundColor="{StaticResource Surface}">
+                        <Image Source="{Binding QRPreview}"
+                               WidthRequest="150"
+                               HeightRequest="150"
+                               HorizontalOptions="Center" />
+                    </Border>
+
+                    <!-- QR Code (auto‑generated, read‑only) -->
+                    <Entry Style="{StaticResource EntryStyle}"
+                           Placeholder="QR Code (auto-generated)"
+                           Text="{Binding QRCode}"
+                           TextColor="{StaticResource OnBackground}"
+                           PlaceholderColor="{StaticResource Gray300}"
+                           BackgroundColor="{StaticResource Surface}"
+                           IsReadOnly="True" />
+
+                    <!-- Type Picker -->
                     <Picker Title="Select Type"
                             ItemsSource="{Binding Types}"
                             SelectedItem="{Binding Type}"
@@ -46,6 +69,7 @@
                             TitleColor="{StaticResource Gray300}"
                             BackgroundColor="{StaticResource Surface}" />
 
+                    <!-- Status Picker -->
                     <Picker Title="Select Status"
                             ItemsSource="{Binding Statuses}"
                             SelectedItem="{Binding Status}"
@@ -53,15 +77,17 @@
                             TitleColor="{StaticResource Gray300}"
                             BackgroundColor="{StaticResource Surface}" />
 
-                    <!-- Save Button Only -->
+                    <!-- Save Button -->
                     <Button Text="Save Equipment"
                             Style="{StaticResource SuccessButton}"
                             Command="{Binding SaveCommand}" />
 
                     <ActivityIndicator IsRunning="{Binding IsBusy}"
                                        Color="{StaticResource OnBackground}" />
+
                 </VerticalStackLayout>
             </Border>
+
         </VerticalStackLayout>
     </ScrollView>
 </ContentPage>

@@ -4,7 +4,6 @@
              x:Class="Firetrack.Views.ClearancePage"
              Title="Clearance Audit"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
@@ -79,8 +78,16 @@
                     Style="{StaticResource SuccessButton}"
                     Command="{Binding MarkReturnedCommand}" />
 
-            <Button Text="🔄 Refresh List"
+            <Button Text="↩️ Mark All Returned"
                     Style="{StaticResource PrimaryButton}"
+                    Command="{Binding MarkAllReturnedCommand}" />
+
+            <Button Text="📄 Generate Clearance Certificate"
+                    Style="{StaticResource PrimaryButton}"
+                    Command="{Binding GenerateCertificateCommand}" />
+
+            <Button Text="🔄 Refresh List"
+                    Style="{StaticResource SecondaryButton}"
                     Command="{Binding RefreshCommand}" />
 
             <ActivityIndicator IsRunning="{Binding IsBusy}"
