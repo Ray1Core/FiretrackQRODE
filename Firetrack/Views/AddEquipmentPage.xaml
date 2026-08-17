@@ -16,7 +16,7 @@
                        FontAttributes="Bold"
                        TextColor="{StaticResource OnBackground}"
                        HorizontalOptions="Center" />
-                <Label Text="Enter name &amp; click Generate QR, then fill the rest."
+                <Label Text="Enter name &amp; type, then save – QR code is auto‑generated."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
                        HorizontalOptions="Center" />
@@ -33,33 +33,6 @@
                            TextColor="{StaticResource OnBackground}"
                            PlaceholderColor="{StaticResource Gray300}"
                            BackgroundColor="{StaticResource Surface}" />
-
-                    <!-- Generate QR Button -->
-                    <Button Text="🔄 Generate QR Code"
-                            Command="{Binding GenerateQRCommand}"
-                            Style="{StaticResource PrimaryButton}" />
-
-                    <!-- QR Preview -->
-                    <Border IsVisible="{Binding QRPreview, Converter={StaticResource IsNotNullConverter}}"
-                            Stroke="{StaticResource BorderColor}"
-                            StrokeThickness="1"
-                            StrokeShape="RoundRectangle 8"
-                            Padding="10"
-                            BackgroundColor="{StaticResource Surface}">
-                        <Image Source="{Binding QRPreview}"
-                               WidthRequest="150"
-                               HeightRequest="150"
-                               HorizontalOptions="Center" />
-                    </Border>
-
-                    <!-- QR Code (auto‑generated, read‑only) -->
-                    <Entry Style="{StaticResource EntryStyle}"
-                           Placeholder="QR Code (auto-generated)"
-                           Text="{Binding QRCode}"
-                           TextColor="{StaticResource OnBackground}"
-                           PlaceholderColor="{StaticResource Gray300}"
-                           BackgroundColor="{StaticResource Surface}"
-                           IsReadOnly="True" />
 
                     <!-- Type Picker -->
                     <Picker Title="Select Type"

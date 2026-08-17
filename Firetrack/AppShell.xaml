@@ -27,7 +27,23 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== HIDDEN GLOBAL PAGES (not in flyout) ===== -->
+    <!-- ===== GLOBAL TITLE VIEW ===== -->
+    <Shell.TitleView>
+        <Grid ColumnDefinitions="*, Auto" Padding="10,0">
+            <Label Grid.Column="0" Text="" />
+            <!-- Placeholder -->
+            <Button Grid.Column="1"
+                    Text="{Binding NotificationBadgeText}"
+                    Command="{Binding GoToNotificationsCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource OnBackground}"
+                    FontSize="18"
+                    VerticalOptions="Center"
+                    HorizontalOptions="End" />
+        </Grid>
+    </Shell.TitleView>
+
+    <!-- ===== HIDDEN GLOBAL PAGES ===== -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
@@ -58,25 +74,26 @@
                   Route="IcsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== Category Grid (hidden) ===== -->
+    <ShellContent Title="Notifications"
+                  ContentTemplate="{DataTemplate views:NotificationsPage}"
+                  Route="NotificationsPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
     <ShellContent Title="Equipment Category"
                   ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
                   Route="EquipmentCategoryPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== Category Items (hidden) ===== -->
     <ShellContent Title="Category Items"
                   ContentTemplate="{DataTemplate views:CategoryItemsPage}"
                   Route="CategoryItemsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== Dual-Scan Page (hidden, used from Transfer) ===== -->
-    <ShellContent Title="Dual-Scan Handshake"
+    <ShellContent Title="Transfer"
                   ContentTemplate="{DataTemplate views:TransferPage}"
                   Route="TransferPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ===== Disposal Requests (hidden, used from flyout) ===== -->
     <ShellContent Title="Disposal Requests"
                   ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
                   Route="DisposalRequestsPage"
@@ -107,22 +124,13 @@
                       ContentTemplate="{DataTemplate views:UserManagementPage}"
                       Route="UserManagementPage" />
 
-        <ShellContent Title="Add Equipment"
-                      ContentTemplate="{DataTemplate views:AddEquipmentPage}"
-                      Route="AddEquipmentPage" />
-
         <ShellContent Title="Pending Requests"
                       ContentTemplate="{DataTemplate views:PendingRequestsPage}"
                       Route="PendingRequestsPage" />
 
-        <!-- NEW: Disposal Requests -->
         <ShellContent Title="Disposal Requests"
                       ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
                       Route="DisposalRequestsPage" />
-
-        <ShellContent Title="Generate QR"
-                      ContentTemplate="{DataTemplate views:GenerateQRPage}"
-                      Route="GenerateQRPage" />
 
         <ShellContent Title="Scanner"
                       ContentTemplate="{DataTemplate views:ScannerPage}"
@@ -131,7 +139,6 @@
         <ShellContent Title="Audit Log"
                       ContentTemplate="{DataTemplate views:AuditLogPage}"
                       Route="AuditLogPage" />
-
     </FlyoutItem>
 
     <!-- ===== PERSONNEL FLYOUT GROUP ===== -->
@@ -162,11 +169,22 @@
         <ShellContent Title="Scanner"
                       ContentTemplate="{DataTemplate views:ScannerPage}"
                       Route="ScannerPage" />
-
-        <ShellContent Title="Generate QR"
-                      ContentTemplate="{DataTemplate views:GenerateQRPage}"
-                      Route="GenerateQRPage" />
-
     </FlyoutItem>
 
+    <!-- ===== FLYOUT FOOTER with Logout ===== -->
+    <Shell.FlyoutFooter>
+        <VerticalStackLayout Spacing="10" Padding="15,10">
+            <Button Text="Logout"
+                    Command="{Binding LogoutCommand}"
+                    BackgroundColor="{StaticResource DangerColor}"
+                    TextColor="White"
+                    CornerRadius="8"
+                    HeightRequest="45"
+                    FontAttributes="Bold" />
+            <Label Text="Fire Track v1.0"
+                   FontSize="12"
+                   TextColor="{StaticResource Gray300}"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+    </Shell.FlyoutFooter>
 </Shell>

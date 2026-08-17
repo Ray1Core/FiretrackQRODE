@@ -1,7 +1,7 @@
-﻿using System.Collections.ObjectModel;
-using System.Windows.Input;
-using Firetrack.Models;
+﻿using Firetrack.Models;
 using Firetrack.Services;
+using System.Collections.ObjectModel;
+using System.Windows.Input;
 using Microsoft.Maui.Controls;
 
 namespace Firetrack.ViewModels
@@ -11,6 +11,9 @@ namespace Firetrack.ViewModels
         private readonly DatabaseService _db;
         private ObservableCollection<CategoryGroup> _categories = new();
         private bool _isBusy;
+        private bool _isAdmin;
+        private string _searchText = string.Empty;
+        private string _selectedStatusFilter = "All";
 
         public ObservableCollection<CategoryGroup> Categories
         {
@@ -24,15 +27,54 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public bool IsAdmin
+        {
+            get => _isAdmin;
+            set { _isAdmin = value; OnPropertyChanged(); }
+        }
+
+        public string SearchText
+        {
+            get => _searchText;
+            set { _searchText = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedStatusFilter
+        {
+            get => _selectedStatusFilter;
+            set
+            {
+                if (_selectedStatusFilter != value)
+                {
+                    _selectedStatusFilter = value;
+                    OnPropertyChanged();
+                    ApplyFilter();
+                }
+            }
+        }
+
+        public ObservableCollection<string> StatusFilterOptions { get; } = new()
+        {
+            "All",
+            "Available",
+            "Issued",
+            "Damaged",
+            "InRepair",
+            "Disposed"
+        };
+
         public ICommand LoadCategoriesCommand { get; }
+        public ICommand ApplyFilterCommand { get; }
         public ICommand CategoryTappedCommand { get; }
         public ICommand GoToAddEquipmentCommand { get; }
 
         public EquipmentCategoryViewModel()
         {
             _db = App.Database!;
+            IsAdmin = App.CurrentUser?.Role == "Admin";
 
             LoadCategoriesCommand = new Command(OnLoadCategories);
+            ApplyFilterCommand = new Command(ApplyFilter);
             CategoryTappedCommand = new Command<CategoryGroup>(OnCategoryTapped);
             GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("AddEquipmentPage"));
 
@@ -41,6 +83,11 @@ namespace Firetrack.ViewModels
 
         private async void OnLoadCategories()
         {
+            await LoadCategoriesAsync();
+        }
+
+        private async Task LoadCategoriesAsync()
+        {
             if (_db == null) return;
 
             IsBusy = true;
@@ -48,13 +95,25 @@ namespace Firetrack.ViewModels
             {
                 var all = await _db.GetEquipmentsAsync();
 
-                // Filter based on user role
-                var isPersonnel = App.CurrentUser?.Role == "Personnel";
-                var filtered = isPersonnel
-                    ? all.Where(e => e.Status == "Available" && string.IsNullOrEmpty(e.RequestStatus))
-                    : all;
+                // Apply status filter
+                if (SelectedStatusFilter != "All")
+                {
+                    all = all.Where(e => e.Status == SelectedStatusFilter).ToList();
+                }
 
-                var grouped = filtered
+                // Apply search filter
+                if (!string.IsNullOrWhiteSpace(SearchText))
+                {
+                    var search = SearchText.Trim();
+                    all = all.Where(e =>
+                        e.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        e.QRCode.Contains(search, StringComparison.OrdinalIgnoreCase) ||
+                        e.Type.Contains(search, StringComparison.OrdinalIgnoreCase)
+                    ).ToList();
+                }
+
+                // Group by Name + Type
+                var grouped = all
                     .GroupBy(e => new { e.Name, e.Type })
                     .Select(g => new CategoryGroup
                     {
@@ -80,14 +139,15 @@ namespace Firetrack.ViewModels
             }
         }
 
+        private void ApplyFilter()
+        {
+            _ = LoadCategoriesAsync();
+        }
+
         private async void OnCategoryTapped(CategoryGroup category)
         {
             if (category == null) return;
-
-            var navParams = new Dictionary<string, object>
-            {
-                { "categoryName", category.Name }
-            };
+            var navParams = new Dictionary<string, object> { { "categoryName", category.Name } };
             await Shell.Current.GoToAsync("CategoryItemsPage", navParams);
         }
     }

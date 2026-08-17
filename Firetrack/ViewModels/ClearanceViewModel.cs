@@ -60,7 +60,6 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
-        // Commands
         public ICommand MarkReturnedCommand { get; }
         public ICommand MarkAllReturnedCommand { get; }
         public ICommand GenerateCertificateCommand { get; }
@@ -76,7 +75,6 @@ namespace Firetrack.ViewModels
             LoadOfficers();
         }
 
-        // ---- Load Officers ----
         private async void LoadOfficers()
         {
             var users = await _db.GetUsersAsync();
@@ -85,7 +83,6 @@ namespace Firetrack.ViewModels
                 Officers.Add(u);
         }
 
-        // ---- Load Assigned Equipment ----
         private async void LoadAssignedEquipment()
         {
             if (SelectedOfficer == null)
@@ -102,7 +99,6 @@ namespace Firetrack.ViewModels
             IsBusy = false;
         }
 
-        // ---- Mark Single Equipment as Returned ----
         private async void OnMarkReturned()
         {
             if (SelectedEquipment == null)
@@ -144,7 +140,7 @@ namespace Firetrack.ViewModels
                     await _db.LogActionAsync(
                         App.CurrentUser.Username,
                         "Clearance Return",
-                        $"Marked '{SelectedEquipment.Name}' as returned from {SelectedEquipment.AssignedToUsername ?? "unknown"}");
+                        $"Marked '{SelectedEquipment.Name}' as returned.");
                 }
 
                 StatusMessage = $"✅ {SelectedEquipment.Name} marked as returned.";
@@ -161,7 +157,6 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- Mark All Equipment as Returned ----
         private async void OnMarkAllReturned()
         {
             if (SelectedOfficer == null)
@@ -204,7 +199,7 @@ namespace Firetrack.ViewModels
                             ToUser = App.CurrentUser?.Username ?? "admin",
                             Timestamp = DateTime.Now,
                             Action = "Return",
-                            Remarks = $"Marked all returned during clearance."
+                            Remarks = "Marked all returned during clearance."
                         };
                         await _db.SaveTransactionAsync(transaction);
                     }
@@ -231,7 +226,6 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- Generate Clearance Certificate ----
         private async void OnGenerateCertificate()
         {
             if (SelectedOfficer == null)
@@ -240,7 +234,7 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            // First, ensure all equipment is returned
+            // Check for outstanding items
             var issuedItems = AssignedEquipment.Where(e => e.Status == "Issued").ToList();
             if (issuedItems.Any())
             {
@@ -251,7 +245,6 @@ namespace Firetrack.ViewModels
                     "Cancel");
                 if (confirm)
                 {
-                    // Mark all issued items as returned
                     IsBusy = true;
                     try
                     {
@@ -269,7 +262,7 @@ namespace Firetrack.ViewModels
                                 ToUser = App.CurrentUser?.Username ?? "admin",
                                 Timestamp = DateTime.Now,
                                 Action = "Return",
-                                Remarks = $"Auto-returned before clearance certificate."
+                                Remarks = "Auto-returned before clearance certificate."
                             };
                             await _db.SaveTransactionAsync(transaction);
                         }
@@ -290,31 +283,41 @@ namespace Firetrack.ViewModels
                 }
             }
 
-            // Now generate the certificate (assumes all are returned)
+            // Generate certificate
             IsBusy = true;
             StatusMessage = string.Empty;
 
             try
             {
                 var pdfService = new PdfGenerationService();
-                var allItems = AssignedEquipment.ToList(); // all should be returned
+                var allItems = AssignedEquipment.ToList();
                 var pdfBytes = pdfService.GenerateClearanceCertificate(SelectedOfficer, allItems);
 
                 var fileName = $"Clearance_{SelectedOfficer.Username}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "Clearance");
-                if (!Directory.Exists(downloadsPath))
-                    Directory.CreateDirectory(downloadsPath);
-
+                Directory.CreateDirectory(downloadsPath);
                 var filePath = Path.Combine(downloadsPath, fileName);
                 await File.WriteAllBytesAsync(filePath, pdfBytes);
 
-                // Open the PDF
-                await Launcher.Default.OpenAsync(new OpenFileRequest
+                // Open with fallback
+                try
                 {
-                    File = new ReadOnlyFile(filePath)
-                });
+                    await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
+                }
+                catch
+                {
+                    await Share.Default.RequestAsync(new ShareFileRequest
+                    {
+                        Title = "View Clearance Certificate",
+                        File = new ShareFile(filePath)
+                    });
+                }
 
                 StatusMessage = $"✅ Clearance certificate generated for {SelectedOfficer.FullName}";
+
+                // ✅ Refresh UI
+                LoadAssignedEquipment();
+                SelectedEquipment = null;
             }
             catch (Exception ex)
             {
@@ -326,7 +329,6 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- Refresh ----
         private void OnRefresh()
         {
             LoadOfficers();

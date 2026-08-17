@@ -15,6 +15,7 @@ namespace Firetrack.ViewModels
         private UserModel? _officer;
         private UserModel? _issuer;
         private bool _isBusy;
+        private string _statusMessage = string.Empty;
 
         public EquipmentModel Equipment
         {
@@ -40,8 +41,13 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public string StatusMessage
+        {
+            get => _statusMessage;
+            set { _statusMessage = value; OnPropertyChanged(); }
+        }
+
         public ICommand GenerateIcsCommand { get; }
-        // GoBackCommand removed – navigation handled by Shell
 
         public IcsViewModel(EquipmentModel? equipment, UserModel? officer)
         {
@@ -87,35 +93,59 @@ namespace Firetrack.ViewModels
                 Issuer.Role = "Admin";
 
             GenerateIcsCommand = new Command(OnGenerateIcs);
-            // GoBackCommand assignment removed
         }
 
         private async void OnGenerateIcs()
         {
             IsBusy = true;
+            StatusMessage = string.Empty;
+
             try
             {
+                System.Diagnostics.Debug.WriteLine("📄 Generating ICS PDF...");
                 var pdfBytes = _pdfService.GenerateIcsPdf(Equipment, Officer, Issuer);
+                System.Diagnostics.Debug.WriteLine($"✅ PDF generated, size: {pdfBytes.Length} bytes");
 
-                var fileName = $"ICS_{Equipment.QRCode}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
+                var fileName = $"ICS_{Equipment.QRCode}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "ICS");
-                if (!Directory.Exists(downloadsPath))
-                    Directory.CreateDirectory(downloadsPath);
-
+                Directory.CreateDirectory(downloadsPath);
                 var filePath = Path.Combine(downloadsPath, fileName);
                 await File.WriteAllBytesAsync(filePath, pdfBytes);
+                System.Diagnostics.Debug.WriteLine($"✅ File saved: {filePath}");
 
-                await Launcher.Default.OpenAsync(new OpenFileRequest
+                // Verify file exists
+                if (!File.Exists(filePath))
                 {
-                    File = new ReadOnlyFile(filePath)
-                });
+                    StatusMessage = "❌ PDF file was not created.";
+                    IsBusy = false;
+                    return;
+                }
 
-                await Shell.Current.DisplayAlert("Success", $"ICS saved to:\n{filePath}", "OK");
+                // Try to open with Launcher, fallback to Share
+                try
+                {
+                    await Launcher.Default.OpenAsync(new OpenFileRequest
+                    {
+                        File = new ReadOnlyFile(filePath)
+                    });
+                    StatusMessage = "✅ ICS generated and opened successfully.";
+                }
+                catch
+                {
+                    // Fallback to Share
+                    await Share.Default.RequestAsync(new ShareFileRequest
+                    {
+                        Title = "View ICS PDF",
+                        File = new ShareFile(filePath)
+                    });
+                    StatusMessage = "✅ ICS generated. Shared/opened using fallback.";
+                }
             }
             catch (Exception ex)
             {
-                await Shell.Current.DisplayAlert("Error", $"Failed to generate PDF: {ex.Message}", "OK");
                 System.Diagnostics.Debug.WriteLine($"❌ PDF error: {ex}");
+                StatusMessage = $"❌ Failed to generate PDF: {ex.Message}";
+                await Shell.Current.DisplayAlert("Error", $"Failed to generate PDF: {ex.Message}", "OK");
             }
             finally
             {

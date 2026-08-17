@@ -8,8 +8,12 @@
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="16">
 
-            <!-- ========== HEADER (no hamburger) ========== -->
-            <Grid ColumnDefinitions="*, Auto, Auto" RowDefinitions="Auto" ColumnSpacing="10" VerticalOptions="Start">
+            <!-- ========== HEADER ========== -->
+            <Grid ColumnDefinitions="*, Auto, Auto"
+                  RowDefinitions="Auto"
+                  ColumnSpacing="10"
+                  VerticalOptions="Start">
+
                 <!-- Profile / Name area -->
                 <Grid Grid.Column="0"
                       ColumnDefinitions="Auto, *"
@@ -17,7 +21,9 @@
                       ColumnSpacing="10"
                       HorizontalOptions="Center"
                       VerticalOptions="Center">
-                    <Border Grid.Row="0" Grid.RowSpan="2"
+
+                    <Border Grid.Row="0"
+                            Grid.RowSpan="2"
                             Grid.Column="0"
                             Stroke="Transparent"
                             StrokeThickness="0"
@@ -34,6 +40,7 @@
                                HorizontalOptions="Center"
                                VerticalOptions="Center" />
                     </Border>
+
                     <Label Grid.Row="0"
                            Grid.Column="1"
                            Text="{Binding FullName}"
@@ -42,55 +49,54 @@
                            TextColor="{StaticResource OnBackground}"
                            VerticalOptions="End"
                            HorizontalOptions="Start" />
+
                     <Label Grid.Row="1"
                            Grid.Column="1"
                            Text="{Binding UserRole, StringFormat='Role: {0}'}"
                            FontSize="14"
-                           TextColor="{StaticResource TextSecondaryColor}"
+                           TextColor="{StaticResource OnBackground}"
                            VerticalOptions="Start"
                            HorizontalOptions="Start" />
                 </Grid>
 
-                <!-- Notifications -->
-                <Button Grid.Column="1"
-                        Text="🔔"
-                        BackgroundColor="Transparent"
-                        TextColor="{StaticResource OnBackground}"
-                        Command="{Binding GoToNotificationsCommand}"
-                        WidthRequest="50"
-                        HeightRequest="50"
-                        FontSize="24"
-                        CornerRadius="0"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center" />
+                <!-- Notifications (bell icon) -->
+                <ImageButton Grid.Column="1"
+                             Source="bell.png"
+                             BackgroundColor="Transparent"
+                             WidthRequest="40"
+                             HeightRequest="40"
+                             Command="{Binding GoToNotificationsCommand}"
+                             HorizontalOptions="Center"
+                             VerticalOptions="Center" />
 
-                <!-- Logout -->
-                <Button Grid.Column="2"
-                        Text="🚪"
-                        BackgroundColor="Transparent"
-                        TextColor="{StaticResource DangerColor}"
-                        Command="{Binding LogoutCommand}"
-                        WidthRequest="50"
-                        HeightRequest="50"
-                        FontSize="24"
-                        CornerRadius="0"
-                        HorizontalOptions="Center"
-                        VerticalOptions="Center" />
+                <!-- Logout (logout icon) -->
+                <ImageButton Grid.Column="2"
+                             Source="logout.png"
+                             BackgroundColor="Transparent"
+                             WidthRequest="40"
+                             HeightRequest="40"
+                             Command="{Binding LogoutCommand}"
+                             HorizontalOptions="Center"
+                             VerticalOptions="Center" />
             </Grid>
 
             <!-- ========== METRICS CARDS (Admin only) ========== -->
             <Border IsVisible="{Binding IsAdmin}" Padding="0">
-                <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto, Auto, Auto" ColumnSpacing="12" RowSpacing="12">
+                <Grid ColumnDefinitions="*, *"
+                      RowDefinitions="Auto, Auto, Auto, Auto"
+                      ColumnSpacing="12"
+                      RowSpacing="12">
+
                     <!-- Row 0 -->
                     <Border Grid.Row="0" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="📦 Total" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="📦 Total" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding TotalEquipment}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
                         </VerticalStackLayout>
                     </Border>
                     <Border Grid.Row="0" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="✅ Available" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="✅ Available" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding AvailableCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SuccessColor}" />
                         </VerticalStackLayout>
                     </Border>
@@ -98,13 +104,13 @@
                     <!-- Row 1 -->
                     <Border Grid.Row="1" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="🔄 Issued" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="🔄 Issued" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding IssuedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
                         </VerticalStackLayout>
                     </Border>
                     <Border Grid.Row="1" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="⚠️ Damaged" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="⚠️ Damaged" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding DamagedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
                         </VerticalStackLayout>
                     </Border>
@@ -112,13 +118,13 @@
                     <!-- Row 2 -->
                     <Border Grid.Row="2" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="🔧 In Repair" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="🔧 In Repair" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding InRepairCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource SecondaryColor}" />
                         </VerticalStackLayout>
                     </Border>
                     <Border Grid.Row="2" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="📋 Pending Requests" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="📋 Pending Requests" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding PendingRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource WarningColor}" />
                         </VerticalStackLayout>
                     </Border>
@@ -126,21 +132,22 @@
                     <!-- Row 3 -->
                     <Border Grid.Row="3" Grid.Column="0" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="🚫 Cancelled" FontSize="14" TextColor="{StaticResource Gray300}" />
+                            <Label Text="🚫 Cancelled" FontSize="14" TextColor="{StaticResource OnBackground}" />
                             <Label Text="{Binding RejectedRequests}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource DangerColor}" />
                         </VerticalStackLayout>
                     </Border>
                     <Border Grid.Row="3" Grid.Column="1" Style="{StaticResource CardStyle}" Padding="10">
                         <VerticalStackLayout Spacing="4" HorizontalOptions="Center">
-                            <Label Text="🗑️ Disposed" FontSize="14" TextColor="{StaticResource Gray300}" />
-                            <Label Text="{Binding DisposedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource Gray500}" />
+                            <Label Text="🗑️ Disposed" FontSize="14" TextColor="{StaticResource OnBackground}" />
+                            <Label Text="{Binding DisposedCount}" FontSize="24" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
                         </VerticalStackLayout>
                     </Border>
                 </Grid>
             </Border>
 
             <!-- ========== ASSIGNED EQUIPMENT (Personnel only) ========== -->
-            <Border Style="{StaticResource CardStyle}" Padding="0"
+            <Border Style="{StaticResource CardStyle}"
+                    Padding="0"
                     IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}">
                 <VerticalStackLayout>
                     <Label Text="📦 Your Assigned Equipment"
@@ -155,7 +162,7 @@
                                     <Label Text="{Binding Name}"
                                            Grid.Column="0"
                                            FontSize="14"
-                                           TextColor="{StaticResource TextPrimaryColor}" />
+                                           TextColor="{StaticResource OnBackground}" />
                                     <Label Grid.Column="1"
                                            Text="{Binding Status}"
                                            FontSize="12"
@@ -198,12 +205,17 @@
             </Border>
 
             <!-- ========== QUICK ACTIONS ========== -->
-            <Grid ColumnDefinitions="*, *" RowDefinitions="Auto, Auto" ColumnSpacing="12" RowSpacing="12">
+            <Grid ColumnDefinitions="*, *"
+                  RowDefinitions="Auto, Auto"
+                  ColumnSpacing="12"
+                  RowSpacing="12">
+
                 <Button Grid.Row="0" Grid.Column="0"
                         Text="🔄 Transfer"
                         Command="{Binding GoToTransferCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin}" />
+
                 <Button Grid.Row="0" Grid.Column="1"
                         Text="📷 Scan QR"
                         Command="{Binding GoToScannerCommand}"
@@ -220,6 +232,7 @@
                         Command="{Binding GoToClearanceCommand}"
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin}" />
+
                 <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                         Text="👤 Profile"
                         Command="{Binding GoToProfileCommand}"

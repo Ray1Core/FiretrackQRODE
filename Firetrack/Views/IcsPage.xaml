@@ -4,7 +4,6 @@
              x:Class="Firetrack.Views.IcsPage"
              Title="Generate ICS"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
     <ScrollView>
         <VerticalStackLayout Padding="20" Spacing="20">
@@ -28,9 +27,9 @@
                            FontAttributes="Bold"
                            FontSize="16"
                            TextColor="{StaticResource PrimaryColor}" />
-                    <Label Text="{Binding Equipment.Name}" />
-                    <Label Text="{Binding Equipment.QRCode}" />
-                    <Label Text="{Binding Equipment.Type}" />
+                    <Label Text="{Binding Equipment.Name}" TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Equipment.QRCode}" TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Equipment.Type}" TextColor="{StaticResource OnBackground}" />
                 </VerticalStackLayout>
             </Border>
 
@@ -41,9 +40,9 @@
                            FontAttributes="Bold"
                            FontSize="16"
                            TextColor="{StaticResource PrimaryColor}" />
-                    <Label Text="{Binding Officer.FullName}" />
-                    <Label Text="{Binding Officer.Username}" />
-                    <Label Text="{Binding Officer.Role}" />
+                    <Label Text="{Binding Officer.FullName}" TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Officer.Username}" TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Officer.Role}" TextColor="{StaticResource OnBackground}" />
                 </VerticalStackLayout>
             </Border>
 
@@ -54,10 +53,17 @@
                            FontAttributes="Bold"
                            FontSize="16"
                            TextColor="{StaticResource PrimaryColor}" />
-                    <Label Text="{Binding Issuer.FullName}" />
-                    <Label Text="{Binding Issuer.Role}" />
+                    <Label Text="{Binding Issuer.FullName}" TextColor="{StaticResource OnBackground}" />
+                    <Label Text="{Binding Issuer.Role}" TextColor="{StaticResource OnBackground}" />
                 </VerticalStackLayout>
             </Border>
+
+            <!-- Status Message (NEW) -->
+            <Label Text="{Binding StatusMessage}"
+                   TextColor="{Binding StatusMessage, Converter={StaticResource StringToColorConverter}}"
+                   HorizontalOptions="Center"
+                   FontSize="14"
+                   IsVisible="{Binding StatusMessage, Converter={StaticResource IsNotNullConverter}}" />
 
             <!-- Buttons -->
             <Button Text="📄 Generate &amp; Download ICS"

@@ -6,7 +6,7 @@ using ZXing.Net.Maui.Controls;
 
 namespace Firetrack.Views;
 
-public partial class ScannerPage : ContentPage
+public partial class ScannerPage : ContentPage, IQueryAttributable
 {
     private ScannerViewModel _viewModel;
 
@@ -15,6 +15,15 @@ public partial class ScannerPage : ContentPage
         InitializeComponent();
         _viewModel = new ScannerViewModel();
         BindingContext = _viewModel;
+    }
+
+    // ✅ Receives query parameters from navigation
+    public void ApplyQueryAttributes(IDictionary<string, object> query)
+    {
+        if (query.TryGetValue("returnTo", out var returnToObj) && returnToObj is string returnTo)
+        {
+            _viewModel.ReturnToPage = returnTo;
+        }
     }
 
     protected override async void OnAppearing()
@@ -26,15 +35,17 @@ public partial class ScannerPage : ContentPage
         if (status != PermissionStatus.Granted)
         {
             await DisplayAlert("Permission Denied", "Camera permission is required to scan QR codes.", "OK");
-            // ✅ Use absolute route to Dashboard
-            await Shell.Current.GoToAsync("//DashboardPage");
+            // Navigate to returnTo page or Dashboard
+            if (!string.IsNullOrEmpty(_viewModel.ReturnToPage))
+                await Shell.Current.GoToAsync($"//{_viewModel.ReturnToPage}");
+            else
+                await Shell.Current.GoToAsync("//DashboardPage");
             return;
         }
 
-        // ✅ CRITICAL: Set formats to QR only (fix for 0.4.0)
         cameraBarcodeReaderView.Options = new BarcodeReaderOptions
         {
-            Formats = BarcodeFormats.TwoDimensional   // QR Codes only
+            Formats = BarcodeFormats.TwoDimensional
         };
 
         _viewModel.IsScanning = true;

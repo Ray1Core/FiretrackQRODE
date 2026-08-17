@@ -16,6 +16,7 @@ namespace Firetrack.ViewModels
         private string _scanResult = string.Empty;
         private EquipmentModel? _foundEquipment;
         private bool _isBusy;
+        private string _returnToPage = string.Empty;
 
         public bool IsScanning
         {
@@ -41,14 +42,28 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public string ReturnToPage
+        {
+            get => _returnToPage;
+            set { _returnToPage = value; OnPropertyChanged(); }
+        }
+
         public ICommand CancelCommand { get; }
 
         public ScannerViewModel()
         {
             _db = App.Database;
             IsScanning = true;
-            // ✅ Use absolute route to Dashboard
-            CancelCommand = new Command(async () => await Shell.Current.GoToAsync("//DashboardPage"));
+            CancelCommand = new Command(OnCancel);
+        }
+
+        private async void OnCancel()
+        {
+            // Navigate back to the calling page, or Dashboard if none
+            if (!string.IsNullOrEmpty(ReturnToPage))
+                await Shell.Current.GoToAsync($"//{ReturnToPage}");
+            else
+                await Shell.Current.GoToAsync("//DashboardPage");
         }
 
         public async Task ProcessScannedQR(string qrValue)
@@ -67,6 +82,19 @@ namespace Firetrack.ViewModels
                 var equipmentList = await _db.GetEquipmentsAsync();
                 var found = equipmentList.FirstOrDefault(e => e.QRCode == qrValue);
 
+                // If we are returning to a caller, just pass the QR back and navigate
+                if (!string.IsNullOrEmpty(ReturnToPage))
+                {
+                    // Navigate back to ReturnToPage with the QR as a parameter
+                    var navParams = new Dictionary<string, object>
+                    {
+                        { "scannedQR", qrValue }
+                    };
+                    await Shell.Current.GoToAsync($"..", navParams);
+                    return;
+                }
+
+                // Otherwise, show equipment details (standalone scanner behaviour)
                 if (found != null)
                 {
                     FoundEquipment = found;

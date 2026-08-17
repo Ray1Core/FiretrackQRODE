@@ -1,8 +1,9 @@
 ﻿using Microsoft.Extensions.Logging;
 using Firetrack.Services;
 using SQLitePCL;
-using ZXing.Net.Maui.Controls;   // ✅ Required for .UseBarcodeReader()
-using Microsoft.Maui.Storage;   // For FileSystem
+using ZXing.Net.Maui.Controls;
+using Microsoft.Maui.Storage;
+using PdfSharpCore.Fonts;   // <-- ADD THIS
 
 namespace Firetrack;
 
@@ -19,7 +20,7 @@ public static class MauiProgram
         var builder = MauiApp.CreateBuilder();
         builder
             .UseMauiApp<App>()
-            .UseBarcodeReader()   // ✅ ESSENTIAL – enables ZXing QR scanning
+            .UseBarcodeReader()
             .ConfigureFonts(fonts =>
             {
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
@@ -31,10 +32,9 @@ public static class MauiProgram
         // ✅ Register SyncService with proper connection strings
         builder.Services.AddSingleton<SyncService>(provider =>
         {
-            // SQLite path (Android) or SQL Server connection string (Windows)
             string sqlitePath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
             string sqliteConnectionString = $"Data Source={sqlitePath}";
-            string sqlServerConnectionString = App.SqlServerConnectionString; // from App.xaml.cs
+            string sqlServerConnectionString = App.SqlServerConnectionString;
 
             return new SyncService(sqliteConnectionString, sqlServerConnectionString);
         });
@@ -42,6 +42,18 @@ public static class MauiProgram
 #if DEBUG
         builder.Logging.AddDebug();
 #endif
+
+        // ===== ✅ FIX PDF FONT RESOLVER =====
+        // Register the custom font resolver BEFORE any PDF is generated
+        try
+        {
+            GlobalFontSettings.FontResolver = new PdfFontResolver();
+            System.Diagnostics.Debug.WriteLine("✅ PDF Font Resolver registered successfully.");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"⚠️ Failed to set PDF font resolver: {ex.Message}");
+        }
 
         return builder.Build();
     }

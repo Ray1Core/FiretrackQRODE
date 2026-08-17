@@ -93,7 +93,7 @@ namespace Firetrack.ViewModels
 
             string remarks = await Shell.Current.DisplayPromptAsync("Remarks",
                 "Enter any remarks (optional):", "OK", "Cancel");
-            if (remarks == null) return; // user cancelled
+            if (remarks == null) return;
 
             IsBusy = true;
             try
@@ -110,14 +110,12 @@ namespace Firetrack.ViewModels
                 if (success)
                 {
                     StatusMessage = $"✅ Disposal approved for '{equipment.Name}'.";
-                    OnLoadRequests(); // refresh
+                    OnLoadRequests(); // refresh list
 
-                    // Optionally generate certificate automatically
                     var certResult = await Shell.Current.DisplayAlert("Generate Certificate",
                         "Generate disposal certificate now?", "Yes", "No");
                     if (certResult)
                     {
-                        // Reload equipment to get updated fields
                         var updated = await _db.GetEquipmentByQRAsync(equipment.QRCode);
                         if (updated != null)
                             await GenerateCertificate(updated);
@@ -169,7 +167,7 @@ namespace Firetrack.ViewModels
                 if (success)
                 {
                     StatusMessage = $"✅ Disposal rejected for '{equipment.Name}'.";
-                    OnLoadRequests();
+                    OnLoadRequests(); // refresh list
                 }
                 else
                 {
@@ -194,7 +192,6 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            // Ensure the disposal is approved
             if (equipment.DisposalStatus != "Approved")
             {
                 StatusMessage = "Disposal must be approved first.";
@@ -220,18 +217,28 @@ namespace Firetrack.ViewModels
 
                 var fileName = $"Disposal_{equipment.QRCode}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "DisposalCertificates");
-                if (!Directory.Exists(downloadsPath))
-                    Directory.CreateDirectory(downloadsPath);
-
+                Directory.CreateDirectory(downloadsPath);
                 var filePath = Path.Combine(downloadsPath, fileName);
                 await File.WriteAllBytesAsync(filePath, pdfBytes);
 
-                await Launcher.Default.OpenAsync(new OpenFileRequest
+                // Open with fallback
+                try
                 {
-                    File = new ReadOnlyFile(filePath)
-                });
+                    await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
+                }
+                catch
+                {
+                    await Share.Default.RequestAsync(new ShareFileRequest
+                    {
+                        Title = "View Disposal Certificate",
+                        File = new ShareFile(filePath)
+                    });
+                }
 
                 StatusMessage = $"📄 Disposal certificate generated for '{equipment.Name}'.";
+
+                // ✅ Refresh the pending requests list
+                OnLoadRequests();
             }
             catch (Exception ex)
             {

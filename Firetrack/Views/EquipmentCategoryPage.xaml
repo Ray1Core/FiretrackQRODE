@@ -6,31 +6,53 @@
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
 
-    <Grid RowDefinitions="Auto, *">
-        <!-- Header -->
-        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource Background}">
+    <Grid RowDefinitions="Auto, Auto, Auto, *">
+
+        <!-- Header with Add Button -->
+        <VerticalStackLayout Grid.Row="0" Padding="20,10" Spacing="5" BackgroundColor="{StaticResource Background}">
             <Grid ColumnDefinitions="*, Auto">
                 <Label Text="📋 Equipment Inventory"
                        FontSize="24"
                        FontAttributes="Bold"
                        TextColor="{StaticResource OnBackground}"
                        VerticalOptions="Center" />
-                <!-- In the header grid -->
                 <Button Grid.Column="1"
-                       Text="➕ Add"
-                       Command="{Binding GoToAddEquipmentCommand}"
-                       Style="{StaticResource PrimaryButton}"
-                       HeightRequest="40"
-                       FontSize="14"
-                       IsVisible="{Binding IsAdmin}" />
+                        Text="➕ Add"
+                        Command="{Binding GoToAddEquipmentCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        HeightRequest="40"
+                        FontSize="14"
+                        IsVisible="{Binding IsAdmin}" />
             </Grid>
-            <Label Text="Tap a category to view all items."
-                   FontSize="14"
-                   TextColor="{StaticResource Gray300}" />
+        </VerticalStackLayout>
+
+        <!-- Filter & Search -->
+        <VerticalStackLayout Grid.Row="1" Padding="20,0,20,10" Spacing="8">
+            <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
+                <Picker Title="Filter by Status"
+                        ItemsSource="{Binding StatusFilterOptions}"
+                        SelectedItem="{Binding SelectedStatusFilter}"
+                        TextColor="{StaticResource OnBackground}"
+                        TitleColor="{StaticResource Gray300}"
+                        BackgroundColor="{StaticResource Surface}" />
+                <Entry Grid.Column="1"
+                       Style="{StaticResource EntryStyle}"
+                       Placeholder="Search..."
+                       Text="{Binding SearchText}"
+                       TextColor="{StaticResource OnBackground}"
+                       PlaceholderColor="{StaticResource Gray300}"
+                       BackgroundColor="{StaticResource Surface}"
+                       WidthRequest="120" />
+            </Grid>
+            <Button Text="🔍 Apply Filter"
+                    Command="{Binding ApplyFilterCommand}"
+                    Style="{StaticResource PrimaryButton}"
+                    HeightRequest="35"
+                    FontSize="12" />
         </VerticalStackLayout>
 
         <!-- Category Grid -->
-        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCategoriesCommand}">
+        <RefreshView Grid.Row="2" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCategoriesCommand}">
             <CollectionView ItemsSource="{Binding Categories}"
                             EmptyView="No equipment found."
                             x:Name="CategoryCollection">
@@ -46,12 +68,10 @@
                                 Padding="10"
                                 HeightRequest="140">
                             <Grid RowDefinitions="Auto, *, Auto">
-                                <!-- Type icon -->
                                 <Label Grid.Row="0"
                                        Text="{Binding Type, Converter={StaticResource StringToEmojiConverter}}"
                                        FontSize="24"
                                        HorizontalOptions="Center" />
-                                <!-- Name -->
                                 <Label Grid.Row="1"
                                        Text="{Binding Name}"
                                        FontSize="14"
@@ -61,7 +81,6 @@
                                        VerticalOptions="Center"
                                        LineBreakMode="WordWrap"
                                        MaxLines="2" />
-                                <!-- Quantity badge -->
                                 <Border Grid.Row="2"
                                         BackgroundColor="{StaticResource PrimaryColor}"
                                         StrokeThickness="0"
@@ -82,5 +101,7 @@
                 </CollectionView.ItemTemplate>
             </CollectionView>
         </RefreshView>
+
+        <ActivityIndicator Grid.Row="3" IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
     </Grid>
 </ContentPage>

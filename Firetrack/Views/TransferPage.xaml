@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.TransferPage"
-             Title="Dual‑Scan Handshake"
+             Title="Transfer Equipment"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
 
@@ -11,79 +11,68 @@
 
             <!-- Header -->
             <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
-                <Label Text="🔄 Dual‑Scan Handshake"
+                <Label Text="🔄 Transfer Equipment"
                        FontSize="28"
                        FontAttributes="Bold"
                        TextColor="{StaticResource PrimaryColor}"
                        HorizontalOptions="Center" />
-                <Label Text="Step 1: Admin → Step 2: Personnel → Step 3: Equipment"
+                <Label Text="Scan equipment QR, select personnel, then transfer."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
                        HorizontalOptions="Center" />
             </VerticalStackLayout>
 
-            <!-- Step 1: Admin Scan -->
+            <!-- Step 1: Scan Equipment -->
             <Border Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="Step 1: Admin Verification"
-                           FontAttributes="Bold"
-                           FontSize="16"
-                           TextColor="{StaticResource PrimaryColor}" />
-                    <Label Text="{Binding ScanStatus}" 
-                           FontSize="14"
-                           TextColor="{Binding ScanStatus, Converter={StaticResource StringToColorConverter}}" />
-                    <Button Text="📷 Scan Admin QR"
-                            Command="{Binding ScanAdminCommand}"
-                            Style="{StaticResource PrimaryButton}"
-                            IsEnabled="{Binding IsAdminScanComplete, Converter={StaticResource InvertedBoolConverter}}" />
-                    <Label Text="{Binding AdminUsername, StringFormat='Admin: {0}'}"
-                           FontSize="14"
-                           TextColor="{StaticResource SuccessColor}"
-                           IsVisible="{Binding IsAdminScanComplete}" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Step 2: Personnel Scan -->
-            <Border Style="{StaticResource CardStyle}">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="Step 2: Personnel Verification"
-                           FontAttributes="Bold"
-                           FontSize="16"
-                           TextColor="{StaticResource PrimaryColor}" />
-                    <Button Text="📷 Scan Personnel QR"
-                            Command="{Binding ScanPersonnelCommand}"
-                            Style="{StaticResource PrimaryButton}"
-                            IsEnabled="{Binding IsAdminScanComplete}" />
-                    <Label Text="{Binding PersonnelUsername, StringFormat='Personnel: {0}'}"
-                           FontSize="14"
-                           TextColor="{StaticResource SuccessColor}"
-                           IsVisible="{Binding IsPersonnelScanComplete}" />
-                </VerticalStackLayout>
-            </Border>
-
-            <!-- Step 3: Equipment Scan -->
-            <Border Style="{StaticResource CardStyle}">
-                <VerticalStackLayout Spacing="8">
-                    <Label Text="Step 3: Equipment Verification"
+                    <Label Text="Step 1: Scan Equipment QR"
                            FontAttributes="Bold"
                            FontSize="16"
                            TextColor="{StaticResource PrimaryColor}" />
                     <Button Text="📷 Scan Equipment QR"
                             Command="{Binding ScanEquipmentCommand}"
-                            Style="{StaticResource PrimaryButton}"
-                            IsEnabled="{Binding IsPersonnelScanComplete}" />
-                    <Label Text="{Binding SelectedEquipment.Name, StringFormat='Equipment: {0}'}"
+                            Style="{StaticResource PrimaryButton}" />
+                    <Label Text="{Binding ScanStatus}"
                            FontSize="14"
-                           TextColor="{StaticResource SuccessColor}"
-                           IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}" />
+                           TextColor="{Binding ScanStatus, Converter={StaticResource StringToColorConverter}}" />
+                    <Border IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}"
+                            Stroke="{StaticResource BorderColor}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="10"
+                            BackgroundColor="{StaticResource Surface}">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="{Binding SelectedEquipment.Name, StringFormat='Name: {0}'}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                            <Label Text="{Binding SelectedEquipment.QRCode, StringFormat='QR: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding SelectedEquipment.Type, StringFormat='Type: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                            <Label Text="{Binding SelectedEquipment.Status, StringFormat='Status: {0}'}" FontSize="13" TextColor="{Binding SelectedEquipment.Status, Converter={StaticResource StatusToColorConverter}}" />
+                        </VerticalStackLayout>
+                    </Border>
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Confirm Transfer -->
-            <Button Text="✅ Confirm Transfer"
+            <!-- Step 2: Select Personnel -->
+            <Border Style="{StaticResource CardStyle}" IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Step 2: Select Personnel"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Picker Title="Select Personnel"
+                            ItemsSource="{Binding PersonnelList}"
+                            ItemDisplayBinding="{Binding FullName}"
+                            SelectedItem="{Binding SelectedPersonnel}"
+                            TextColor="{StaticResource OnBackground}"
+                            TitleColor="{StaticResource Gray300}"
+                            BackgroundColor="{StaticResource Surface}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Step 3: Confirm Transfer -->
+            <Button Text="✅ Transfer"
                     Style="{StaticResource SuccessButton}"
                     Command="{Binding ConfirmTransferCommand}"
-                    IsEnabled="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}" />
+                    IsEnabled="{Binding CanTransfer}" />
 
             <!-- Reset -->
             <Button Text="🔄 Reset"

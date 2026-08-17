@@ -47,12 +47,14 @@ namespace Firetrack.Services
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
+            MigrateDisposalColumns(connection);   // <-- ADD THIS
             SeedData(connection);
 #else
             EnsureDatabaseExists();
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
+            MigrateDisposalColumns(connection);   // <-- ADD THIS
             SeedData(connection);
 #endif
         }
@@ -86,7 +88,7 @@ namespace Firetrack.Services
                     IsActive INTEGER NOT NULL DEFAULT 1
                 )");
 
-            // Equipment – Updated with disposal fields
+            // Equipment – with disposal fields (will be added by migration if missing)
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Equipment (
                     EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,16 +101,7 @@ namespace Firetrack.Services
                     Remarks TEXT NULL,
                     LastUpdated DATETIME NULL,
                     RequestedByUsername TEXT NULL,
-                    RequestStatus TEXT NULL,
-                    -- NEW disposal fields
-                    IsDisposalRequested INTEGER NOT NULL DEFAULT 0,
-                    DisposalStatus TEXT NULL,
-                    DisposalReason TEXT NULL,
-                    DisposalRequestedBy TEXT NULL,
-                    DisposalRequestDate DATETIME NULL,
-                    DisposalApprovedBy TEXT NULL,
-                    DisposalApprovalDate DATETIME NULL,
-                    DisposalRemarks TEXT NULL
+                    RequestStatus TEXT NULL
                 )");
 
             // Transactions
@@ -155,6 +148,49 @@ namespace Firetrack.Services
                 )");
         }
 
+        // ===== MIGRATION: Add missing disposal columns =====
+        private void MigrateDisposalColumns(IDbConnection connection)
+        {
+            try
+            {
+                // Get existing column names (case-insensitive)
+                var columns = connection.Query<string>("PRAGMA table_info(Equipment)")
+                                        .Select(c => c.ToLowerInvariant())
+                                        .ToList();
+
+                if (!columns.Contains("isdisposalrequested"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN IsDisposalRequested INTEGER NOT NULL DEFAULT 0");
+
+                if (!columns.Contains("disposalstatus"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalStatus TEXT NULL");
+
+                if (!columns.Contains("disposalreason"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalReason TEXT NULL");
+
+                if (!columns.Contains("disposalrequestedby"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRequestedBy TEXT NULL");
+
+                if (!columns.Contains("disposalrequestdate"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRequestDate DATETIME NULL");
+
+                if (!columns.Contains("disposalapprovedby"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalApprovedBy TEXT NULL");
+
+                if (!columns.Contains("disposalapprovaldate"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalApprovalDate DATETIME NULL");
+
+                if (!columns.Contains("disposalremarks"))
+                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRemarks TEXT NULL");
+
+                System.Diagnostics.Debug.WriteLine("✅ Disposal columns migrated successfully.");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Migration warning: {ex.Message}");
+                // Non-critical – we can continue
+            }
+        }
+
         private void SeedData(IDbConnection connection)
         {
             // Users
@@ -190,7 +226,6 @@ namespace Firetrack.Services
                 foreach (var eq in items)
                 {
                     eq.LastUpdated = DateTime.Now;
-                    // Disposal fields default to null/false
                     eq.IsDisposalRequested = false;
                     connection.Execute(
                         @"INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated,
@@ -224,7 +259,7 @@ namespace Firetrack.Services
             }
         }
 
-        // ---- Data methods ----
+        // ---- Data methods (unchanged) ----
 
         public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
@@ -522,10 +557,6 @@ namespace Firetrack.Services
 
         // ---- NEW DISPOSAL METHODS ----
 
-        /// <summary>
-        /// Gets all disposal requests, optionally filtered by status.
-        /// </summary>
-        /// <param name="status">"Pending", "Approved", "Rejected", or null for all</param>
         public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = null)
         {
             using var connection = CreateConnection();
@@ -537,9 +568,6 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        /// <summary>
-        /// Submits a disposal request for equipment.
-        /// </summary>
         public async Task<bool> RequestDisposalAsync(string qrCode, string requestedBy, string reason)
         {
             using var connection = CreateConnection();
@@ -555,16 +583,12 @@ namespace Firetrack.Services
 
             await SaveEquipmentAsync(equipment);
 
-            // Notify Admin
             await SendNotificationAsync("admin", "🗑️ Disposal Request",
                 $"{requestedBy} requested disposal for '{equipment.Name}' (QR: {equipment.QRCode})");
 
             return true;
         }
 
-        /// <summary>
-        /// Approves a disposal request, marking equipment as Disposed.
-        /// </summary>
         public async Task<bool> ApproveDisposalAsync(string qrCode, string approvedBy, string remarks = "")
         {
             using var connection = CreateConnection();
@@ -575,13 +599,12 @@ namespace Firetrack.Services
             equipment.DisposalApprovedBy = approvedBy;
             equipment.DisposalApprovalDate = DateTime.Now;
             equipment.DisposalRemarks = remarks;
-            equipment.Status = "Disposed";          // Final status
-            equipment.AssignedToUsername = null;    // Unassign if any
+            equipment.Status = "Disposed";
+            equipment.AssignedToUsername = null;
             equipment.LastUpdated = DateTime.Now;
 
             await SaveEquipmentAsync(equipment);
 
-            // Notify requester
             if (!string.IsNullOrEmpty(equipment.DisposalRequestedBy))
             {
                 await SendNotificationAsync(equipment.DisposalRequestedBy, "✅ Disposal Approved",
@@ -591,9 +614,6 @@ namespace Firetrack.Services
             return true;
         }
 
-        /// <summary>
-        /// Rejects a disposal request, keeping equipment active.
-        /// </summary>
         public async Task<bool> RejectDisposalAsync(string qrCode, string rejectedBy, string remarks = "")
         {
             using var connection = CreateConnection();
@@ -602,7 +622,7 @@ namespace Firetrack.Services
 
             equipment.DisposalStatus = "Rejected";
             equipment.DisposalRemarks = remarks;
-            equipment.IsDisposalRequested = false;  // Reset request flag
+            equipment.IsDisposalRequested = false;
             equipment.LastUpdated = DateTime.Now;
 
             await SaveEquipmentAsync(equipment);
