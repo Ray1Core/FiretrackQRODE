@@ -11,7 +11,8 @@ namespace Firetrack.ViewModels
         private readonly DatabaseService _db;
         private EquipmentModel _selectedEquipment = null!;
         private UserModel _selectedPersonnel = null!;
-        private string _scanStatus = "Scan equipment to begin.";
+        private string _step1Status = "Scan equipment to begin.";
+        private string _step3Status = "Select a personnel.";
         private bool _isBusy;
         private ObservableCollection<UserModel> _personnelList = new();
 
@@ -24,7 +25,7 @@ namespace Firetrack.ViewModels
         public UserModel SelectedPersonnel
         {
             get => _selectedPersonnel;
-            set { _selectedPersonnel = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanTransfer)); }
+            set { _selectedPersonnel = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanTransfer)); Step3Status = value != null ? "✅ Personnel selected." : "Select a personnel."; }
         }
 
         public ObservableCollection<UserModel> PersonnelList
@@ -33,10 +34,16 @@ namespace Firetrack.ViewModels
             set { _personnelList = value; OnPropertyChanged(); }
         }
 
-        public string ScanStatus
+        public string Step1Status
         {
-            get => _scanStatus;
-            set { _scanStatus = value; OnPropertyChanged(); }
+            get => _step1Status;
+            set { _step1Status = value; OnPropertyChanged(); }
+        }
+
+        public string Step3Status
+        {
+            get => _step3Status;
+            set { _step3Status = value; OnPropertyChanged(); }
         }
 
         public bool IsBusy
@@ -45,7 +52,10 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        public bool IsStep1Complete => SelectedEquipment != null;
         public bool CanTransfer => SelectedEquipment != null && SelectedPersonnel != null && SelectedEquipment.Status == "Available";
+
+        public string CurrentUserFullName => App.CurrentUser?.FullName ?? "Unknown";
 
         public ICommand ScanEquipmentCommand { get; }
         public ICommand ConfirmTransferCommand { get; }
@@ -69,42 +79,49 @@ namespace Firetrack.ViewModels
                 PersonnelList.Add(u);
         }
 
-        // ---- Scan Equipment: Navigate to ScannerPage with return parameter ----
+        // ---- Scan Equipment: Navigate to Scanner with mode parameter ----
         private async void OnScanEquipment()
         {
-            // Navigate to Scanner with a returnTo parameter
-            await Shell.Current.GoToAsync($"ScannerPage?returnTo=TransferPage");
+            // ✅ Pass mode=equipment to scanner
+            await Shell.Current.GoToAsync($"//ScannerPage?returnTo=TransferPage&mode=equipment");
         }
 
-        // ---- This method is called when we return from Scanner with a QR ----
-        public async Task ProcessScannedQR(string qrCode)
+        // ---- Process scanned QR with mode ----
+        public async Task ProcessScannedQR(string qrCode, string mode)
         {
             if (string.IsNullOrWhiteSpace(qrCode))
                 return;
 
             IsBusy = true;
-            ScanStatus = "Processing QR...";
 
             try
             {
-                var equipment = await _db.GetEquipmentByQRAsync(qrCode);
-                if (equipment != null && equipment.Status == "Available")
+                if (mode == "equipment")
                 {
-                    SelectedEquipment = equipment;
-                    ScanStatus = $"✅ Equipment '{equipment.Name}' ready for transfer.";
+                    var equipment = await _db.GetEquipmentByQRAsync(qrCode);
+                    if (equipment != null && equipment.Status == "Available")
+                    {
+                        SelectedEquipment = equipment;
+                        Step1Status = $"✅ Equipment '{equipment.Name}' ready for transfer.";
+                    }
+                    else if (equipment != null && equipment.Status != "Available")
+                    {
+                        Step1Status = $"❌ Equipment '{equipment.Name}' is not available (Status: {equipment.Status}).";
+                    }
+                    else
+                    {
+                        Step1Status = "❌ Equipment not found or invalid QR.";
+                    }
                 }
-                else if (equipment != null && equipment.Status != "Available")
-                {
-                    ScanStatus = $"❌ Equipment '{equipment.Name}' is not available (Status: {equipment.Status}).";
-                }
+                // Add other modes if needed (e.g., "personnel", "admin")
                 else
                 {
-                    ScanStatus = "❌ Equipment not found or invalid QR.";
+                    Step1Status = $"❌ Unknown scan mode: {mode}";
                 }
             }
             catch (Exception ex)
             {
-                ScanStatus = $"❌ Error: {ex.Message}";
+                Step1Status = $"❌ Error: {ex.Message}";
             }
             finally
             {
@@ -115,17 +132,12 @@ namespace Firetrack.ViewModels
         // ---- Confirm Transfer ----
         private async void OnConfirmTransfer()
         {
-            if (!CanTransfer)
-            {
-                await Shell.Current.DisplayAlert("Validation", "Please scan equipment and select a personnel.", "OK");
-                return;
-            }
+            if (!CanTransfer) return;
 
             bool confirm = await Shell.Current.DisplayAlert(
                 "Confirm Transfer",
                 $"Transfer '{SelectedEquipment.Name}' to {SelectedPersonnel.FullName}?",
-                "Yes",
-                "Cancel");
+                "Yes", "Cancel");
 
             if (!confirm) return;
 
@@ -135,12 +147,12 @@ namespace Firetrack.ViewModels
                 var admin = App.CurrentUser;
                 if (admin == null)
                 {
-                    ScanStatus = "❌ Admin not logged in.";
+                    await Shell.Current.DisplayAlert("Error", "Admin not logged in.", "OK");
                     IsBusy = false;
                     return;
                 }
 
-                // Record transaction
+                // Save transaction
                 var transaction = new TransactionModel
                 {
                     EquipmentQR = SelectedEquipment.QRCode,
@@ -158,30 +170,22 @@ namespace Firetrack.ViewModels
                 await _db.SaveTransactionAsync(transaction);
                 await _db.SaveEquipmentAsync(SelectedEquipment);
 
-                await _db.LogActionAsync(
-                    admin.Username,
-                    "Transfer",
-                    $"Issued '{SelectedEquipment.Name}' to {SelectedPersonnel.Username}");
+                await _db.LogActionAsync(admin.Username, "Transfer", $"Issued '{SelectedEquipment.Name}' to {SelectedPersonnel.Username}");
+                await _db.SendNotificationAsync(SelectedPersonnel.Username, "🔄 Equipment Issued", $"{admin.FullName} issued '{SelectedEquipment.Name}' to you.");
 
-                await _db.SendNotificationAsync(
-                    SelectedPersonnel.Username,
-                    "🔄 Equipment Issued",
-                    $"{admin.FullName} issued '{SelectedEquipment.Name}' to you.");
-
-                // Navigate to ICS generation
+                // Navigate to ICS
                 var navParams = new Dictionary<string, object>
                 {
                     { "equipment", SelectedEquipment },
                     { "officer", SelectedPersonnel }
                 };
-                await Shell.Current.GoToAsync("IcsPage", navParams);
+                await Shell.Current.GoToAsync("//IcsPage", navParams);
 
-                ScanStatus = "✅ Transfer complete! ICS generated.";
                 OnReset();
             }
             catch (Exception ex)
             {
-                ScanStatus = $"❌ Error: {ex.Message}";
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
             finally
             {
@@ -193,7 +197,8 @@ namespace Firetrack.ViewModels
         {
             SelectedEquipment = null!;
             SelectedPersonnel = null!;
-            ScanStatus = "Scan equipment to begin.";
+            Step1Status = "Scan equipment to begin.";
+            Step3Status = "Select a personnel.";
             LoadPersonnel();
         }
     }

@@ -61,7 +61,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         LoadUnreadCount();
     }
 
-    private async void LoadUnreadCount()
+    // ✅ Make this method public so it can be called from ViewModels
+    public async void LoadUnreadCount()
     {
         if (App.CurrentUser == null || App.Database == null) return;
         try
@@ -73,6 +74,13 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         {
             UnreadCount = 0;
         }
+    }
+
+    // ✅ Static method to refresh the badge from anywhere
+    public static void RefreshUnreadCount()
+    {
+        var shell = Current as AppShell;
+        shell?.LoadUnreadCount();
     }
 
     private async void OnLogout()

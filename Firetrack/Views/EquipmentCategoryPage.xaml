@@ -26,33 +26,60 @@
             </Grid>
         </VerticalStackLayout>
 
-        <!-- Filter & Search -->
-        <VerticalStackLayout Grid.Row="1" Padding="20,0,20,10" Spacing="8">
+        <!-- Status Metrics (like dashboard) -->
+        <Grid Grid.Row="1" Padding="15,0,15,10" ColumnDefinitions="*,*,*,*,*" ColumnSpacing="6">
+            <Border Grid.Column="0" BackgroundColor="{StaticResource PrimaryColor}" Padding="6,4" StrokeThickness="0" StrokeShape="RoundRectangle 6">
+                <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                    <Label Text="{Binding TotalCount}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                    <Label Text="Total" FontSize="10" TextColor="White" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Grid.Column="1" BackgroundColor="{StaticResource SuccessColor}" Padding="6,4" StrokeThickness="0" StrokeShape="RoundRectangle 6">
+                <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                    <Label Text="{Binding AvailableCount}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                    <Label Text="Available" FontSize="10" TextColor="White" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Grid.Column="2" BackgroundColor="{StaticResource WarningColor}" Padding="6,4" StrokeThickness="0" StrokeShape="RoundRectangle 6">
+                <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                    <Label Text="{Binding IssuedCount}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                    <Label Text="Issued" FontSize="10" TextColor="White" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Grid.Column="3" BackgroundColor="{StaticResource DangerColor}" Padding="6,4" StrokeThickness="0" StrokeShape="RoundRectangle 6">
+                <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                    <Label Text="{Binding DamagedCount}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                    <Label Text="Damaged" FontSize="10" TextColor="White" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+            <Border Grid.Column="4" BackgroundColor="{StaticResource Gray500}" Padding="6,4" StrokeThickness="0" StrokeShape="RoundRectangle 6">
+                <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
+                    <Label Text="{Binding DisposedCount}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
+                    <Label Text="Disposed" FontSize="10" TextColor="White" HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+        </Grid>
+
+        <!-- Search Bar -->
+        <VerticalStackLayout Grid.Row="2" Padding="20,0,20,10" Spacing="8">
             <Grid ColumnDefinitions="*, Auto" ColumnSpacing="10">
-                <Picker Title="Filter by Status"
-                        ItemsSource="{Binding StatusFilterOptions}"
-                        SelectedItem="{Binding SelectedStatusFilter}"
-                        TextColor="{StaticResource OnBackground}"
-                        TitleColor="{StaticResource Gray300}"
-                        BackgroundColor="{StaticResource Surface}" />
-                <Entry Grid.Column="1"
-                       Style="{StaticResource EntryStyle}"
-                       Placeholder="Search..."
+                <Entry Style="{StaticResource EntryStyle}"
+                       Placeholder="Search by name, QR, or type..."
                        Text="{Binding SearchText}"
                        TextColor="{StaticResource OnBackground}"
                        PlaceholderColor="{StaticResource Gray300}"
-                       BackgroundColor="{StaticResource Surface}"
-                       WidthRequest="120" />
+                       BackgroundColor="{StaticResource Surface}" />
+                <Button Grid.Column="1"
+                        Text="🔍 Search"
+                        Style="{StaticResource PrimaryButton}"
+                        Command="{Binding SearchCommand}"
+                        WidthRequest="100"
+                        HeightRequest="40" />
             </Grid>
-            <Button Text="🔍 Apply Filter"
-                    Command="{Binding ApplyFilterCommand}"
-                    Style="{StaticResource PrimaryButton}"
-                    HeightRequest="35"
-                    FontSize="12" />
         </VerticalStackLayout>
 
-        <!-- Category Grid -->
-        <RefreshView Grid.Row="2" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCategoriesCommand}">
+        <!-- Category Grid (square boxes) -->
+        <RefreshView Grid.Row="3" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadCategoriesCommand}">
             <CollectionView ItemsSource="{Binding Categories}"
                             EmptyView="No equipment found."
                             x:Name="CategoryCollection">
@@ -68,10 +95,12 @@
                                 Padding="10"
                                 HeightRequest="140">
                             <Grid RowDefinitions="Auto, *, Auto">
+                                <!-- Type icon -->
                                 <Label Grid.Row="0"
                                        Text="{Binding Type, Converter={StaticResource StringToEmojiConverter}}"
                                        FontSize="24"
                                        HorizontalOptions="Center" />
+                                <!-- Name -->
                                 <Label Grid.Row="1"
                                        Text="{Binding Name}"
                                        FontSize="14"
@@ -81,6 +110,7 @@
                                        VerticalOptions="Center"
                                        LineBreakMode="WordWrap"
                                        MaxLines="2" />
+                                <!-- Quantity badge -->
                                 <Border Grid.Row="2"
                                         BackgroundColor="{StaticResource PrimaryColor}"
                                         StrokeThickness="0"
@@ -102,6 +132,7 @@
             </CollectionView>
         </RefreshView>
 
-        <ActivityIndicator Grid.Row="3" IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
+        <ActivityIndicator Grid.Row="3" IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" VerticalOptions="Center" HorizontalOptions="Center" IsVisible="{Binding IsBusy}" />
+
     </Grid>
 </ContentPage>

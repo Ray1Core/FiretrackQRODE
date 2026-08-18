@@ -24,18 +24,20 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
         {
             _viewModel.ReturnToPage = returnTo;
         }
+        if (query.TryGetValue("mode", out var modeObj) && modeObj is string mode)
+        {
+            _viewModel.ScanMode = mode;
+        }
     }
 
     protected override async void OnAppearing()
     {
         base.OnAppearing();
 
-        // Request camera permission
         var status = await Permissions.RequestAsync<Permissions.Camera>();
         if (status != PermissionStatus.Granted)
         {
             await DisplayAlert("Permission Denied", "Camera permission is required to scan QR codes.", "OK");
-            // Navigate to returnTo page or Dashboard
             if (!string.IsNullOrEmpty(_viewModel.ReturnToPage))
                 await Shell.Current.GoToAsync($"//{_viewModel.ReturnToPage}");
             else

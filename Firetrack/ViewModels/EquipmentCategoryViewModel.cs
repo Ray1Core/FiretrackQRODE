@@ -13,7 +13,13 @@ namespace Firetrack.ViewModels
         private bool _isBusy;
         private bool _isAdmin;
         private string _searchText = string.Empty;
-        private string _selectedStatusFilter = "All";
+
+        // ---- Metrics properties ----
+        private int _totalCount;
+        private int _availableCount;
+        private int _issuedCount;
+        private int _damagedCount;
+        private int _disposedCount;
 
         public ObservableCollection<CategoryGroup> Categories
         {
@@ -39,32 +45,39 @@ namespace Firetrack.ViewModels
             set { _searchText = value; OnPropertyChanged(); }
         }
 
-        public string SelectedStatusFilter
+        // ---- Metric properties ----
+        public int TotalCount
         {
-            get => _selectedStatusFilter;
-            set
-            {
-                if (_selectedStatusFilter != value)
-                {
-                    _selectedStatusFilter = value;
-                    OnPropertyChanged();
-                    ApplyFilter();
-                }
-            }
+            get => _totalCount;
+            set { _totalCount = value; OnPropertyChanged(); }
         }
 
-        public ObservableCollection<string> StatusFilterOptions { get; } = new()
+        public int AvailableCount
         {
-            "All",
-            "Available",
-            "Issued",
-            "Damaged",
-            "InRepair",
-            "Disposed"
-        };
+            get => _availableCount;
+            set { _availableCount = value; OnPropertyChanged(); }
+        }
+
+        public int IssuedCount
+        {
+            get => _issuedCount;
+            set { _issuedCount = value; OnPropertyChanged(); }
+        }
+
+        public int DamagedCount
+        {
+            get => _damagedCount;
+            set { _damagedCount = value; OnPropertyChanged(); }
+        }
+
+        public int DisposedCount
+        {
+            get => _disposedCount;
+            set { _disposedCount = value; OnPropertyChanged(); }
+        }
 
         public ICommand LoadCategoriesCommand { get; }
-        public ICommand ApplyFilterCommand { get; }
+        public ICommand SearchCommand { get; }
         public ICommand CategoryTappedCommand { get; }
         public ICommand GoToAddEquipmentCommand { get; }
 
@@ -74,9 +87,9 @@ namespace Firetrack.ViewModels
             IsAdmin = App.CurrentUser?.Role == "Admin";
 
             LoadCategoriesCommand = new Command(OnLoadCategories);
-            ApplyFilterCommand = new Command(ApplyFilter);
+            SearchCommand = new Command(OnSearch);
             CategoryTappedCommand = new Command<CategoryGroup>(OnCategoryTapped);
-            GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("AddEquipmentPage"));
+            GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("//AddEquipmentPage"));
 
             OnLoadCategories();
         }
@@ -95,25 +108,27 @@ namespace Firetrack.ViewModels
             {
                 var all = await _db.GetEquipmentsAsync();
 
-                // Apply status filter
-                if (SelectedStatusFilter != "All")
-                {
-                    all = all.Where(e => e.Status == SelectedStatusFilter).ToList();
-                }
+                // ---- Update metrics ----
+                TotalCount = all.Count;
+                AvailableCount = all.Count(e => e.Status == "Available");
+                IssuedCount = all.Count(e => e.Status == "Issued");
+                DamagedCount = all.Count(e => e.Status == "Damaged");
+                DisposedCount = all.Count(e => e.Status == "Disposed");
 
-                // Apply search filter
+                // ---- Apply search filter ----
+                var filtered = all;
                 if (!string.IsNullOrWhiteSpace(SearchText))
                 {
                     var search = SearchText.Trim();
-                    all = all.Where(e =>
+                    filtered = filtered.Where(e =>
                         e.Name.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                         e.QRCode.Contains(search, StringComparison.OrdinalIgnoreCase) ||
                         e.Type.Contains(search, StringComparison.OrdinalIgnoreCase)
                     ).ToList();
                 }
 
-                // Group by Name + Type
-                var grouped = all
+                // ---- Group by Name + Type ----
+                var grouped = filtered
                     .GroupBy(e => new { e.Name, e.Type })
                     .Select(g => new CategoryGroup
                     {
@@ -139,7 +154,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        private void ApplyFilter()
+        private void OnSearch()
         {
             _ = LoadCategoriesAsync();
         }
@@ -148,7 +163,7 @@ namespace Firetrack.ViewModels
         {
             if (category == null) return;
             var navParams = new Dictionary<string, object> { { "categoryName", category.Name } };
-            await Shell.Current.GoToAsync("CategoryItemsPage", navParams);
+            await Shell.Current.GoToAsync("//CategoryItemsPage", navParams);  // ✅ absolute
         }
     }
 }

@@ -7,6 +7,7 @@
         public string Password { get; set; } = string.Empty;
         public string FullName { get; set; } = string.Empty;
         public string Role { get; set; } = "Personnel";
-        public bool IsActive { get; set; } = true;   // <-- new
+        public bool IsActive { get; set; } = true;
+        public string PersonalQR { get; set; } = string.Empty;   // NEW
     }
 }

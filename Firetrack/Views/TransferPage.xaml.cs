@@ -1,4 +1,4 @@
-using Firetrack.ViewModels;
+﻿using Firetrack.ViewModels;
 using Microsoft.Maui.Controls;
 
 namespace Firetrack.Views;
@@ -16,10 +16,15 @@ public partial class TransferPage : ContentPage, IQueryAttributable
 
     public async void ApplyQueryAttributes(IDictionary<string, object> query)
     {
-        // Called when returning from ScannerPage with scanned QR
         if (query.TryGetValue("scannedQR", out var qrObj) && qrObj is string qrCode)
         {
-            await _viewModel.ProcessScannedQR(qrCode);
+            // ✅ Safe null handling for mode
+            string mode = "equipment";
+            if (query.TryGetValue("mode", out var modeObj) && modeObj is string modeStr)
+            {
+                mode = modeStr;
+            }
+            await _viewModel.ProcessScannedQR(qrCode, mode);
         }
     }
 }

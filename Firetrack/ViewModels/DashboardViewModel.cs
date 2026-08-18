@@ -5,6 +5,9 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Firetrack.Converters;
+using QRCoder;
+using System.IO;
+using Microsoft.Maui.Storage;
 
 namespace Firetrack.ViewModels
 {
@@ -15,6 +18,10 @@ namespace Firetrack.ViewModels
         private ObservableCollection<EquipmentModel> _myEquipment = new();
         private ObservableCollection<UserModel> _personnelList = new();
         private bool _isAdmin;
+
+        // ---- Personnel QR properties ----
+        private string _personnelQR = string.Empty;
+        private ImageSource? _personnelQRImage;
 
         public string FullName
         {
@@ -40,6 +47,18 @@ namespace Firetrack.ViewModels
         {
             get => _isAdmin;
             set { _isAdmin = value; OnPropertyChanged(); }
+        }
+
+        public string PersonnelQR
+        {
+            get => _personnelQR;
+            set { _personnelQR = value; OnPropertyChanged(); }
+        }
+
+        public ImageSource? PersonnelQRImage
+        {
+            get => _personnelQRImage;
+            set { _personnelQRImage = value; OnPropertyChanged(); }
         }
 
         // ---- Metrics properties ----
@@ -155,6 +174,9 @@ namespace Firetrack.ViewModels
         public ICommand ReportDamageCommand { get; }
         public ICommand ShowEquipmentDetailsCommand { get; }
 
+        // ---- NEW: Download Personnel QR ----
+        public ICommand DownloadPersonnelQRCommand { get; }
+
         // ---- Constructor ----
         public DashboardViewModel()
         {
@@ -163,8 +185,9 @@ namespace Firetrack.ViewModels
             IsAdmin = user?.Role == "Admin";
 
             LogoutCommand = new Command(OnLogout);
+            DownloadPersonnelQRCommand = new Command(OnDownloadPersonnelQR);
 
-            // ✅ All navigation commands use absolute routes (//)
+            // ---- Navigation commands ----
             GoToScannerCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync("//ScannerPage"); }
@@ -229,11 +252,15 @@ namespace Firetrack.ViewModels
             ReportDamageCommand = new Command<EquipmentModel>(OnReportDamage);
             ShowEquipmentDetailsCommand = new Command<EquipmentModel>(OnShowEquipmentDetails);
 
+            // ---- Load data ----
             LoadData();
             LoadMetrics();
+
+            // ✅ Load Personnel QR (if applicable)
+            LoadPersonnelQR();
         }
 
-        // ---- Logout Method (updated with absolute route) ----
+        // ---- Logout Method ----
         private async void OnLogout()
         {
             if (App.CurrentUser != null && App.Database != null)
@@ -255,10 +282,72 @@ namespace Firetrack.ViewModels
             if (Shell.Current is AppShell shell)
                 shell.UpdateUserRoleVisibility();
 
-            await Shell.Current.GoToAsync("//LoginPage");   // ✅ absolute route
+            await Shell.Current.GoToAsync("//LoginPage");
         }
 
-        // ---- Other methods ----
+        // ---- Load Personnel QR ----
+        private void LoadPersonnelQR()
+        {
+            var user = App.CurrentUser;
+            if (user == null || user.Role == "Admin") return;
+
+            // Get the QR code from user
+            PersonnelQR = user.PersonalQR ?? string.Empty;
+
+            if (string.IsNullOrEmpty(PersonnelQR)) return;
+
+            try
+            {
+                var generator = new QRCodeGenerator();
+                var qrCodeData = generator.CreateQrCode(PersonnelQR, QRCodeGenerator.ECCLevel.Q);
+                var qrCode = new PngByteQRCode(qrCodeData);
+                var pngBytes = qrCode.GetGraphic(20);
+                PersonnelQRImage = ImageSource.FromStream(() => new MemoryStream(pngBytes));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Failed to generate personnel QR: {ex.Message}");
+            }
+        }
+
+        // ---- Download Personnel QR ----
+        private async void OnDownloadPersonnelQR()
+        {
+            if (string.IsNullOrEmpty(PersonnelQR) || PersonnelQRImage == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "QR code not available.", "OK");
+                return;
+            }
+
+            try
+            {
+                // Generate QR image bytes again (we don't store them)
+                var generator = new QRCodeGenerator();
+                var qrCodeData = generator.CreateQrCode(PersonnelQR, QRCodeGenerator.ECCLevel.Q);
+                var qrCode = new PngByteQRCode(qrCodeData);
+                var pngBytes = qrCode.GetGraphic(20);
+
+                var fileName = $"{PersonnelQR}_{DateTime.Now:yyyyMMddHHmmss}.png";
+                var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "PersonnelQR");
+                Directory.CreateDirectory(downloadsPath);
+                var filePath = Path.Combine(downloadsPath, fileName);
+                await File.WriteAllBytesAsync(filePath, pngBytes);
+
+                // Open/share the file
+                await Launcher.Default.OpenAsync(new OpenFileRequest
+                {
+                    File = new ReadOnlyFile(filePath)
+                });
+
+                await Shell.Current.DisplayAlert("Success", $"QR saved to:\n{filePath}", "OK");
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", $"Failed to download QR: {ex.Message}", "OK");
+            }
+        }
+
+        // ---- Other methods (LoadData, LoadMetrics, Return, Report, etc.) ----
         private async void LoadData()
         {
             if (App.CurrentUser == null) return;
@@ -298,6 +387,7 @@ namespace Firetrack.ViewModels
             OnPropertyChanged(nameof(UserRole));
             LoadData();
             LoadMetrics();
+            LoadPersonnelQR(); // Refresh QR after any user change
         }
 
         private async void LoadMetrics()

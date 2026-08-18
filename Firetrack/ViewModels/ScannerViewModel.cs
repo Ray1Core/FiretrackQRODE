@@ -17,6 +17,7 @@ namespace Firetrack.ViewModels
         private EquipmentModel? _foundEquipment;
         private bool _isBusy;
         private string _returnToPage = string.Empty;
+        private string _scanMode = "equipment";   // NEW: default mode
 
         public bool IsScanning
         {
@@ -48,6 +49,13 @@ namespace Firetrack.ViewModels
             set { _returnToPage = value; OnPropertyChanged(); }
         }
 
+        // ✅ NEW: Scan mode (e.g., "equipment", "personnel", "admin")
+        public string ScanMode
+        {
+            get => _scanMode;
+            set { _scanMode = value; OnPropertyChanged(); }
+        }
+
         public ICommand CancelCommand { get; }
 
         public ScannerViewModel()
@@ -59,7 +67,6 @@ namespace Firetrack.ViewModels
 
         private async void OnCancel()
         {
-            // Navigate back to the calling page, or Dashboard if none
             if (!string.IsNullOrEmpty(ReturnToPage))
                 await Shell.Current.GoToAsync($"//{ReturnToPage}");
             else
@@ -82,19 +89,19 @@ namespace Firetrack.ViewModels
                 var equipmentList = await _db.GetEquipmentsAsync();
                 var found = equipmentList.FirstOrDefault(e => e.QRCode == qrValue);
 
-                // If we are returning to a caller, just pass the QR back and navigate
+                // If we are returning to a caller, pass the QR and mode back
                 if (!string.IsNullOrEmpty(ReturnToPage))
                 {
-                    // Navigate back to ReturnToPage with the QR as a parameter
                     var navParams = new Dictionary<string, object>
                     {
-                        { "scannedQR", qrValue }
+                        { "scannedQR", qrValue },
+                        { "mode", ScanMode }   // ✅ Pass mode back
                     };
                     await Shell.Current.GoToAsync($"..", navParams);
                     return;
                 }
 
-                // Otherwise, show equipment details (standalone scanner behaviour)
+                // Standalone mode: show equipment details
                 if (found != null)
                 {
                     FoundEquipment = found;

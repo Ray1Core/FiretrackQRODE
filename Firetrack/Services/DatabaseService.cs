@@ -47,14 +47,16 @@ namespace Firetrack.Services
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
-            MigrateDisposalColumns(connection);   // <-- ADD THIS
+            MigrateUserColumns(connection);      // NEW: add PersonalQR
+            MigrateDisposalColumns(connection);
             SeedData(connection);
 #else
             EnsureDatabaseExists();
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
-            MigrateDisposalColumns(connection);   // <-- ADD THIS
+            MigrateUserColumns(connection);      // NEW: add PersonalQR
+            MigrateDisposalColumns(connection);
             SeedData(connection);
 #endif
         }
@@ -77,7 +79,7 @@ namespace Firetrack.Services
 
         private void CreateTables(IDbConnection connection)
         {
-            // Users
+            // Users – includes PersonalQR
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Users (
                     UserId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,10 +87,11 @@ namespace Firetrack.Services
                     Password TEXT NOT NULL,
                     FullName TEXT NOT NULL,
                     Role TEXT NOT NULL DEFAULT 'Personnel',
-                    IsActive INTEGER NOT NULL DEFAULT 1
+                    IsActive INTEGER NOT NULL DEFAULT 1,
+                    PersonalQR TEXT NULL
                 )");
 
-            // Equipment – with disposal fields (will be added by migration if missing)
+            // Equipment – base columns (disposal added via migration)
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Equipment (
                     EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -148,37 +151,76 @@ namespace Firetrack.Services
                 )");
         }
 
-        // ===== MIGRATION: Add missing disposal columns =====
+        // ===== MIGRATION: Add PersonalQR to Users =====
+        private void MigrateUserColumns(IDbConnection connection)
+        {
+            try
+            {
+                List<string> columns;
+
+#if ANDROID
+                columns = connection.Query<string>("PRAGMA table_info(Users)")
+                                    .Select(c => c.ToLowerInvariant())
+                                    .ToList();
+#else
+                columns = connection.Query<string>(
+                    "SELECT LOWER(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users'")
+                    .ToList();
+#endif
+
+                if (!columns.Contains("personalqr"))
+                {
+                    connection.Execute("ALTER TABLE Users ADD COLUMN PersonalQR TEXT NULL");
+                    System.Diagnostics.Debug.WriteLine("✅ Added PersonalQR column to Users.");
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("✅ PersonalQR already exists.");
+                }
+
+                // Also update existing users to have a PersonalQR if null
+                connection.Execute(@"
+                    UPDATE Users 
+                    SET PersonalQR = 'PERSON-' || CAST(UserId AS TEXT)
+                    WHERE PersonalQR IS NULL OR PersonalQR = ''");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ User migration warning: {ex.Message}");
+            }
+        }
+
+        // ===== MIGRATION: Add missing disposal columns to Equipment =====
         private void MigrateDisposalColumns(IDbConnection connection)
         {
             try
             {
-                // Get existing column names (case-insensitive)
-                var columns = connection.Query<string>("PRAGMA table_info(Equipment)")
-                                        .Select(c => c.ToLowerInvariant())
-                                        .ToList();
+                List<string> columns;
+
+#if ANDROID
+                columns = connection.Query<string>("PRAGMA table_info(Equipment)")
+                                    .Select(c => c.ToLowerInvariant())
+                                    .ToList();
+#else
+                columns = connection.Query<string>(
+                    "SELECT LOWER(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Equipment'")
+                    .ToList();
+#endif
 
                 if (!columns.Contains("isdisposalrequested"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN IsDisposalRequested INTEGER NOT NULL DEFAULT 0");
-
                 if (!columns.Contains("disposalstatus"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalStatus TEXT NULL");
-
                 if (!columns.Contains("disposalreason"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalReason TEXT NULL");
-
                 if (!columns.Contains("disposalrequestedby"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRequestedBy TEXT NULL");
-
                 if (!columns.Contains("disposalrequestdate"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRequestDate DATETIME NULL");
-
                 if (!columns.Contains("disposalapprovedby"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalApprovedBy TEXT NULL");
-
                 if (!columns.Contains("disposalapprovaldate"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalApprovalDate DATETIME NULL");
-
                 if (!columns.Contains("disposalremarks"))
                     connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRemarks TEXT NULL");
 
@@ -186,27 +228,27 @@ namespace Firetrack.Services
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"⚠️ Migration warning: {ex.Message}");
-                // Non-critical – we can continue
+                System.Diagnostics.Debug.WriteLine($"⚠️ Disposal migration warning: {ex.Message}");
             }
         }
 
         private void SeedData(IDbConnection connection)
         {
-            // Users
+            // Users – now with PersonalQR
             var userCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
             if (userCount == 0)
             {
                 connection.Execute(
-                    "INSERT INTO Users (Username, Password, FullName, Role, IsActive) VALUES (@Username, @Password, @FullName, @Role, @IsActive)",
+                    @"INSERT INTO Users (Username, Password, FullName, Role, IsActive, PersonalQR) 
+                      VALUES (@Username, @Password, @FullName, @Role, @IsActive, @PersonalQR)",
                     new[]
                     {
-                        new { Username = "admin", Password = "admin123", FullName = "Admin Chief", Role = "Admin", IsActive = 1 },
-                        new { Username = "user", Password = "user123", FullName = "John Firefighter", Role = "Personnel", IsActive = 1 }
+                        new { Username = "admin", Password = "admin123", FullName = "Admin Chief", Role = "Admin", IsActive = 1, PersonalQR = "ADMIN-001" },
+                        new { Username = "user", Password = "user123", FullName = "John Firefighter", Role = "Personnel", IsActive = 1, PersonalQR = "PERSON-001" }
                     });
             }
 
-            // Equipment – seed with disposal fields set to defaults
+            // Equipment seed (unchanged)...
             var eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
             if (eqCount == 0)
             {
@@ -237,7 +279,7 @@ namespace Firetrack.Services
                 }
             }
 
-            // Transactions – seed with 365 days of random data
+            // Transactions seed (unchanged)...
             var txCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Transactions");
             if (txCount == 0)
             {
@@ -259,7 +301,7 @@ namespace Firetrack.Services
             }
         }
 
-        // ---- Data methods (unchanged) ----
+        // ---- Data methods ----
 
         public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
@@ -339,11 +381,26 @@ namespace Firetrack.Services
         public async Task<int> SaveUserAsync(UserModel user)
         {
             using var connection = CreateConnection();
+
+            // If PersonalQR is empty, we'll set it after insert
             string sql = @"
-                INSERT OR REPLACE INTO Users (UserId, Username, Password, FullName, Role, IsActive)
-                VALUES (@UserId, @Username, @Password, @FullName, @Role, @IsActive);
+                INSERT OR REPLACE INTO Users (UserId, Username, Password, FullName, Role, IsActive, PersonalQR)
+                VALUES (@UserId, @Username, @Password, @FullName, @Role, @IsActive, @PersonalQR);
                 SELECT last_insert_rowid();";
-            return await connection.ExecuteScalarAsync<int>(sql, user);
+
+            int newId = await connection.ExecuteScalarAsync<int>(sql, user);
+
+            // If PersonalQR was not provided, generate one using the new ID
+            if (string.IsNullOrEmpty(user.PersonalQR))
+            {
+                string qr = user.Role == "Admin" ? $"ADMIN-{newId:D3}" : $"PERSON-{newId:D3}";
+                await connection.ExecuteAsync(
+                    "UPDATE Users SET PersonalQR = @QR WHERE UserId = @Id",
+                    new { QR = qr, Id = newId });
+                user.PersonalQR = qr; // update the local object as well
+            }
+
+            return newId;
         }
 
         public async Task<List<UserModel>> GetUsersAsync()
@@ -359,7 +416,7 @@ namespace Firetrack.Services
             string sql = @"
                 UPDATE Users 
                 SET Username = @Username, Password = @Password, FullName = @FullName, 
-                    Role = @Role, IsActive = @IsActive
+                    Role = @Role, IsActive = @IsActive, PersonalQR = @PersonalQR
                 WHERE UserId = @UserId";
             return await connection.ExecuteAsync(sql, user);
         }
@@ -373,7 +430,7 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
-        // ---- OTP Methods ----
+        // ---- OTP Methods (unchanged) ----
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = CreateConnection();
@@ -411,7 +468,7 @@ namespace Firetrack.Services
                 new { Username = username, OtpCode = otpCode });
         }
 
-        // ---- Equipment Request Methods ----
+        // ---- Equipment Request Methods (unchanged) ----
         public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
         {
             using var connection = CreateConnection();
@@ -485,7 +542,7 @@ namespace Firetrack.Services
                 new { QRCode = qrCode });
         }
 
-        // ---- Notifications ----
+        // ---- Notifications (unchanged) ----
         public async Task<int> SaveNotificationAsync(NotificationModel notification)
         {
             using var connection = CreateConnection();
@@ -532,7 +589,7 @@ namespace Firetrack.Services
             });
         }
 
-        // ---- Audit Logs ----
+        // ---- Audit Logs (unchanged) ----
         public async Task LogActionAsync(string username, string action, string? details = null)
         {
             using var connection = CreateConnection();
@@ -555,8 +612,7 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ---- NEW DISPOSAL METHODS ----
-
+        // ---- Disposal Methods (unchanged) ----
         public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = null)
         {
             using var connection = CreateConnection();

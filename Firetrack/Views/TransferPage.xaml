@@ -2,7 +2,7 @@
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="Firetrack.Views.TransferPage"
-             Title="Transfer Equipment"
+             Title="Digital Handshake"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
 
@@ -11,30 +11,29 @@
 
             <!-- Header -->
             <VerticalStackLayout Spacing="8" HorizontalOptions="Center">
-                <Label Text="🔄 Transfer Equipment"
+                <Label Text="🔄 Digital Handshake"
                        FontSize="28"
                        FontAttributes="Bold"
                        TextColor="{StaticResource PrimaryColor}"
                        HorizontalOptions="Center" />
-                <Label Text="Scan equipment QR, select personnel, then transfer."
+                <Label Text="4‑step transfer of equipment responsibility."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
                        HorizontalOptions="Center" />
             </VerticalStackLayout>
 
             <!-- Step 1: Scan Equipment -->
-            <Border Style="{StaticResource CardStyle}">
+            <Border Style="{StaticResource CardStyle}" Padding="10">
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="Step 1: Scan Equipment QR"
-                           FontAttributes="Bold"
-                           FontSize="16"
-                           TextColor="{StaticResource PrimaryColor}" />
+                    <Grid ColumnDefinitions="Auto, *">
+                        <Label Text="1" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="Scan Equipment QR" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                    </Grid>
                     <Button Text="📷 Scan Equipment QR"
                             Command="{Binding ScanEquipmentCommand}"
-                            Style="{StaticResource PrimaryButton}" />
-                    <Label Text="{Binding ScanStatus}"
-                           FontSize="14"
-                           TextColor="{Binding ScanStatus, Converter={StaticResource StringToColorConverter}}" />
+                            Style="{StaticResource PrimaryButton}"
+                            IsEnabled="{Binding IsStep1Complete, Converter={StaticResource InvertedBoolConverter}}" />
+                    <Label Text="{Binding Step1Status}" FontSize="14" TextColor="{Binding Step1Status, Converter={StaticResource StringToColorConverter}}" />
                     <Border IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}"
                             Stroke="{StaticResource BorderColor}"
                             StrokeThickness="1"
@@ -51,13 +50,30 @@
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Step 2: Select Personnel -->
-            <Border Style="{StaticResource CardStyle}" IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
+            <!-- Step 2: Handover From -->
+            <Border Style="{StaticResource CardStyle}" Padding="10"
+                    IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
                 <VerticalStackLayout Spacing="8">
-                    <Label Text="Step 2: Select Personnel"
-                           FontAttributes="Bold"
-                           FontSize="16"
-                           TextColor="{StaticResource PrimaryColor}" />
+                    <Grid ColumnDefinitions="Auto, *">
+                        <Label Text="2" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="Handover From" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                    </Grid>
+                    <Label Text="Current custodian (automatically set to you)." FontSize="13" TextColor="{StaticResource Gray300}" />
+                    <Border BackgroundColor="{StaticResource Surface}" Padding="10" StrokeThickness="0">
+                        <Label Text="{Binding CurrentUserFullName}" FontSize="14" TextColor="{StaticResource OnBackground}" />
+                    </Border>
+                    <Label Text="✅ Step 2 complete" FontSize="14" TextColor="{StaticResource SuccessColor}" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Step 3: Handover To -->
+            <Border Style="{StaticResource CardStyle}" Padding="10"
+                    IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="Auto, *">
+                        <Label Text="3" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="Handover To" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                    </Grid>
                     <Picker Title="Select Personnel"
                             ItemsSource="{Binding PersonnelList}"
                             ItemDisplayBinding="{Binding FullName}"
@@ -65,22 +81,25 @@
                             TextColor="{StaticResource OnBackground}"
                             TitleColor="{StaticResource Gray300}"
                             BackgroundColor="{StaticResource Surface}" />
+                    <Label Text="{Binding Step3Status}" FontSize="14" TextColor="{Binding Step3Status, Converter={StaticResource StringToColorConverter}}" />
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Step 3: Confirm Transfer -->
-            <Button Text="✅ Transfer"
-                    Style="{StaticResource SuccessButton}"
-                    Command="{Binding ConfirmTransferCommand}"
-                    IsEnabled="{Binding CanTransfer}" />
+            <!-- Step 4: Confirm Transfer -->
+            <Border Style="{StaticResource CardStyle}" Padding="10"
+                    IsVisible="{Binding CanTransfer}">
+                <VerticalStackLayout Spacing="8">
+                    <Grid ColumnDefinitions="Auto, *">
+                        <Label Text="4" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
+                        <Label Grid.Column="1" Text="Dual Confirmation" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                    </Grid>
+                    <Button Text="✅ Both Parties Confirm"
+                            Style="{StaticResource SuccessButton}"
+                            Command="{Binding ConfirmTransferCommand}" />
+                </VerticalStackLayout>
+            </Border>
 
-            <!-- Reset -->
-            <Button Text="🔄 Reset"
-                    Style="{StaticResource SecondaryButton}"
-                    Command="{Binding ResetCommand}" />
-
-            <ActivityIndicator IsRunning="{Binding IsBusy}"
-                               Color="{StaticResource PrimaryColor}" />
+            <ActivityIndicator IsRunning="{Binding IsBusy}" Color="{StaticResource PrimaryColor}" />
 
         </VerticalStackLayout>
     </ScrollView>

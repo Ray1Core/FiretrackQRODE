@@ -95,9 +95,6 @@
 		<MauiXaml Update="Views\DisposalRequestsPage.xaml">
 		  <Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
-		<MauiXaml Update="Views\DualScanPage.xaml">
-		  <Generator>MSBuild:Compile</Generator>
-		</MauiXaml>
 		<MauiXaml Update="Views\EquipmentCategoryPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>

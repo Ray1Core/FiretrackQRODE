@@ -100,7 +100,8 @@ namespace Firetrack.ViewModels
                 Type = string.Empty;
                 Status = "Available";
 
-                await Shell.Current.GoToAsync("EquipmentCategoryPage");
+                // ✅ Absolute navigation
+                await Shell.Current.GoToAsync("//EquipmentCategoryPage");
             }
             catch (Exception ex)
             {

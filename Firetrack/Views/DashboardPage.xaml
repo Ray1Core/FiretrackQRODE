@@ -204,6 +204,43 @@
                 </VerticalStackLayout>
             </Border>
 
+            <!-- ========== PERSONNEL QR CARD ========== -->
+            <Border Style="{StaticResource CardStyle}"
+                    Padding="10"
+                    IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="👤 My Personnel QR"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource PrimaryColor}" />
+                    <Label Text="Scan this QR during equipment handover as your identification."
+                           FontSize="13"
+                           TextColor="{StaticResource OnBackground}" />
+                    <Image Source="{Binding PersonnelQRImage}"
+                           WidthRequest="150"
+                           HeightRequest="150"
+                           HorizontalOptions="Center" />
+                    <Label Text="{Binding PersonnelQR}"
+                           FontSize="14"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource OnBackground}"
+                           HorizontalOptions="Center" />
+                    <Label Text="{Binding FullName}"
+                           FontSize="14"
+                           TextColor="{StaticResource Gray300}"
+                           HorizontalOptions="Center" />
+                    <Label Text="Personnel"
+                           FontSize="12"
+                           TextColor="{StaticResource Gray300}"
+                           HorizontalOptions="Center" />
+                    <Button Text="📂 Download QR"
+                            Style="{StaticResource PrimaryButton}"
+                            Command="{Binding DownloadPersonnelQRCommand}"
+                            HeightRequest="40"
+                            FontSize="14" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- ========== QUICK ACTIONS ========== -->
             <Grid ColumnDefinitions="*, *"
                   RowDefinitions="Auto, Auto"

@@ -15,8 +15,6 @@ namespace Firetrack.ViewModels
             set { _notifications = value; OnPropertyChanged(); }
         }
 
-        // GoBackCommand removed – navigation is handled by Shell
-
         public NotificationsViewModel()
         {
             LoadNotifications();
@@ -30,7 +28,12 @@ namespace Firetrack.ViewModels
                 var all = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Username);
                 Notifications.Clear();
                 foreach (var n in all) Notifications.Add(n);
+
+                // Mark all as read
                 await App.Database.MarkAllNotificationsAsReadAsync(App.CurrentUser.Username);
+
+                // ✅ Refresh the global notification badge
+                AppShell.RefreshUnreadCount();
             }
             catch (Exception ex)
             {
