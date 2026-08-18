@@ -16,19 +16,21 @@
                        FontAttributes="Bold"
                        TextColor="{StaticResource PrimaryColor}"
                        HorizontalOptions="Center" />
-                <Label Text="4‑step transfer of equipment responsibility."
+                <Label Text="A dual‑scan feature confirms the transfer of gear, creating a clear, non‑repudiable record of responsibility."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
-                       HorizontalOptions="Center" />
+                       HorizontalOptions="Center"
+                       LineBreakMode="WordWrap" />
             </VerticalStackLayout>
 
-            <!-- Step 1: Scan Equipment -->
+            <!-- Step 1: Scan Equipment QR -->
             <Border Style="{StaticResource CardStyle}" Padding="10">
                 <VerticalStackLayout Spacing="8">
                     <Grid ColumnDefinitions="Auto, *">
-                        <Label Text="1" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
-                        <Label Grid.Column="1" Text="Scan Equipment QR" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                        <Label Text="1" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" WidthRequest="30" />
+                        <Label Grid.Column="1" Text="Scan Equipment QR" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
                     </Grid>
+                    <Label Text="Capture the QR code on the equipment." FontSize="13" TextColor="{StaticResource Gray300}" />
                     <Button Text="📷 Scan Equipment QR"
                             Command="{Binding ScanEquipmentCommand}"
                             Style="{StaticResource PrimaryButton}"
@@ -41,10 +43,10 @@
                             Padding="10"
                             BackgroundColor="{StaticResource Surface}">
                         <VerticalStackLayout Spacing="4">
-                            <Label Text="{Binding SelectedEquipment.Name, StringFormat='Name: {0}'}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
+                            <Label Text="Equipment scanned" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource OnBackground}" />
+                            <Label Text="{Binding SelectedEquipment.Name, StringFormat='{0}'}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
                             <Label Text="{Binding SelectedEquipment.QRCode, StringFormat='QR: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
                             <Label Text="{Binding SelectedEquipment.Type, StringFormat='Type: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
-                            <Label Text="{Binding SelectedEquipment.Status, StringFormat='Status: {0}'}" FontSize="13" TextColor="{Binding SelectedEquipment.Status, Converter={StaticResource StatusToColorConverter}}" />
                         </VerticalStackLayout>
                     </Border>
                 </VerticalStackLayout>
@@ -55,14 +57,27 @@
                     IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
                 <VerticalStackLayout Spacing="8">
                     <Grid ColumnDefinitions="Auto, *">
-                        <Label Text="2" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
-                        <Label Grid.Column="1" Text="Handover From" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                        <Label Text="2" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" WidthRequest="30" />
+                        <Label Grid.Column="1" Text="Handover From" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
                     </Grid>
-                    <Label Text="Current custodian (automatically set to you)." FontSize="13" TextColor="{StaticResource Gray300}" />
-                    <Border BackgroundColor="{StaticResource Surface}" Padding="10" StrokeThickness="0">
-                        <Label Text="{Binding CurrentUserFullName}" FontSize="14" TextColor="{StaticResource OnBackground}" />
+                    <Label Text="Scan or select the current custodian." FontSize="13" TextColor="{StaticResource Gray300}" />
+                    <Button Text="📷 Scan/Select Current Custodian"
+                            Command="{Binding ScanCurrentCustodianCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            IsEnabled="{Binding IsStep2Complete, Converter={StaticResource InvertedBoolConverter}}" />
+                    <Label Text="{Binding Step2Status}" FontSize="14" TextColor="{Binding Step2Status, Converter={StaticResource StringToColorConverter}}" />
+                    <Border IsVisible="{Binding CurrentCustodian, Converter={StaticResource IsNotNullConverter}}"
+                            Stroke="{StaticResource BorderColor}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="10"
+                            BackgroundColor="{StaticResource Surface}">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Current Custodian" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource OnBackground}" />
+                            <Label Text="{Binding CurrentCustodian.FullName}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
+                            <Label Text="{Binding CurrentCustodian.Username, StringFormat='Username: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                        </VerticalStackLayout>
                     </Border>
-                    <Label Text="✅ Step 2 complete" FontSize="14" TextColor="{StaticResource SuccessColor}" />
                 </VerticalStackLayout>
             </Border>
 
@@ -71,31 +86,67 @@
                     IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
                 <VerticalStackLayout Spacing="8">
                     <Grid ColumnDefinitions="Auto, *">
-                        <Label Text="3" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
-                        <Label Grid.Column="1" Text="Handover To" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                        <Label Text="3" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" WidthRequest="30" />
+                        <Label Grid.Column="1" Text="Handover To" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
                     </Grid>
-                    <Picker Title="Select Personnel"
-                            ItemsSource="{Binding PersonnelList}"
-                            ItemDisplayBinding="{Binding FullName}"
-                            SelectedItem="{Binding SelectedPersonnel}"
-                            TextColor="{StaticResource OnBackground}"
-                            TitleColor="{StaticResource Gray300}"
-                            BackgroundColor="{StaticResource Surface}" />
+                    <Label Text="Scan or select the receiving personnel." FontSize="13" TextColor="{StaticResource Gray300}" />
+                    <Button Text="📷 Scan/Select New Custodian"
+                            Command="{Binding ScanNewCustodianCommand}"
+                            Style="{StaticResource PrimaryButton}"
+                            IsEnabled="{Binding IsStep3Complete, Converter={StaticResource InvertedBoolConverter}}" />
                     <Label Text="{Binding Step3Status}" FontSize="14" TextColor="{Binding Step3Status, Converter={StaticResource StringToColorConverter}}" />
+                    <Border IsVisible="{Binding SelectedPersonnel, Converter={StaticResource IsNotNullConverter}}"
+                            Stroke="{StaticResource BorderColor}"
+                            StrokeThickness="1"
+                            StrokeShape="RoundRectangle 8"
+                            Padding="10"
+                            BackgroundColor="{StaticResource Surface}">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Receiving Personnel" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource OnBackground}" />
+                            <Label Text="{Binding SelectedPersonnel.FullName}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" />
+                            <Label Text="{Binding SelectedPersonnel.Username, StringFormat='Username: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <!-- ===== NEW: Pending status for Step 3 ===== -->
+                    <Border IsVisible="{Binding SelectedPersonnel, Converter={StaticResource InvertedBoolConverter}}"
+                            BackgroundColor="{StaticResource Surface}"
+                            Padding="10"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Pending" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource WarningColor}" />
+                            <Label Text="Waiting for receiver scan" FontSize="13" TextColor="{StaticResource Gray300}" />
+                        </VerticalStackLayout>
+                    </Border>
                 </VerticalStackLayout>
             </Border>
 
-            <!-- Step 4: Confirm Transfer -->
+            <!-- Step 4: Dual Confirmation -->
             <Border Style="{StaticResource CardStyle}" Padding="10"
-                    IsVisible="{Binding CanTransfer}">
+                    IsVisible="{Binding SelectedEquipment, Converter={StaticResource IsNotNullConverter}}">
                 <VerticalStackLayout Spacing="8">
                     <Grid ColumnDefinitions="Auto, *">
-                        <Label Text="4" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
-                        <Label Grid.Column="1" Text="Dual Confirmation" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" />
+                        <Label Text="4" FontSize="20" FontAttributes="Bold" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" WidthRequest="30" />
+                        <Label Grid.Column="1" Text="Dual Confirmation" FontAttributes="Bold" FontSize="16" TextColor="{StaticResource PrimaryColor}" VerticalOptions="Center" />
                     </Grid>
-                    <Button Text="✅ Both Parties Confirm"
+                    <Label Text="Both parties confirm to complete the transfer." FontSize="13" TextColor="{StaticResource Gray300}" />
+                    <Button Text="Both Parties Confirm"
                             Style="{StaticResource SuccessButton}"
-                            Command="{Binding ConfirmTransferCommand}" />
+                            Command="{Binding CompleteTransferCommand}"
+                            IsEnabled="{Binding CanConfirmTransfer}" />
+                    <!-- ===== NEW: Pending status for Step 4 ===== -->
+                    <Border IsVisible="{Binding CanConfirmTransfer, Converter={StaticResource InvertedBoolConverter}}"
+                            BackgroundColor="{StaticResource Surface}"
+                            Padding="10"
+                            StrokeThickness="0"
+                            StrokeShape="RoundRectangle 8">
+                        <VerticalStackLayout Spacing="4">
+                            <Label Text="Pending" FontAttributes="Bold" FontSize="14" TextColor="{StaticResource WarningColor}" />
+                            <Label Text="Waiting for both confirmations" FontSize="13" TextColor="{StaticResource Gray300}" />
+                        </VerticalStackLayout>
+                    </Border>
+                    <!-- Completed status -->
+                    <Label Text="{Binding Step4Status}" FontSize="14" TextColor="{Binding Step4Status, Converter={StaticResource StringToColorConverter}}" />
                 </VerticalStackLayout>
             </Border>
 

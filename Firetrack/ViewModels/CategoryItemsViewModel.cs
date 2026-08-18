@@ -80,11 +80,11 @@ namespace Firetrack.ViewModels
 
             var navParams = new Dictionary<string, object> { { "equipment", item } };
 
-            // Navigate based on role
+            // ✅ Use absolute routes to avoid ambiguity
             if (App.CurrentUser?.Role == "Personnel")
-                await Shell.Current.GoToAsync("EquipmentRequestDetailPage", navParams);
+                await Shell.Current.GoToAsync("//EquipmentRequestDetailPage", navParams);
             else
-                await Shell.Current.GoToAsync("EquipmentDetailPage", navParams);
+                await Shell.Current.GoToAsync("//EquipmentDetailPage", navParams);
         }
     }
 }

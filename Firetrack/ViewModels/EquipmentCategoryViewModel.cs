@@ -14,12 +14,10 @@ namespace Firetrack.ViewModels
         private bool _isAdmin;
         private string _searchText = string.Empty;
 
-        // ---- Metrics properties ----
-        private int _totalCount;
+        // ---- Simplified Metrics (only 3) ----
         private int _availableCount;
-        private int _issuedCount;
-        private int _damagedCount;
-        private int _disposedCount;
+        private int _stackInCount;    // Issued
+        private int _stackOutCount;   // Disposed
 
         public ObservableCollection<CategoryGroup> Categories
         {
@@ -46,34 +44,22 @@ namespace Firetrack.ViewModels
         }
 
         // ---- Metric properties ----
-        public int TotalCount
-        {
-            get => _totalCount;
-            set { _totalCount = value; OnPropertyChanged(); }
-        }
-
         public int AvailableCount
         {
             get => _availableCount;
             set { _availableCount = value; OnPropertyChanged(); }
         }
 
-        public int IssuedCount
+        public int StackInCount
         {
-            get => _issuedCount;
-            set { _issuedCount = value; OnPropertyChanged(); }
+            get => _stackInCount;
+            set { _stackInCount = value; OnPropertyChanged(); }
         }
 
-        public int DamagedCount
+        public int StackOutCount
         {
-            get => _damagedCount;
-            set { _damagedCount = value; OnPropertyChanged(); }
-        }
-
-        public int DisposedCount
-        {
-            get => _disposedCount;
-            set { _disposedCount = value; OnPropertyChanged(); }
+            get => _stackOutCount;
+            set { _stackOutCount = value; OnPropertyChanged(); }
         }
 
         public ICommand LoadCategoriesCommand { get; }
@@ -108,12 +94,10 @@ namespace Firetrack.ViewModels
             {
                 var all = await _db.GetEquipmentsAsync();
 
-                // ---- Update metrics ----
-                TotalCount = all.Count;
+                // ---- Update metrics (only three) ----
                 AvailableCount = all.Count(e => e.Status == "Available");
-                IssuedCount = all.Count(e => e.Status == "Issued");
-                DamagedCount = all.Count(e => e.Status == "Damaged");
-                DisposedCount = all.Count(e => e.Status == "Disposed");
+                StackInCount = all.Count(e => e.Status == "Issued");
+                StackOutCount = all.Count(e => e.Status == "Disposed");
 
                 // ---- Apply search filter ----
                 var filtered = all;
@@ -163,7 +147,7 @@ namespace Firetrack.ViewModels
         {
             if (category == null) return;
             var navParams = new Dictionary<string, object> { { "categoryName", category.Name } };
-            await Shell.Current.GoToAsync("//CategoryItemsPage", navParams);  // ✅ absolute
+            await Shell.Current.GoToAsync("//CategoryItemsPage", navParams);
         }
     }
 }

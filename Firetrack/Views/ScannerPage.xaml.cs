@@ -17,7 +17,6 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
         BindingContext = _viewModel;
     }
 
-    // ✅ Receives query parameters from navigation
     public void ApplyQueryAttributes(IDictionary<string, object> query)
     {
         if (query.TryGetValue("returnTo", out var returnToObj) && returnToObj is string returnTo)

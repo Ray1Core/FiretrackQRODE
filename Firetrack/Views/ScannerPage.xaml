@@ -14,7 +14,7 @@
                                        IsTorchOn="False"
                                        CameraLocation="Rear" />
 
-        <!-- Overlay UI -->
+        <!-- Overlay UI (matches the image) -->
         <VerticalStackLayout VerticalOptions="End"
                              HorizontalOptions="Fill"
                              Padding="20"
@@ -22,7 +22,8 @@
                              BackgroundColor="#80000000">
             <Label Text="Point camera at QR code"
                    TextColor="White"
-                   FontSize="16"
+                   FontSize="18"
+                   FontAttributes="Bold"
                    HorizontalOptions="Center" />
             <Label Text="{Binding ScanResult}"
                    TextColor="{StaticResource PrimaryColor}"
@@ -30,8 +31,14 @@
                    HorizontalOptions="Center" />
             <Button Text="Cancel"
                     Command="{Binding CancelCommand}"
-                    Style="{StaticResource SecondaryButton}"
-                    Margin="0,0,0,10" />
+                    BackgroundColor="Transparent"
+                    TextColor="White"
+                    BorderColor="White"
+                    BorderWidth="1"
+                    CornerRadius="8"
+                    HeightRequest="44"
+                    HorizontalOptions="Center"
+                    WidthRequest="120" />
         </VerticalStackLayout>
 
         <ActivityIndicator IsVisible="{Binding IsBusy}"
