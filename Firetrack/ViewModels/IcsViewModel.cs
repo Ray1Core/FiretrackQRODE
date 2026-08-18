@@ -104,9 +104,18 @@ namespace Firetrack.ViewModels
             {
                 System.Diagnostics.Debug.WriteLine("📄 Generating ICS PDF...");
                 var pdfBytes = _pdfService.GenerateIcsPdf(Equipment, Officer, Issuer);
+
+                // ✅ Null check for PDF bytes
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                {
+                    StatusMessage = "❌ PDF generation returned empty data.";
+                    IsBusy = false;
+                    return;
+                }
+
                 System.Diagnostics.Debug.WriteLine($"✅ PDF generated, size: {pdfBytes.Length} bytes");
 
-                var fileName = $"ICS_{Equipment.QRCode}_{DateTime.Now:yyyyMMddHHmmss}.pdf";
+                var fileName = $"ICS_{Equipment.QRCode}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "ICS");
                 Directory.CreateDirectory(downloadsPath);
                 var filePath = Path.Combine(downloadsPath, fileName);
@@ -121,25 +130,21 @@ namespace Firetrack.ViewModels
                     return;
                 }
 
-                // Try to open with Launcher, fallback to Share
+                // Open with fallback
                 try
                 {
-                    await Launcher.Default.OpenAsync(new OpenFileRequest
-                    {
-                        File = new ReadOnlyFile(filePath)
-                    });
-                    StatusMessage = "✅ ICS generated and opened successfully.";
+                    await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
                 }
                 catch
                 {
-                    // Fallback to Share
                     await Share.Default.RequestAsync(new ShareFileRequest
                     {
                         Title = "View ICS PDF",
                         File = new ShareFile(filePath)
                     });
-                    StatusMessage = "✅ ICS generated. Shared/opened using fallback.";
                 }
+
+                StatusMessage = "✅ ICS generated and opened successfully.";
             }
             catch (Exception ex)
             {

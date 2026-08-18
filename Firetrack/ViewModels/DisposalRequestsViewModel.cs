@@ -215,6 +215,13 @@ namespace Firetrack.ViewModels
                 var pdfService = new PdfGenerationService();
                 var pdfBytes = pdfService.GenerateDisposalCertificate(equipment, admin, equipment.DisposalRemarks ?? "");
 
+                // ✅ Null check for PDF bytes
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                {
+                    StatusMessage = "❌ PDF generation returned empty data.";
+                    return;
+                }
+
                 var fileName = $"Disposal_{equipment.QRCode}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "DisposalCertificates");
                 Directory.CreateDirectory(downloadsPath);

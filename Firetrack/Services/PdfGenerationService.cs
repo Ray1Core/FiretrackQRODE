@@ -3,11 +3,15 @@ using PdfSharpCore.Pdf;
 using PdfSharpCore.Drawing;
 using System.IO;
 using System;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace Firetrack.Services
 {
     public class PdfGenerationService
     {
+        // ✅ No static constructor needed – resolver is set in MauiProgram.cs
+
         public byte[] GenerateIcsPdf(EquipmentModel equipment, UserModel officer, UserModel issuer)
         {
             try
@@ -16,7 +20,6 @@ namespace Firetrack.Services
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
 
-                // Use built‑in PDF fonts (work on all platforms)
                 var titleFont = new XFont("Helvetica-Bold", 18);
                 var headerFont = new XFont("Helvetica-Bold", 12);
                 var bodyFont = new XFont("Helvetica", 10);
@@ -118,7 +121,6 @@ namespace Firetrack.Services
             }
             catch (Exception ex)
             {
-                // Log the error and re‑throw so the ViewModel can catch it
                 System.Diagnostics.Debug.WriteLine($"❌ PDF generation failed: {ex}");
                 throw new Exception($"PDF generation failed: {ex.Message}", ex);
             }
@@ -162,7 +164,7 @@ namespace Firetrack.Services
                     new XRect(leftMargin, yPos, pageWidth - leftMargin - rightMargin, 20), XStringFormats.TopLeft);
                 yPos += 35;
 
-                // Equipment list (if any returned)
+                // Equipment list
                 if (equipment.Any())
                 {
                     gfx.DrawString("All equipment has been returned:", headerFont, XBrushes.Black,
@@ -211,9 +213,6 @@ namespace Firetrack.Services
                 throw new Exception($"Clearance PDF generation failed: {ex.Message}", ex);
             }
         }
-
-
-        // Services/PdfGenerationService.cs – add this method
 
         public byte[] GenerateDisposalCertificate(EquipmentModel equipment, UserModel approvedBy, string remarks = "")
         {

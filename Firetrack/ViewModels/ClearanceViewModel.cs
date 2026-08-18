@@ -293,6 +293,14 @@ namespace Firetrack.ViewModels
                 var allItems = AssignedEquipment.ToList();
                 var pdfBytes = pdfService.GenerateClearanceCertificate(SelectedOfficer, allItems);
 
+                // ✅ Null check for PDF bytes
+                if (pdfBytes == null || pdfBytes.Length == 0)
+                {
+                    StatusMessage = "❌ PDF generation returned empty data.";
+                    IsBusy = false;
+                    return;
+                }
+
                 var fileName = $"Clearance_{SelectedOfficer.Username}_{DateTime.Now:yyyyMMdd_HHmmss}.pdf";
                 var downloadsPath = Path.Combine(FileSystem.AppDataDirectory, "Clearance");
                 Directory.CreateDirectory(downloadsPath);

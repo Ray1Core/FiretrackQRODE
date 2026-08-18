@@ -55,7 +55,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         BindingContext = this;
 
         LogoutCommand = new Command(OnLogout);
-        GoToNotificationsCommand = new Command(async () => await GoToAsync("NotificationsPage"));
+        GoToNotificationsCommand = new Command(async () => await GoToAsync("//NotificationsPage"));
 
         UpdateUserRoleVisibility();
         LoadUnreadCount();
