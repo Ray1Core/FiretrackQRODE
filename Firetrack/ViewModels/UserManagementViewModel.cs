@@ -14,9 +14,10 @@ namespace Firetrack.ViewModels
         private bool _isAddingUser;
 
         // Add user fields
-        private string _newUsername = string.Empty;
-        private string _newPassword = string.Empty;
-        private string _newFullName = string.Empty;
+        private string _newEmail = string.Empty;          // Username → Email
+        private string _newPassword = string.Empty;       // Password → PasswordHash
+        private string _newFirstName = string.Empty;      // New: First Name
+        private string _newLastName = string.Empty;       // New: Last Name
         private string _newRole = "Personnel";
         private string _addStatusMessage = string.Empty;
 
@@ -38,10 +39,11 @@ namespace Firetrack.ViewModels
             set { _isAddingUser = value; OnPropertyChanged(); }
         }
 
-        public string NewUsername
+        // New properties for add form
+        public string NewEmail
         {
-            get => _newUsername;
-            set { _newUsername = value; OnPropertyChanged(); }
+            get => _newEmail;
+            set { _newEmail = value; OnPropertyChanged(); }
         }
 
         public string NewPassword
@@ -50,10 +52,16 @@ namespace Firetrack.ViewModels
             set { _newPassword = value; OnPropertyChanged(); }
         }
 
-        public string NewFullName
+        public string NewFirstName
         {
-            get => _newFullName;
-            set { _newFullName = value; OnPropertyChanged(); }
+            get => _newFirstName;
+            set { _newFirstName = value; OnPropertyChanged(); }
+        }
+
+        public string NewLastName
+        {
+            get => _newLastName;
+            set { _newLastName = value; OnPropertyChanged(); }
         }
 
         public string NewRole
@@ -93,7 +101,6 @@ namespace Firetrack.ViewModels
             Task.Run(async () => await OnLoadUsers());
         }
 
-        // ✅ FIX: Changed from async void to async Task
         private async Task OnLoadUsers()
         {
             if (_db == null) return;
@@ -125,15 +132,19 @@ namespace Firetrack.ViewModels
 
         private void ClearAddFields()
         {
-            NewUsername = string.Empty;
+            NewEmail = string.Empty;
             NewPassword = string.Empty;
-            NewFullName = string.Empty;
+            NewFirstName = string.Empty;
+            NewLastName = string.Empty;
             NewRole = "Personnel";
         }
 
         private async void OnSaveUser()
         {
-            if (string.IsNullOrWhiteSpace(NewUsername) || string.IsNullOrWhiteSpace(NewPassword) || string.IsNullOrWhiteSpace(NewFullName))
+            if (string.IsNullOrWhiteSpace(NewEmail) ||
+                string.IsNullOrWhiteSpace(NewPassword) ||
+                string.IsNullOrWhiteSpace(NewFirstName) ||
+                string.IsNullOrWhiteSpace(NewLastName))
             {
                 AddStatusMessage = "All fields are required.";
                 return;
@@ -144,20 +155,24 @@ namespace Firetrack.ViewModels
 
             try
             {
-                var existing = await _db.GetUserByUsernameAsync(NewUsername);
+                // Check if email (username) exists using the new GetUserByEmailAsync
+                var existing = await _db.GetUserByEmailAsync(NewEmail.Trim());
                 if (existing != null)
                 {
-                    AddStatusMessage = "Username already exists.";
+                    AddStatusMessage = "Email already exists.";
                     IsBusy = false;
                     return;
                 }
 
+                // Create new user with the new schema
                 var newUser = new UserModel
                 {
-                    Username = NewUsername.Trim(),
-                    Password = NewPassword.Trim(),
-                    FullName = NewFullName.Trim(),
-                    Role = NewRole
+                    Email = NewEmail.Trim(),
+                    PasswordHash = NewPassword.Trim(),   // In production, hash this
+                    FirstName = NewFirstName.Trim(),
+                    LastName = NewLastName.Trim(),
+                    Role = NewRole,
+                    Status = "Active"
                 };
 
                 await _db.SaveUserAsync(newUser);
@@ -165,15 +180,15 @@ namespace Firetrack.ViewModels
                 if (App.CurrentUser != null)
                 {
                     await _db.LogActionAsync(
-                        App.CurrentUser.Username,
+                        App.CurrentUser.Email,
                         "Add User",
-                        $"Added user '{newUser.Username}'");
+                        $"Added user '{newUser.Email}'");
                 }
 
                 AddStatusMessage = "✅ User created successfully!";
                 ClearAddFields();
                 IsAddingUser = false;
-                await OnLoadUsers(); // ✅ Now works – OnLoadUsers returns Task
+                await OnLoadUsers();
             }
             catch (Exception ex)
             {
@@ -185,37 +200,40 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ---- Existing user actions (unchanged) ----
+        // ---- Toggle Active ----
         private async void OnToggleActive(UserModel? user)
         {
             if (user == null) return;
-            if (user.Username == "admin")
+            if (user.Email == "admin@firetrack.gov")  // protect main admin
             {
                 await Shell.Current.DisplayAlert("Warning", "Cannot deactivate the main admin account.", "OK");
                 return;
             }
 
-            user.IsActive = !user.IsActive;
+            // Toggle Status
+            user.Status = user.Status == "Active" ? "Inactive" : "Active";
             try
             {
                 await _db.UpdateUserAsync(user);
-                await Shell.Current.DisplayAlert("Success", $"User '{user.Username}' is now {(user.IsActive ? "Active" : "Inactive")}.", "OK");
-                await OnLoadUsers(); // ✅ Fixed
+                await Shell.Current.DisplayAlert("Success", $"User '{user.Email}' is now {(user.Status == "Active" ? "Active" : "Inactive")}.", "OK");
+                await OnLoadUsers();
             }
             catch (Exception ex)
             {
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
-                user.IsActive = !user.IsActive;
+                // revert
+                user.Status = user.Status == "Active" ? "Inactive" : "Active";
             }
         }
 
+        // ---- Reset Password ----
         private async void OnResetPassword(UserModel? user)
         {
             if (user == null) return;
 
             string newPassword = await Shell.Current.DisplayPromptAsync(
                 "Reset Password",
-                $"Enter new password for {user.Username}:",
+                $"Enter new password for {user.Email}:",
                 "Save",
                 "Cancel",
                 placeholder: "New password",
@@ -226,9 +244,9 @@ namespace Firetrack.ViewModels
 
             try
             {
-                bool success = await _db.ResetPasswordAsync(user.Username, newPassword);
+                bool success = await _db.ResetPasswordAsync(user.Email, newPassword);
                 if (success)
-                    await Shell.Current.DisplayAlert("Success", $"Password for {user.Username} has been reset.", "OK");
+                    await Shell.Current.DisplayAlert("Success", $"Password for {user.Email} has been reset.", "OK");
                 else
                     await Shell.Current.DisplayAlert("Error", "Failed to reset password.", "OK");
             }
@@ -238,10 +256,11 @@ namespace Firetrack.ViewModels
             }
         }
 
+        // ---- Edit Role ----
         private async void OnEditRole(UserModel? user)
         {
             if (user == null) return;
-            if (user.Username == "admin")
+            if (user.Email == "admin@firetrack.gov")
             {
                 await Shell.Current.DisplayAlert("Warning", "Cannot change role of the main admin account.", "OK");
                 return;
@@ -261,8 +280,8 @@ namespace Firetrack.ViewModels
             try
             {
                 await _db.UpdateUserAsync(user);
-                await Shell.Current.DisplayAlert("Success", $"Role for {user.Username} set to {newRole}.", "OK");
-                await OnLoadUsers(); // ✅ Fixed
+                await Shell.Current.DisplayAlert("Success", $"Role for {user.Email} set to {newRole}.", "OK");
+                await OnLoadUsers();
             }
             catch (Exception ex)
             {

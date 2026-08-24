@@ -47,16 +47,12 @@ namespace Firetrack.Services
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
-            MigrateUserColumns(connection);      // NEW: add PersonalQR
-            MigrateDisposalColumns(connection);
             SeedData(connection);
 #else
             EnsureDatabaseExists();
             using var connection = new SqlConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
-            MigrateUserColumns(connection);      // NEW: add PersonalQR
-            MigrateDisposalColumns(connection);
             SeedData(connection);
 #endif
         }
@@ -79,58 +75,17 @@ namespace Firetrack.Services
 
         private void CreateTables(IDbConnection connection)
         {
-            // Users – includes PersonalQR
+            // ---- AuditLogs (needed for LogActionAsync) ----
             connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Users (
-                    UserId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Username TEXT UNIQUE NOT NULL,
-                    Password TEXT NOT NULL,
-                    FullName TEXT NOT NULL,
-                    Role TEXT NOT NULL DEFAULT 'Personnel',
-                    IsActive INTEGER NOT NULL DEFAULT 1,
-                    PersonalQR TEXT NULL
-                )");
-
-            // Equipment – base columns (disposal added via migration)
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Equipment (
-                    EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    QRCode TEXT UNIQUE NOT NULL,
-                    Name TEXT NOT NULL,
-                    Type TEXT NOT NULL,
-                    Status TEXT NOT NULL DEFAULT 'Available',
-                    AssignedToUsername TEXT NULL,
-                    PhotoPath TEXT NULL,
-                    Remarks TEXT NULL,
-                    LastUpdated DATETIME NULL,
-                    RequestedByUsername TEXT NULL,
-                    RequestStatus TEXT NULL
-                )");
-
-            // Transactions
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Transactions (
-                    TransactionId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    EquipmentQR TEXT NOT NULL,
-                    FromUser TEXT NOT NULL,
-                    ToUser TEXT NOT NULL,
-                    Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    Action TEXT NOT NULL,
-                    Remarks TEXT NULL
-                )");
-
-            // Notifications
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Notifications (
-                    NotificationId INTEGER PRIMARY KEY AUTOINCREMENT,
+                CREATE TABLE IF NOT EXISTS AuditLogs (
+                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
                     Username TEXT NOT NULL,
-                    Title TEXT NOT NULL,
-                    Message TEXT NOT NULL,
-                    IsRead INTEGER NOT NULL DEFAULT 0,
+                    Action TEXT NOT NULL,
+                    Details TEXT NULL,
                     Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // PasswordResetOtps
+            // ---- PasswordResetOtps (needed for OTP) ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS PasswordResetOtps (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -140,297 +95,248 @@ namespace Firetrack.Services
                     IsUsed INTEGER NOT NULL DEFAULT 0
                 )");
 
-            // AuditLogs
+            // ---- Roles ----
             connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS AuditLogs (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Username TEXT NOT NULL,
-                    Action TEXT NOT NULL,
-                    Details TEXT NULL,
-                    Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+                CREATE TABLE IF NOT EXISTS Roles (
+                    RoleId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    RoleName TEXT NOT NULL UNIQUE,
+                    Description TEXT,
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
+
+            // ---- Users ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS Users (
+                    UserId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    RoleId INTEGER NOT NULL,
+                    FirstName TEXT NOT NULL,
+                    LastName TEXT NOT NULL,
+                    Email TEXT NOT NULL UNIQUE,
+                    PasswordHash TEXT NOT NULL,
+                    Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
+                )");
+
+            // ---- Equipment ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS Equipment (
+                    EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    PropertyNumber TEXT NOT NULL UNIQUE,
+                    ItemName TEXT NOT NULL,
+                    Category TEXT NOT NULL,
+                    Description TEXT,
+                    SerialNumber TEXT,
+                    AcquisitionDate DATE,
+                    AcquisitionCost DECIMAL(12,2),
+                    ConditionStatus TEXT CHECK(ConditionStatus IN ('Serviceable', 'Unserviceable', 'Under Repair', 'Disposed')) DEFAULT 'Serviceable',
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
+
+            // ---- Requests ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS Requests (
+                    RequestId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserId INTEGER NOT NULL,
+                    EquipmentId INTEGER NOT NULL,
+                    Quantity INTEGER NOT NULL DEFAULT 1,
+                    Purpose TEXT NOT NULL,
+                    RequestStatus TEXT CHECK(RequestStatus IN ('Pending', 'Approved', 'Rejected')) DEFAULT 'Pending',
+                    RequestedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (UserId) REFERENCES Users(UserId),
+                    FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId)
+                )");
+
+            // ---- Assignments ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS Assignments (
+                    AssignmentId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    EquipmentId INTEGER NOT NULL,
+                    UserId INTEGER NOT NULL,
+                    AssignedDate DATE NOT NULL,
+                    ReturnedDate DATE NULL,
+                    AssignmentStatus TEXT CHECK(AssignmentStatus IN ('Assigned', 'Returned', 'Transferred')) DEFAULT 'Assigned',
+                    Remarks TEXT,
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
+                    FOREIGN KEY (UserId) REFERENCES Users(UserId)
+                )");
+
+            // ---- Handshakes ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS Handshakes (
+                    HandshakeId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    EquipmentId INTEGER NOT NULL,
+                    FromUserId INTEGER NOT NULL,
+                    ToUserId INTEGER NOT NULL,
+                    TransferDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    Status TEXT CHECK(Status IN ('Pending', 'Accepted', 'Rejected')) DEFAULT 'Pending',
+                    Notes TEXT,
+                    FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
+                    FOREIGN KEY (FromUserId) REFERENCES Users(UserId),
+                    FOREIGN KEY (ToUserId) REFERENCES Users(UserId)
+                )");
+
+            // ---- DamageReports ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS DamageReports (
+                    ReportId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    EquipmentId INTEGER NOT NULL,
+                    ReportedBy INTEGER NOT NULL,
+                    IncidentDate DATE NOT NULL,
+                    DamageDescription TEXT NOT NULL,
+                    ReportStatus TEXT CHECK(ReportStatus IN ('Reported', 'Under Inspection', 'Resolved', 'For Disposal')) DEFAULT 'Reported',
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
+                    FOREIGN KEY (ReportedBy) REFERENCES Users(UserId)
+                )");
+
+            // ---- DisposalRequests ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS DisposalRequests (
+                    DisposalId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    EquipmentId INTEGER NOT NULL,
+                    RequestedBy INTEGER NOT NULL,
+                    Reason TEXT NOT NULL,
+                    DisposalStatus TEXT CHECK(DisposalStatus IN ('Pending Review', 'Approved', 'Completed', 'Rejected')) DEFAULT 'Pending Review',
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
+                    FOREIGN KEY (RequestedBy) REFERENCES Users(UserId)
+                )");
+
+            // ---- Notifications ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS Notifications (
+                    NotificationId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    UserId INTEGER NOT NULL,
+                    Title TEXT NOT NULL,
+                    Message TEXT NOT NULL,
+                    IsRead BOOLEAN DEFAULT 0,
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (UserId) REFERENCES Users(UserId)
+                )");
+
+            // ---- IcsDocuments ----
+            connection.Execute(@"
+                CREATE TABLE IF NOT EXISTS IcsDocuments (
+                    IcsId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    EquipmentId INTEGER NOT NULL,
+                    IssuedTo INTEGER NOT NULL,
+                    IcsNumber TEXT NOT NULL UNIQUE,
+                    DateIssued DATE NOT NULL,
+                    DocumentPath TEXT,
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
+                    FOREIGN KEY (IssuedTo) REFERENCES Users(UserId)
                 )");
         }
 
-        // ===== MIGRATION: Add PersonalQR to Users =====
-        private void MigrateUserColumns(IDbConnection connection)
-        {
-            try
-            {
-                List<string> columns;
-
-#if ANDROID
-                columns = connection.Query<string>("PRAGMA table_info(Users)")
-                                    .Select(c => c.ToLowerInvariant())
-                                    .ToList();
-#else
-                columns = connection.Query<string>(
-                    "SELECT LOWER(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Users'")
-                    .ToList();
-#endif
-
-                if (!columns.Contains("personalqr"))
-                {
-                    connection.Execute("ALTER TABLE Users ADD COLUMN PersonalQR TEXT NULL");
-                    System.Diagnostics.Debug.WriteLine("✅ Added PersonalQR column to Users.");
-                }
-                else
-                {
-                    System.Diagnostics.Debug.WriteLine("✅ PersonalQR already exists.");
-                }
-
-                // Also update existing users to have a PersonalQR if null
-                connection.Execute(@"
-                    UPDATE Users 
-                    SET PersonalQR = 'PERSON-' || CAST(UserId AS TEXT)
-                    WHERE PersonalQR IS NULL OR PersonalQR = ''");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"⚠️ User migration warning: {ex.Message}");
-            }
-        }
-
-        // ===== MIGRATION: Add missing disposal columns to Equipment =====
-        private void MigrateDisposalColumns(IDbConnection connection)
-        {
-            try
-            {
-                List<string> columns;
-
-#if ANDROID
-                columns = connection.Query<string>("PRAGMA table_info(Equipment)")
-                                    .Select(c => c.ToLowerInvariant())
-                                    .ToList();
-#else
-                columns = connection.Query<string>(
-                    "SELECT LOWER(COLUMN_NAME) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = 'Equipment'")
-                    .ToList();
-#endif
-
-                if (!columns.Contains("isdisposalrequested"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN IsDisposalRequested INTEGER NOT NULL DEFAULT 0");
-                if (!columns.Contains("disposalstatus"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalStatus TEXT NULL");
-                if (!columns.Contains("disposalreason"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalReason TEXT NULL");
-                if (!columns.Contains("disposalrequestedby"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRequestedBy TEXT NULL");
-                if (!columns.Contains("disposalrequestdate"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRequestDate DATETIME NULL");
-                if (!columns.Contains("disposalapprovedby"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalApprovedBy TEXT NULL");
-                if (!columns.Contains("disposalapprovaldate"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalApprovalDate DATETIME NULL");
-                if (!columns.Contains("disposalremarks"))
-                    connection.Execute("ALTER TABLE Equipment ADD COLUMN DisposalRemarks TEXT NULL");
-
-                System.Diagnostics.Debug.WriteLine("✅ Disposal columns migrated successfully.");
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"⚠️ Disposal migration warning: {ex.Message}");
-            }
-        }
-
+        // ============================================================
+        // SEED DATA (fixed SQL quotes)
+        // ============================================================
         private void SeedData(IDbConnection connection)
         {
-            // Users – now with PersonalQR
-            var userCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
+            // ---- Roles ----
+            int roleCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Roles");
+            if (roleCount == 0)
+            {
+                connection.Execute(@"
+                    INSERT INTO Roles (RoleName, Description) VALUES
+                    ('Admin', 'System administrator with full access'),
+                    ('Personnel', 'Firefighter / regular user')");
+            }
+
+            // ---- Users ----
+            int userCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
             if (userCount == 0)
             {
-                connection.Execute(
-                    @"INSERT INTO Users (Username, Password, FullName, Role, IsActive, PersonalQR) 
-                      VALUES (@Username, @Password, @FullName, @Role, @IsActive, @PersonalQR)",
-                    new[]
-                    {
-                        new { Username = "admin", Password = "admin123", FullName = "Admin Chief", Role = "Admin", IsActive = 1, PersonalQR = "ADMIN-001" },
-                        new { Username = "user", Password = "user123", FullName = "John Firefighter", Role = "Personnel", IsActive = 1, PersonalQR = "PERSON-001" }
-                    });
+                var adminRoleId = connection.ExecuteScalar<int>("SELECT RoleId FROM Roles WHERE RoleName = 'Admin'");
+                var personnelRoleId = connection.ExecuteScalar<int>("SELECT RoleId FROM Roles WHERE RoleName = 'Personnel'");
+
+                connection.Execute(@"
+                    INSERT INTO Users (RoleId, FirstName, LastName, Email, PasswordHash, Status) VALUES
+                    (@AdminRole, 'Admin', 'Chief', 'admin@firetrack.gov', 'admin123', 'Active'),
+                    (@PersonnelRole, 'John', 'Firefighter', 'john@firetrack.gov', 'user123', 'Active')",
+                    new { AdminRole = adminRoleId, PersonnelRole = personnelRoleId });
             }
 
-            // Equipment seed (unchanged)...
-            var eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
+            // ---- Equipment (FIXED: removed problematic quotes) ----
+            int eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
             if (eqCount == 0)
             {
-                var items = new List<EquipmentModel>
-                {
-                    new EquipmentModel { QRCode = "HOSE001", Name = "Fire Hose 1.5\" x 15m", Type = "Hose", Status = "Available" },
-                    new EquipmentModel { QRCode = "HOSE002", Name = "Fire Hose 2.5\" x 15m", Type = "Hose", Status = "Available" },
-                    new EquipmentModel { QRCode = "HOSE003", Name = "Fire Hose 2.5\" x 30m", Type = "Hose", Status = "Issued", AssignedToUsername = "user" },
-                    new EquipmentModel { QRCode = "NOZZLE001", Name = "Combination Nozzle", Type = "Nozzle", Status = "Available" },
-                    new EquipmentModel { QRCode = "NOZZLE002", Name = "Fog Nozzle", Type = "Nozzle", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL001", Name = "Halligan Tool", Type = "Rescue Tool", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL002", Name = "Flathead Axe", Type = "Rescue Tool", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL003", Name = "Pry Bar", Type = "Rescue Tool", Status = "Issued", AssignedToUsername = "user" },
-                    new EquipmentModel { QRCode = "TOOL004", Name = "Bolt Cutter", Type = "Rescue Tool", Status = "Available" },
-                    new EquipmentModel { QRCode = "TOOL005", Name = "Search & Rescue Rope", Type = "Rescue Tool", Status = "Available" }
-                };
-                foreach (var eq in items)
-                {
-                    eq.LastUpdated = DateTime.Now;
-                    eq.IsDisposalRequested = false;
-                    connection.Execute(
-                        @"INSERT INTO Equipment (QRCode, Name, Type, Status, AssignedToUsername, LastUpdated,
-                            IsDisposalRequested, DisposalStatus, DisposalReason, DisposalRequestedBy, DisposalRequestDate,
-                            DisposalApprovedBy, DisposalApprovalDate, DisposalRemarks)
-                          VALUES (@QRCode, @Name, @Type, @Status, @AssignedToUsername, @LastUpdated,
-                            0, NULL, NULL, NULL, NULL, NULL, NULL, NULL)",
-                        eq);
-                }
+                connection.Execute(@"
+                    INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus) VALUES
+                    ('HOSE001', 'Fire Hose 1.5 x 15m', 'Hose', 'Standard fire hose', NULL, '2023-01-01', 150.00, 'Serviceable'),
+                    ('HOSE002', 'Fire Hose 2.5 x 15m', 'Hose', 'Heavy duty hose', NULL, '2023-01-15', 200.00, 'Serviceable'),
+                    ('HOSE003', 'Fire Hose 2.5 x 30m', 'Hose', 'Long length hose', NULL, '2023-02-01', 300.00, 'Serviceable'),
+                    ('NOZZLE001', 'Combination Nozzle', 'Nozzle', 'Multi-purpose nozzle', NULL, '2023-03-01', 80.00, 'Serviceable'),
+                    ('NOZZLE002', 'Fog Nozzle', 'Nozzle', 'Fog pattern nozzle', NULL, '2023-03-15', 75.00, 'Serviceable'),
+                    ('TOOL001', 'Halligan Tool', 'Rescue Tool', 'Multipurpose forcible entry tool', NULL, '2023-04-01', 120.00, 'Serviceable'),
+                    ('TOOL002', 'Flathead Axe', 'Rescue Tool', 'Fire axe', NULL, '2023-04-15', 90.00, 'Serviceable'),
+                    ('TOOL003', 'Pry Bar', 'Rescue Tool', 'Pry bar for rescue', NULL, '2023-05-01', 60.00, 'Serviceable'),
+                    ('TOOL004', 'Bolt Cutter', 'Rescue Tool', 'Heavy duty bolt cutter', NULL, '2023-05-15', 110.00, 'Serviceable'),
+                    ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Rope for search and rescue', NULL, '2023-06-01', 50.00, 'Serviceable')");
             }
 
-            // Transactions seed (unchanged)...
-            var txCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Transactions");
-            if (txCount == 0)
+            // ---- Assignments (sample) ----
+            var adminUser = connection.QueryFirstOrDefault<UserModel>("SELECT * FROM Users WHERE Email = 'admin@firetrack.gov'");
+            var johnUser = connection.QueryFirstOrDefault<UserModel>("SELECT * FROM Users WHERE Email = 'john@firetrack.gov'");
+            var hose1 = connection.QueryFirstOrDefault<EquipmentModel>("SELECT * FROM Equipment WHERE PropertyNumber = 'HOSE001'");
+            var hose3 = connection.QueryFirstOrDefault<EquipmentModel>("SELECT * FROM Equipment WHERE PropertyNumber = 'HOSE003'");
+            var tool3 = connection.QueryFirstOrDefault<EquipmentModel>("SELECT * FROM Equipment WHERE PropertyNumber = 'TOOL003'");
+
+            if (adminUser != null && johnUser != null && hose1 != null && hose3 != null && tool3 != null)
             {
-                var random = new Random();
-                var now = DateTime.Now;
-                var qrCodes = new[] { "HOSE001", "HOSE002", "HOSE003", "NOZZLE001", "NOZZLE002", "TOOL001", "TOOL002", "TOOL003", "TOOL004", "TOOL005" };
-                for (int day = 0; day < 365; day++)
+                int assignCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Assignments");
+                if (assignCount == 0)
                 {
-                    int issuesToday = random.Next(0, 4);
-                    for (int i = 0; i < issuesToday; i++)
-                    {
-                        string qr = qrCodes[random.Next(qrCodes.Length)];
-                        connection.Execute(
-                            @"INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action)
-                              VALUES (@QR, 'admin', 'user', @Date, 'Issue')",
-                            new { QR = qr, Date = now.AddDays(-day) });
-                    }
+                    connection.Execute(@"
+                        INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus) VALUES
+                        (@Eq1, @User, @Date, 'Assigned'),
+                        (@Eq2, @User, @Date, 'Assigned'),
+                        (@Eq3, @User, @Date, 'Assigned')",
+                        new
+                        {
+                            Eq1 = hose3.EquipmentId,
+                            Eq2 = tool3.EquipmentId,
+                            Eq3 = hose1.EquipmentId,
+                            User = johnUser.UserId,
+                            Date = DateTime.Now.Date
+                        });
                 }
             }
         }
 
-        // ---- Data methods ----
-
-        public async Task<List<EquipmentModel>> GetEquipmentsAsync()
+        // ============================================================
+        // AUDIT LOG METHODS (FIXED - added back)
+        // ============================================================
+        public async Task LogActionAsync(string username, string action, string? details = null)
         {
             using var connection = CreateConnection();
-            var result = await connection.QueryAsync<EquipmentModel>("SELECT * FROM Equipment");
-            return result.ToList();
-        }
-
-        public async Task<List<EquipmentModel>> GetEquipmentsAssignedToUserAsync(string username)
-        {
-            using var connection = CreateConnection();
-            var result = await connection.QueryAsync<EquipmentModel>(
-                "SELECT * FROM Equipment WHERE AssignedToUsername = @Username",
-                new { Username = username });
-            return result.ToList();
-        }
-
-        public async Task<int> SaveEquipmentAsync(EquipmentModel equipment)
-        {
-            using var connection = CreateConnection();
-            string sql = @"
-                INSERT OR REPLACE INTO Equipment (
-                    EquipmentId, QRCode, Name, Type, Status, AssignedToUsername, PhotoPath, Remarks,
-                    LastUpdated, RequestedByUsername, RequestStatus,
-                    IsDisposalRequested, DisposalStatus, DisposalReason, DisposalRequestedBy,
-                    DisposalRequestDate, DisposalApprovedBy, DisposalApprovalDate, DisposalRemarks
-                ) VALUES (
-                    @EquipmentId, @QRCode, @Name, @Type, @Status, @AssignedToUsername, @PhotoPath, @Remarks,
-                    @LastUpdated, @RequestedByUsername, @RequestStatus,
-                    @IsDisposalRequested, @DisposalStatus, @DisposalReason, @DisposalRequestedBy,
-                    @DisposalRequestDate, @DisposalApprovedBy, @DisposalApprovalDate, @DisposalRemarks
-                );
-                SELECT last_insert_rowid();";
-            return await connection.ExecuteScalarAsync<int>(sql, equipment);
-        }
-
-        public async Task<int> DeleteEquipmentAsync(EquipmentModel equipment)
-        {
-            using var connection = CreateConnection();
-            return await connection.ExecuteAsync("DELETE FROM Equipment WHERE EquipmentId = @EquipmentId", equipment);
-        }
-
-        public async Task<int> SaveTransactionAsync(TransactionModel transaction)
-        {
-            using var connection = CreateConnection();
-            string sql = @"INSERT INTO Transactions (EquipmentQR, FromUser, ToUser, Timestamp, Action, Remarks)
-                            VALUES (@EquipmentQR, @FromUser, @ToUser, @Timestamp, @Action, @Remarks);
-                            SELECT last_insert_rowid();";
-            return await connection.ExecuteScalarAsync<int>(sql, transaction);
-        }
-
-        public async Task<List<TransactionModel>> GetTransactionsForEquipmentAsync(string qrCode)
-        {
-            using var connection = CreateConnection();
-            var result = await connection.QueryAsync<TransactionModel>(
-                "SELECT * FROM Transactions WHERE EquipmentQR = @QRCode ORDER BY Timestamp DESC",
-                new { QRCode = qrCode });
-            return result.ToList();
-        }
-
-        public async Task<List<TransactionModel>> GetTransactionsAsync()
-        {
-            using var connection = CreateConnection();
-            var result = await connection.QueryAsync<TransactionModel>(
-                "SELECT * FROM Transactions ORDER BY Timestamp DESC");
-            return result.ToList();
-        }
-
-        public async Task<UserModel?> GetUserByUsernameAsync(string username)
-        {
-            using var connection = CreateConnection();
-            return await connection.QueryFirstOrDefaultAsync<UserModel>(
-                "SELECT * FROM Users WHERE Username = @Username",
-                new { Username = username });
-        }
-
-        public async Task<int> SaveUserAsync(UserModel user)
-        {
-            using var connection = CreateConnection();
-
-            // If PersonalQR is empty, we'll set it after insert
-            string sql = @"
-                INSERT OR REPLACE INTO Users (UserId, Username, Password, FullName, Role, IsActive, PersonalQR)
-                VALUES (@UserId, @Username, @Password, @FullName, @Role, @IsActive, @PersonalQR);
-                SELECT last_insert_rowid();";
-
-            int newId = await connection.ExecuteScalarAsync<int>(sql, user);
-
-            // If PersonalQR was not provided, generate one using the new ID
-            if (string.IsNullOrEmpty(user.PersonalQR))
+            string sql = @"INSERT INTO AuditLogs (Username, Action, Details, Timestamp)
+                           VALUES (@Username, @Action, @Details, @Timestamp)";
+            await connection.ExecuteAsync(sql, new
             {
-                string qr = user.Role == "Admin" ? $"ADMIN-{newId:D3}" : $"PERSON-{newId:D3}";
-                await connection.ExecuteAsync(
-                    "UPDATE Users SET PersonalQR = @QR WHERE UserId = @Id",
-                    new { QR = qr, Id = newId });
-                user.PersonalQR = qr; // update the local object as well
-            }
-
-            return newId;
+                Username = username,
+                Action = action,
+                Details = details,
+                Timestamp = DateTime.Now
+            });
         }
 
-        public async Task<List<UserModel>> GetUsersAsync()
+        public async Task<List<AuditLogModel>> GetAuditLogsAsync()
         {
             using var connection = CreateConnection();
-            var result = await connection.QueryAsync<UserModel>("SELECT * FROM Users");
+            var result = await connection.QueryAsync<AuditLogModel>(
+                "SELECT * FROM AuditLogs ORDER BY Timestamp DESC");
             return result.ToList();
         }
 
-        public async Task<int> UpdateUserAsync(UserModel user)
-        {
-            using var connection = CreateConnection();
-            string sql = @"
-                UPDATE Users 
-                SET Username = @Username, Password = @Password, FullName = @FullName, 
-                    Role = @Role, IsActive = @IsActive, PersonalQR = @PersonalQR
-                WHERE UserId = @UserId";
-            return await connection.ExecuteAsync(sql, user);
-        }
-
-        public async Task<bool> ResetPasswordAsync(string username, string newPassword)
-        {
-            using var connection = CreateConnection();
-            int rows = await connection.ExecuteAsync(
-                "UPDATE Users SET Password = @Password WHERE Username = @Username",
-                new { Password = newPassword, Username = username });
-            return rows > 0;
-        }
-
-        // ---- OTP Methods (unchanged) ----
+        // ============================================================
+        // OTP METHODS
+        // ============================================================
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = CreateConnection();
@@ -468,96 +374,132 @@ namespace Firetrack.Services
                 new { Username = username, OtpCode = otpCode });
         }
 
-        // ---- Equipment Request Methods (unchanged) ----
-        public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
+        // ============================================================
+        // USER METHODS
+        // ============================================================
+        public async Task<UserModel?> GetUserByUsernameAsync(string username)
         {
             using var connection = CreateConnection();
-            var result = await connection.QueryAsync<EquipmentModel>(
-                "SELECT * FROM Equipment WHERE RequestStatus = 'Pending'");
-            return result.ToList();
-        }
+            var user = await connection.QueryFirstOrDefaultAsync<UserModel>(
+                "SELECT * FROM Users WHERE Email = @Username",
+                new { Username = username });
 
-        public async Task<int> UpdateRequestStatusAsync(string qrCode, string status, string? approver = null)
-        {
-            using var connection = CreateConnection();
-            return await connection.ExecuteAsync(
-                "UPDATE Equipment SET RequestStatus = @Status WHERE QRCode = @QRCode",
-                new { Status = status, QRCode = qrCode });
-        }
-
-        public async Task<int> ApproveRequestAsync(string qrCode, UserModel approver)
-        {
-            var equipment = await GetEquipmentByQRAsync(qrCode);
-            if (equipment == null) return 0;
-
-            var user = await GetUserByUsernameAsync(equipment.RequestedByUsername!);
-            if (user == null) return 0;
-
-            equipment.AssignedToUsername = user.Username;
-            equipment.Status = "Issued";
-            equipment.RequestStatus = "Approved";
-            equipment.LastUpdated = DateTime.Now;
-
-            var transaction = new TransactionModel
-            {
-                EquipmentQR = equipment.QRCode,
-                FromUser = approver.Username,
-                ToUser = user.Username,
-                Timestamp = DateTime.Now,
-                Action = "Issue",
-                Remarks = $"Approved by {approver.FullName}"
-            };
-
-            await SaveEquipmentAsync(equipment);
-            await SaveTransactionAsync(transaction);
-            await SendNotificationAsync(user.Username, "✅ Request Approved",
-                $"Your request for '{equipment.Name}' has been approved.");
-            return 1;
-        }
-
-        public async Task<int> RejectRequestAsync(string qrCode, UserModel approver)
-        {
-            var equipment = await GetEquipmentByQRAsync(qrCode);
-            if (equipment == null) return 0;
-
-            var user = await GetUserByUsernameAsync(equipment.RequestedByUsername!);
             if (user != null)
             {
-                await SendNotificationAsync(user.Username, "❌ Request Rejected",
-                    $"Your request for '{equipment.Name}' has been rejected.");
+                // Load Role
+                var role = await connection.QueryFirstOrDefaultAsync(
+                    "SELECT RoleName FROM Roles WHERE RoleId = @RoleId",
+                    new { user.RoleId });
+                user.Role = role?.RoleName ?? "Personnel";
             }
-
-            equipment.RequestedByUsername = null;
-            equipment.RequestStatus = null;
-            equipment.LastUpdated = DateTime.Now;
-            await SaveEquipmentAsync(equipment);
-            return 1;
+            return user;
         }
 
-        public async Task<EquipmentModel?> GetEquipmentByQRAsync(string qrCode)
+        public async Task<UserModel?> GetUserByEmailAsync(string email)
+        {
+            return await GetUserByUsernameAsync(email);
+        }
+
+        public async Task<int> SaveUserAsync(UserModel user)
         {
             using var connection = CreateConnection();
-            return await connection.QueryFirstOrDefaultAsync<EquipmentModel>(
-                "SELECT * FROM Equipment WHERE QRCode = @QRCode",
-                new { QRCode = qrCode });
+
+            // ---- Map Role string to RoleId if RoleId is 0 ----
+            if (user.RoleId == 0 && !string.IsNullOrEmpty(user.Role))
+            {
+                var roleId = await connection.ExecuteScalarAsync<int>(
+                    "SELECT RoleId FROM Roles WHERE RoleName = @RoleName",
+                    new { RoleName = user.Role });
+                user.RoleId = roleId > 0 ? roleId : 2; // default to Personnel (2)
+            }
+
+            string sql = @"
+        INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, UpdatedAt)
+        VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, CURRENT_TIMESTAMP);
+        SELECT last_insert_rowid();";
+
+            return await connection.ExecuteScalarAsync<int>(sql, user);
         }
 
-        // ---- Notifications (unchanged) ----
+        public async Task<List<UserModel>> GetUsersAsync()
+        {
+            using var connection = CreateConnection();
+            var users = await connection.QueryAsync<UserModel>("SELECT * FROM Users");
+            var result = users.ToList();
+
+            // Load roles for each user
+            foreach (var user in result)
+            {
+                var role = await connection.QueryFirstOrDefaultAsync(
+                    "SELECT RoleName FROM Roles WHERE RoleId = @RoleId",
+                    new { user.RoleId });
+                user.Role = role?.RoleName ?? "Personnel";
+            }
+            return result;
+        }
+
+        public async Task<int> UpdateUserAsync(UserModel user)
+        {
+            using var connection = CreateConnection();
+            string sql = @"
+                UPDATE Users 
+                SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
+                    Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
+                    UpdatedAt = CURRENT_TIMESTAMP
+                WHERE UserId = @UserId";
+            return await connection.ExecuteAsync(sql, user);
+        }
+
+        public async Task<bool> ResetPasswordAsync(string username, string newPassword)
+        {
+            using var connection = CreateConnection();
+            int rows = await connection.ExecuteAsync(
+                "UPDATE Users SET PasswordHash = @Password WHERE Email = @Username",
+                new { Password = newPassword, Username = username });
+            return rows > 0;
+        }
+
+        // ============================================================
+        // NOTIFICATION METHODS (FIXED - uses Email as string)
+        // ============================================================
         public async Task<int> SaveNotificationAsync(NotificationModel notification)
         {
             using var connection = CreateConnection();
-            string sql = @"INSERT INTO Notifications (Username, Title, Message, IsRead, Timestamp)
-                            VALUES (@Username, @Title, @Message, @IsRead, @Timestamp);
+            // Get UserId from Email
+            var user = await GetUserByUsernameAsync(notification.Username);
+            if (user == null) return 0;
+
+            string sql = @"INSERT INTO Notifications (UserId, Title, Message, IsRead, CreatedAt)
+                            VALUES (@UserId, @Title, @Message, @IsRead, @Timestamp);
                             SELECT last_insert_rowid();";
-            return await connection.ExecuteScalarAsync<int>(sql, notification);
+            return await connection.ExecuteScalarAsync<int>(sql, new
+            {
+                UserId = user.UserId,
+                notification.Title,
+                notification.Message,
+                notification.IsRead,
+                Timestamp = DateTime.Now
+            });
         }
 
         public async Task<List<NotificationModel>> GetNotificationsForUserAsync(string username)
         {
             using var connection = CreateConnection();
+            var user = await GetUserByUsernameAsync(username);
+            if (user == null) return new List<NotificationModel>();
+
             var result = await connection.QueryAsync<NotificationModel>(
-                "SELECT * FROM Notifications WHERE Username = @Username ORDER BY Timestamp DESC",
-                new { Username = username });
+                @"SELECT 
+                    NotificationId, 
+                    UserId,
+                    Title, 
+                    Message, 
+                    IsRead, 
+                    CreatedAt as Timestamp
+                  FROM Notifications 
+                  WHERE UserId = @UserId 
+                  ORDER BY CreatedAt DESC",
+                new { UserId = user.UserId });
             return result.ToList();
         }
 
@@ -572,9 +514,12 @@ namespace Firetrack.Services
         public async Task<int> MarkAllNotificationsAsReadAsync(string username)
         {
             using var connection = CreateConnection();
+            var user = await GetUserByUsernameAsync(username);
+            if (user == null) return 0;
+
             return await connection.ExecuteAsync(
-                "UPDATE Notifications SET IsRead = 1 WHERE Username = @Username",
-                new { Username = username });
+                "UPDATE Notifications SET IsRead = 1 WHERE UserId = @UserId",
+                new { UserId = user.UserId });
         }
 
         public async Task SendNotificationAsync(string username, string title, string message)
@@ -589,38 +534,216 @@ namespace Firetrack.Services
             });
         }
 
-        // ---- Audit Logs (unchanged) ----
-        public async Task LogActionAsync(string username, string action, string? details = null)
+        // ============================================================
+        // EQUIPMENT METHODS
+        // ============================================================
+        public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
             using var connection = CreateConnection();
-            string sql = @"INSERT INTO AuditLogs (Username, Action, Details, Timestamp)
-                           VALUES (@Username, @Action, @Details, @Timestamp)";
-            await connection.ExecuteAsync(sql, new
-            {
-                Username = username,
-                Action = action,
-                Details = details,
-                Timestamp = DateTime.Now
-            });
-        }
-
-        public async Task<List<AuditLogModel>> GetAuditLogsAsync()
-        {
-            using var connection = CreateConnection();
-            var result = await connection.QueryAsync<AuditLogModel>(
-                "SELECT * FROM AuditLogs ORDER BY Timestamp DESC");
+            var result = await connection.QueryAsync<EquipmentModel>("SELECT * FROM Equipment");
             return result.ToList();
         }
 
-        // ---- Disposal Methods (unchanged) ----
+        public async Task<List<EquipmentModel>> GetEquipmentsAssignedToUserAsync(string username)
+        {
+            using var connection = CreateConnection();
+            var user = await GetUserByUsernameAsync(username);
+            if (user == null) return new List<EquipmentModel>();
+
+            var sql = @"
+                SELECT e.* 
+                FROM Equipment e
+                JOIN Assignments a ON e.EquipmentId = a.EquipmentId
+                WHERE a.UserId = @UserId AND a.AssignmentStatus = 'Assigned'";
+            var result = await connection.QueryAsync<EquipmentModel>(sql, new { UserId = user.UserId });
+            return result.ToList();
+        }
+
+        public async Task<int> SaveEquipmentAsync(EquipmentModel equipment)
+        {
+            using var connection = CreateConnection();
+            string sql = @"
+                INSERT OR REPLACE INTO Equipment (
+                    EquipmentId, PropertyNumber, ItemName, Category, Description,
+                    SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus,
+                    UpdatedAt
+                ) VALUES (
+                    @EquipmentId, @PropertyNumber, @ItemName, @Category, @Description,
+                    @SerialNumber, @AcquisitionDate, @AcquisitionCost, @ConditionStatus,
+                    CURRENT_TIMESTAMP
+                );
+                SELECT last_insert_rowid();";
+            return await connection.ExecuteScalarAsync<int>(sql, equipment);
+        }
+
+        public async Task<int> DeleteEquipmentAsync(EquipmentModel equipment)
+        {
+            using var connection = CreateConnection();
+            return await connection.ExecuteAsync("DELETE FROM Equipment WHERE EquipmentId = @EquipmentId", equipment);
+        }
+
+        public async Task<EquipmentModel?> GetEquipmentByQRAsync(string qrCode)
+        {
+            using var connection = CreateConnection();
+            return await connection.QueryFirstOrDefaultAsync<EquipmentModel>(
+                "SELECT * FROM Equipment WHERE PropertyNumber = @QRCode",
+                new { QRCode = qrCode });
+        }
+
+        public async Task<EquipmentModel?> GetEquipmentByPropertyNumberAsync(string propertyNumber)
+        {
+            return await GetEquipmentByQRAsync(propertyNumber);
+        }
+
+        // ============================================================
+        // REQUEST METHODS
+        // ============================================================
+        public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
+        {
+            using var connection = CreateConnection();
+            var sql = @"
+                SELECT e.* 
+                FROM Equipment e
+                JOIN Requests r ON e.EquipmentId = r.EquipmentId
+                WHERE r.RequestStatus = 'Pending'";
+            var result = await connection.QueryAsync<EquipmentModel>(sql);
+            return result.ToList();
+        }
+
+        public async Task<int> UpdateRequestStatusAsync(string qrCode, string status, string? approver = null)
+        {
+            using var connection = CreateConnection();
+            var equipment = await GetEquipmentByQRAsync(qrCode);
+            if (equipment == null) return 0;
+
+            return await connection.ExecuteAsync(
+                @"UPDATE Requests SET RequestStatus = @Status 
+                  WHERE EquipmentId = @EquipmentId AND RequestStatus = 'Pending'",
+                new { Status = status, EquipmentId = equipment.EquipmentId });
+        }
+
+        public async Task<int> ApproveRequestAsync(string qrCode, UserModel approver)
+        {
+            var equipment = await GetEquipmentByQRAsync(qrCode);
+            if (equipment == null) return 0;
+
+            var user = await GetUserByUsernameAsync(equipment.RequestedByUsername!);
+            if (user == null) return 0;
+
+            using var connection = CreateConnection();
+
+            // Update request status
+            await connection.ExecuteAsync(
+                @"UPDATE Requests SET RequestStatus = 'Approved' 
+                  WHERE EquipmentId = @EquipmentId",
+                new { EquipmentId = equipment.EquipmentId });
+
+            // Create assignment
+            await connection.ExecuteAsync(@"
+                INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus)
+                VALUES (@EquipmentId, @UserId, @Date, 'Assigned')",
+                new { EquipmentId = equipment.EquipmentId, UserId = user.UserId, Date = DateTime.Now.Date });
+
+            // Update equipment status
+            equipment.ConditionStatus = "Issued";
+            equipment.AssignedToUsername = user.Username;
+            equipment.RequestStatus = "Approved";
+            equipment.LastUpdated = DateTime.Now;
+
+            await SaveEquipmentAsync(equipment);
+            await SendNotificationAsync(user.Username, "✅ Request Approved",
+                $"Your request for '{equipment.ItemName}' has been approved.");
+            return 1;
+        }
+
+        public async Task<int> RejectRequestAsync(string qrCode, UserModel approver)
+        {
+            var equipment = await GetEquipmentByQRAsync(qrCode);
+            if (equipment == null) return 0;
+
+            using var connection = CreateConnection();
+
+            await connection.ExecuteAsync(
+                @"UPDATE Requests SET RequestStatus = 'Rejected' 
+                  WHERE EquipmentId = @EquipmentId",
+                new { EquipmentId = equipment.EquipmentId });
+
+            var user = await GetUserByUsernameAsync(equipment.RequestedByUsername!);
+            if (user != null)
+            {
+                await SendNotificationAsync(user.Username, "❌ Request Rejected",
+                    $"Your request for '{equipment.ItemName}' has been rejected.");
+            }
+
+            equipment.RequestedByUsername = null;
+            equipment.RequestStatus = null;
+            equipment.LastUpdated = DateTime.Now;
+            await SaveEquipmentAsync(equipment);
+            return 1;
+        }
+
+        // ============================================================
+        // TRANSACTION METHODS (keep for compatibility)
+        // ============================================================
+        public async Task<int> SaveTransactionAsync(TransactionModel transaction)
+        {
+            using var connection = CreateConnection();
+            // Use AuditLogs as transaction log for now
+            await LogActionAsync(transaction.FromUser, transaction.Action,
+                $"Equipment {transaction.EquipmentQR}: {transaction.FromUser} -> {transaction.ToUser}. Remarks: {transaction.Remarks}");
+            return 1;
+        }
+
+        public async Task<List<TransactionModel>> GetTransactionsForEquipmentAsync(string qrCode)
+        {
+            using var connection = CreateConnection();
+            // Query AuditLogs for equipment transactions
+            var result = await connection.QueryAsync<TransactionModel>(
+                @"SELECT 
+                    'TransactionId' as TransactionId,
+                    @QRCode as EquipmentQR,
+                    Username as FromUser,
+                    'System' as ToUser,
+                    Timestamp,
+                    Action,
+                    Details as Remarks
+                  FROM AuditLogs 
+                  WHERE Details LIKE @Pattern
+                  ORDER BY Timestamp DESC",
+                new { QRCode = qrCode, Pattern = $"%{qrCode}%" });
+            return result.ToList();
+        }
+
+        public async Task<List<TransactionModel>> GetTransactionsAsync()
+        {
+            using var connection = CreateConnection();
+            var result = await connection.QueryAsync<TransactionModel>(
+                @"SELECT 
+                    'TransactionId' as TransactionId,
+                    'N/A' as EquipmentQR,
+                    Username as FromUser,
+                    'System' as ToUser,
+                    Timestamp,
+                    Action,
+                    Details as Remarks
+                  FROM AuditLogs 
+                  ORDER BY Timestamp DESC");
+            return result.ToList();
+        }
+
+        // ============================================================
+        // DISPOSAL METHODS
+        // ============================================================
         public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = null)
         {
             using var connection = CreateConnection();
-            var sql = "SELECT * FROM Equipment WHERE IsDisposalRequested = 1";
-            if (!string.IsNullOrEmpty(status))
-                sql += " AND DisposalStatus = @Status";
-            sql += " ORDER BY DisposalRequestDate DESC";
-            var result = await connection.QueryAsync<EquipmentModel>(sql, new { Status = status });
+            var sql = @"
+                SELECT e.*, dr.* 
+                FROM Equipment e
+                JOIN DisposalRequests dr ON e.EquipmentId = dr.EquipmentId
+                WHERE dr.DisposalStatus = @Status OR @Status IS NULL
+                ORDER BY dr.CreatedAt DESC";
+            var result = await connection.QueryAsync<EquipmentModel>(sql, new { Status = status ?? "Pending Review" });
             return result.ToList();
         }
 
@@ -630,17 +753,16 @@ namespace Firetrack.Services
             var equipment = await GetEquipmentByQRAsync(qrCode);
             if (equipment == null) return false;
 
-            equipment.IsDisposalRequested = true;
-            equipment.DisposalStatus = "Pending";
-            equipment.DisposalReason = reason;
-            equipment.DisposalRequestedBy = requestedBy;
-            equipment.DisposalRequestDate = DateTime.Now;
-            equipment.LastUpdated = DateTime.Now;
+            var user = await GetUserByUsernameAsync(requestedBy);
+            if (user == null) return false;
 
-            await SaveEquipmentAsync(equipment);
+            await connection.ExecuteAsync(@"
+                INSERT INTO DisposalRequests (EquipmentId, RequestedBy, Reason, DisposalStatus)
+                VALUES (@EquipmentId, @RequestedBy, @Reason, 'Pending Review')",
+                new { EquipmentId = equipment.EquipmentId, RequestedBy = user.UserId, Reason = reason });
 
-            await SendNotificationAsync("admin", "🗑️ Disposal Request",
-                $"{requestedBy} requested disposal for '{equipment.Name}' (QR: {equipment.QRCode})");
+            await SendNotificationAsync("admin@firetrack.gov", "🗑️ Disposal Request",
+                $"{requestedBy} requested disposal for '{equipment.ItemName}' (QR: {equipment.PropertyNumber})");
 
             return true;
         }
@@ -651,20 +773,20 @@ namespace Firetrack.Services
             var equipment = await GetEquipmentByQRAsync(qrCode);
             if (equipment == null) return false;
 
-            equipment.DisposalStatus = "Approved";
-            equipment.DisposalApprovedBy = approvedBy;
-            equipment.DisposalApprovalDate = DateTime.Now;
-            equipment.DisposalRemarks = remarks;
-            equipment.Status = "Disposed";
-            equipment.AssignedToUsername = null;
-            equipment.LastUpdated = DateTime.Now;
+            await connection.ExecuteAsync(@"
+                UPDATE DisposalRequests 
+                SET DisposalStatus = 'Approved' 
+                WHERE EquipmentId = @EquipmentId AND DisposalStatus = 'Pending Review'",
+                new { EquipmentId = equipment.EquipmentId });
 
+            equipment.ConditionStatus = "Disposed";
+            equipment.LastUpdated = DateTime.Now;
             await SaveEquipmentAsync(equipment);
 
             if (!string.IsNullOrEmpty(equipment.DisposalRequestedBy))
             {
                 await SendNotificationAsync(equipment.DisposalRequestedBy, "✅ Disposal Approved",
-                    $"Disposal of '{equipment.Name}' has been approved by {approvedBy}.");
+                    $"Disposal of '{equipment.ItemName}' has been approved by {approvedBy}.");
             }
 
             return true;
@@ -676,23 +798,61 @@ namespace Firetrack.Services
             var equipment = await GetEquipmentByQRAsync(qrCode);
             if (equipment == null) return false;
 
-            equipment.DisposalStatus = "Rejected";
-            equipment.DisposalRemarks = remarks;
-            equipment.IsDisposalRequested = false;
-            equipment.LastUpdated = DateTime.Now;
-
-            await SaveEquipmentAsync(equipment);
+            await connection.ExecuteAsync(@"
+                UPDATE DisposalRequests 
+                SET DisposalStatus = 'Rejected' 
+                WHERE EquipmentId = @EquipmentId AND DisposalStatus = 'Pending Review'",
+                new { EquipmentId = equipment.EquipmentId });
 
             if (!string.IsNullOrEmpty(equipment.DisposalRequestedBy))
             {
                 await SendNotificationAsync(equipment.DisposalRequestedBy, "❌ Disposal Rejected",
-                    $"Disposal of '{equipment.Name}' was rejected by {rejectedBy}. Reason: {remarks}");
+                    $"Disposal of '{equipment.ItemName}' was rejected by {rejectedBy}.");
             }
 
             return true;
         }
 
-        // ---- Helper ----
+        // ============================================================
+        // HAND SHAKE METHODS
+        // ============================================================
+        public async Task<int> CreateHandshakeAsync(int equipmentId, int fromUserId, int toUserId, string notes = "")
+        {
+            using var connection = CreateConnection();
+            string sql = @"
+                INSERT INTO Handshakes (EquipmentId, FromUserId, ToUserId, TransferDate, Status, Notes)
+                VALUES (@EquipmentId, @FromUserId, @ToUserId, CURRENT_TIMESTAMP, 'Pending', @Notes);
+                SELECT last_insert_rowid();";
+            return await connection.ExecuteScalarAsync<int>(sql, new
+            {
+                EquipmentId = equipmentId,
+                FromUserId = fromUserId,
+                ToUserId = toUserId,
+                Notes = notes
+            });
+        }
+
+        public async Task<bool> AcceptHandshakeAsync(int handshakeId)
+        {
+            using var connection = CreateConnection();
+            int rows = await connection.ExecuteAsync(
+                "UPDATE Handshakes SET Status = 'Accepted' WHERE HandshakeId = @HandshakeId AND Status = 'Pending'",
+                new { HandshakeId = handshakeId });
+            return rows > 0;
+        }
+
+        public async Task<List<HandshakeModel>> GetPendingHandshakesForUserAsync(int userId)
+        {
+            using var connection = CreateConnection();
+            var result = await connection.QueryAsync<HandshakeModel>(
+                "SELECT * FROM Handshakes WHERE ToUserId = @UserId AND Status = 'Pending'",
+                new { UserId = userId });
+            return result.ToList();
+        }
+
+        // ============================================================
+        // HELPER
+        // ============================================================
         private IDbConnection CreateConnection()
         {
 #if ANDROID

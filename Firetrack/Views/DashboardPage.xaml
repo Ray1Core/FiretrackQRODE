@@ -9,7 +9,7 @@
         <VerticalStackLayout Padding="20" Spacing="16">
 
             <!-- ========== HEADER ========== -->
-            <Grid ColumnDefinitions="*, Auto, Auto"
+            <Grid ColumnDefinitions="*, Auto"
                   RowDefinitions="Auto"
                   ColumnSpacing="10"
                   VerticalOptions="Start">
@@ -59,7 +59,7 @@
                            HorizontalOptions="Start" />
                 </Grid>
 
-                <!-- Notifications (bell icon) -->
+                <!-- Notifications (bell icon - real image) -->
                 <ImageButton Grid.Column="1"
                              Source="bell.png"
                              BackgroundColor="Transparent"
@@ -69,15 +69,7 @@
                              HorizontalOptions="Center"
                              VerticalOptions="Center" />
 
-                <!-- Logout (logout icon) -->
-                <ImageButton Grid.Column="2"
-                             Source="logout.png"
-                             BackgroundColor="Transparent"
-                             WidthRequest="40"
-                             HeightRequest="40"
-                             Command="{Binding LogoutCommand}"
-                             HorizontalOptions="Center"
-                             VerticalOptions="Center" />
+                <!-- ❌ Logout removed from here – now in Shell.TitleView -->
             </Grid>
 
             <!-- ========== METRICS CARDS (Admin only) ========== -->

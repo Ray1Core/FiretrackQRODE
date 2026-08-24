@@ -41,11 +41,12 @@
                             <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
                                 <VerticalStackLayout Spacing="6">
                                     <Grid ColumnDefinitions="*, Auto">
+                                        <!-- FullName is computed from FirstName + LastName -->
                                         <Label Text="{Binding FullName}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
                                         <Label Grid.Column="1" Text="{Binding Role}" FontSize="12" Padding="6,2" HorizontalTextAlignment="Center" TextColor="White" BackgroundColor="{StaticResource PrimaryColor}" />
                                     </Grid>
-                                    <Label Text="{Binding Username, StringFormat='Username: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
-                                    <Label Text="{Binding IsActive, StringFormat='Status: {0}'}" FontSize="13" TextColor="{Binding IsActive, Converter={StaticResource BoolToStatusColorConverter}}" />
+                                    <Label Text="{Binding Email, StringFormat='Email: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
+                                    <Label Text="{Binding Status, StringFormat='Status: {0}'}" FontSize="13" TextColor="{Binding Status, Converter={StaticResource StringToColorConverter}}" />
 
                                     <!-- Action Buttons -->
                                     <Grid ColumnDefinitions="*, *, *" ColumnSpacing="10" Margin="0,5,0,0">
@@ -96,19 +97,28 @@
                            TextColor="{StaticResource PrimaryColor}"
                            HorizontalOptions="Center" />
 
-                    <Entry Placeholder="Username"
-                           Text="{Binding NewUsername}"
+                    <!-- Email (Username) -->
+                    <Entry Placeholder="Email (Username)"
+                           Text="{Binding NewEmail}"
                            Style="{StaticResource EntryStyle}" />
 
+                    <!-- Password -->
                     <Entry Placeholder="Password"
                            Text="{Binding NewPassword}"
                            IsPassword="True"
                            Style="{StaticResource EntryStyle}" />
 
-                    <Entry Placeholder="Full Name"
-                           Text="{Binding NewFullName}"
+                    <!-- First Name -->
+                    <Entry Placeholder="First Name"
+                           Text="{Binding NewFirstName}"
                            Style="{StaticResource EntryStyle}" />
 
+                    <!-- Last Name -->
+                    <Entry Placeholder="Last Name"
+                           Text="{Binding NewLastName}"
+                           Style="{StaticResource EntryStyle}" />
+
+                    <!-- Role Picker -->
                     <Picker Title="Select Role"
                             ItemsSource="{Binding Roles}"
                             SelectedItem="{Binding NewRole}"

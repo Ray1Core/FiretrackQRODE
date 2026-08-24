@@ -27,16 +27,21 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== GLOBAL TITLE VIEW (notification badge) ===== -->
+    <!-- ========================================================== -->
+    <!-- ===== GLOBAL TITLE VIEW (Logout ONLY – no bell emoji) ===== -->
+    <!-- ========================================================== -->
     <Shell.TitleView>
-        <Grid ColumnDefinitions="*, Auto" Padding="10,0">
+        <Grid ColumnDefinitions="*, Auto" Padding="10,0" ColumnSpacing="10">
+            <!-- Empty space to push logout to the right -->
             <Label Grid.Column="0" Text="" />
+
+            <!-- Logout Button (in header, not flyout) -->
             <Button Grid.Column="1"
-                    Text="{Binding NotificationBadgeText}"
-                    Command="{Binding GoToNotificationsCommand}"
+                    Text="🚪"
+                    Command="{Binding LogoutCommand}"
                     BackgroundColor="Transparent"
-                    TextColor="{StaticResource OnBackground}"
-                    FontSize="18"
+                    TextColor="{StaticResource DangerColor}"
+                    FontSize="20"
                     VerticalOptions="Center"
                     HorizontalOptions="End" />
         </Grid>
@@ -83,7 +88,29 @@
                   Route="CategoryItemsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
+    <ShellContent Title="Transaction History"
+                  ContentTemplate="{DataTemplate views:TransactionHistoryPage}"
+                  Route="TransactionHistoryPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <ShellContent Title="Audit Log"
+                  ContentTemplate="{DataTemplate views:AuditLogPage}"
+                  Route="AuditLogPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <ShellContent Title="Disposal Requests"
+                  ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
+                  Route="DisposalRequestsPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <ShellContent Title="Add Equipment"
+                  ContentTemplate="{DataTemplate views:AddEquipmentPage}"
+                  Route="AddEquipmentPage"
+                  Shell.FlyoutItemIsVisible="False" />
+
+    <!-- ========================================================== -->
     <!-- ===== ADMIN FLYOUT GROUP ===== -->
+    <!-- ========================================================== -->
     <FlyoutItem Title="Admin"
                 FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsAdmin}">
@@ -123,9 +150,15 @@
         <ShellContent Title="Audit Log"
                       ContentTemplate="{DataTemplate views:AuditLogPage}"
                       Route="AuditLogPage" />
+
+        <ShellContent Title="Add Equipment"
+                      ContentTemplate="{DataTemplate views:AddEquipmentPage}"
+                      Route="AddEquipmentPage" />
     </FlyoutItem>
 
+    <!-- ========================================================== -->
     <!-- ===== PERSONNEL FLYOUT GROUP ===== -->
+    <!-- ========================================================== -->
     <FlyoutItem Title="Personnel"
                 FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsPersonnel}">
@@ -146,29 +179,19 @@
                       ContentTemplate="{DataTemplate views:NotificationsPage}"
                       Route="NotificationsPage" />
 
-        <ShellContent Title="Transaction History"
-                      ContentTemplate="{DataTemplate views:TransactionHistoryPage}"
-                      Route="TransactionHistoryPage" />
-
         <ShellContent Title="Scanner"
                       ContentTemplate="{DataTemplate views:ScannerPage}"
                       Route="ScannerPage" />
     </FlyoutItem>
 
-    <!-- ===== FLYOUT FOOTER with Logout ===== -->
+    <!-- ===== FLYOUT FOOTER (LOGOUT REMOVED – now in header) ===== -->
     <Shell.FlyoutFooter>
         <VerticalStackLayout Spacing="10" Padding="15,10">
-            <Button Text="Logout"
-                    Command="{Binding LogoutCommand}"
-                    BackgroundColor="{StaticResource DangerColor}"
-                    TextColor="White"
-                    CornerRadius="8"
-                    HeightRequest="45"
-                    FontAttributes="Bold" />
             <Label Text="Fire Track v1.0"
                    FontSize="12"
                    TextColor="{StaticResource Gray300}"
                    HorizontalOptions="Center" />
         </VerticalStackLayout>
     </Shell.FlyoutFooter>
+
 </Shell>

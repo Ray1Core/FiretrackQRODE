@@ -40,7 +40,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         get => UnreadCount > 0 ? $"🔔 {UnreadCount}" : "🔔";
     }
 
-    // Logout command for flyout footer
     public ICommand LogoutCommand { get; }
     public ICommand GoToNotificationsCommand { get; }
 
@@ -61,13 +60,13 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         LoadUnreadCount();
     }
 
-    // ✅ Make this method public so it can be called from ViewModels
+    // ✅ FIXED: Uses Email instead of Username
     public async void LoadUnreadCount()
     {
         if (App.CurrentUser == null || App.Database == null) return;
         try
         {
-            var notifications = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Username);
+            var notifications = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Email);
             UnreadCount = notifications.Count(n => !n.IsRead);
         }
         catch
@@ -76,19 +75,19 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
     }
 
-    // ✅ Static method to refresh the badge from anywhere
     public static void RefreshUnreadCount()
     {
         var shell = Current as AppShell;
         shell?.LoadUnreadCount();
     }
 
+    // ✅ FIXED: Uses Email instead of Username
     private async void OnLogout()
     {
         if (App.CurrentUser != null && App.Database != null)
         {
             await App.Database.LogActionAsync(
-                App.CurrentUser.Username,
+                App.CurrentUser.Email,
                 "Logout",
                 "User logged out");
         }
@@ -121,7 +120,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         OnPropertyChanged(nameof(IsPersonnel));
     }
 
-    // ---- Route Validation ----
     private readonly HashSet<string> _validRoutes = new()
     {
         "LoginPage", "ForgotPasswordPage", "DashboardPage",
@@ -188,12 +186,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         var route = target.Split('/').Last();
         var user = App.CurrentUser;
 
-        var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss.fff");
-        System.Diagnostics.Debug.WriteLine($"[NAV] [{timestamp}] User: {user?.Username ?? "Anonymous"} | Role: {user?.Role ?? "None"} | Target: {target} | Route: {route}");
-
         if (!IsValidRoute(route))
         {
-            System.Diagnostics.Debug.WriteLine($"[NAV ⚠️ ANOMALY] Invalid route: {route}");
             args.Cancel();
             Application.Current?.MainPage?.DisplayAlert(
                 "Navigation Error",
@@ -204,7 +198,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         if (!IsRouteAllowed(route))
         {
-            System.Diagnostics.Debug.WriteLine($"[NAV ⚠️ ANOMALY] Permission denied: {route}");
             args.Cancel();
             if (user == null)
                 GoToAsync("//LoginPage");
@@ -218,7 +211,5 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             }
             return;
         }
-
-        System.Diagnostics.Debug.WriteLine($"[NAV ✅] Allowed: {route}");
     }
 }

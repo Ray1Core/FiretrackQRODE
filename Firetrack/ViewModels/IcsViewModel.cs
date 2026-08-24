@@ -54,10 +54,15 @@ namespace Firetrack.ViewModels
             _db = App.Database!;
             _pdfService = new PdfGenerationService();
 
-            // Equipment fallback
+            // ---- Equipment fallback ----
             if (equipment == null)
             {
-                Equipment = new EquipmentModel { Name = "Unknown Equipment", QRCode = "N/A", Type = "N/A" };
+                Equipment = new EquipmentModel
+                {
+                    Name = "Unknown Equipment",
+                    QRCode = "N/A",
+                    Type = "N/A"
+                };
             }
             else
             {
@@ -70,25 +75,40 @@ namespace Firetrack.ViewModels
                     Equipment.Type = "N/A";
             }
 
-            // Officer fallback
+            // ---- Officer fallback ----
             if (officer == null)
             {
-                Officer = new UserModel { FullName = "Unknown Officer", Username = "N/A", Role = "N/A" };
+                Officer = new UserModel
+                {
+                    FirstName = "Unknown",
+                    LastName = "Officer",
+                    Username = "N/A",
+                    Role = "N/A"
+                };
             }
             else
             {
                 Officer = officer;
-                if (string.IsNullOrEmpty(Officer.FullName))
-                    Officer.FullName = "Unknown Officer";
+                // Instead of FullName, set FirstName/LastName
+                if (string.IsNullOrEmpty(Officer.FirstName))
+                    Officer.FirstName = "Unknown";
+                if (string.IsNullOrEmpty(Officer.LastName))
+                    Officer.LastName = "Officer";
                 if (string.IsNullOrEmpty(Officer.Username))
                     Officer.Username = "N/A";
                 if (string.IsNullOrEmpty(Officer.Role))
                     Officer.Role = "N/A";
             }
 
-            Issuer = App.CurrentUser ?? new UserModel { FullName = "System", Role = "Admin" };
-            if (string.IsNullOrEmpty(Issuer.FullName))
-                Issuer.FullName = "System";
+            // ---- Issuer fallback (current user or system) ----
+            Issuer = App.CurrentUser ?? new UserModel
+            {
+                FirstName = "System",
+                LastName = "",
+                Role = "Admin"
+            };
+            if (string.IsNullOrEmpty(Issuer.FirstName))
+                Issuer.FirstName = "System";
             if (string.IsNullOrEmpty(Issuer.Role))
                 Issuer.Role = "Admin";
 
