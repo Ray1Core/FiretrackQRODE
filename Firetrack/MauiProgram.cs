@@ -11,7 +11,7 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        // ✅ Must be called before any database code
+        // ✅ Must be called before any database code ///
         Batteries_V2.Init();
 
         // ✅ Explicitly set the SQLite provider for Android
