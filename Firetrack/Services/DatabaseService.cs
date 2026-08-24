@@ -92,21 +92,22 @@ namespace Firetrack.Services
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
+            
             // ---- Equipment ----
             connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Equipment (
-                    EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PropertyNumber TEXT NOT NULL UNIQUE,
-                    ItemName TEXT NOT NULL,
-                    Category TEXT NOT NULL,
-                    Description TEXT,
-                    SerialNumber TEXT,
-                    AcquisitionDate DATE,
-                    AcquisitionCost DECIMAL(12,2),
-                    ConditionStatus TEXT CHECK(ConditionStatus IN ('Serviceable', 'Unserviceable', 'Under Repair', 'Disposed')) DEFAULT 'Serviceable',
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )");
+            CREATE TABLE IF NOT EXISTS Equipment (
+                EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
+                PropertyNumber TEXT NOT NULL UNIQUE,
+                ItemName TEXT NOT NULL,
+                Category TEXT NOT NULL,
+                Description TEXT,
+                SerialNumber TEXT,
+                AcquisitionDate DATE,
+                AcquisitionCost DECIMAL(12,2),
+                ConditionStatus TEXT DEFAULT 'Available',
+                CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )");
 
             // ---- Requests ----
             connection.Execute(@"
@@ -240,17 +241,17 @@ namespace Firetrack.Services
             if (eqCount == 0)
             {
                 connection.Execute(@"
-                    INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus) VALUES
-                    ('HOSE001', 'Fire Hose 1.5 x 15m', 'Hose', 'Standard fire hose', NULL, '2023-01-01', 150.00, 'Serviceable'),
-                    ('HOSE002', 'Fire Hose 2.5 x 15m', 'Hose', 'Heavy duty hose', NULL, '2023-01-15', 200.00, 'Serviceable'),
-                    ('HOSE003', 'Fire Hose 2.5 x 30m', 'Hose', 'Long length hose', NULL, '2023-02-01', 300.00, 'Serviceable'),
-                    ('NOZZLE001', 'Combination Nozzle', 'Nozzle', 'Multi-purpose nozzle', NULL, '2023-03-01', 80.00, 'Serviceable'),
-                    ('NOZZLE002', 'Fog Nozzle', 'Nozzle', 'Fog pattern nozzle', NULL, '2023-03-15', 75.00, 'Serviceable'),
-                    ('TOOL001', 'Halligan Tool', 'Rescue Tool', 'Multipurpose forcible entry tool', NULL, '2023-04-01', 120.00, 'Serviceable'),
-                    ('TOOL002', 'Flathead Axe', 'Rescue Tool', 'Fire axe', NULL, '2023-04-15', 90.00, 'Serviceable'),
-                    ('TOOL003', 'Pry Bar', 'Rescue Tool', 'Pry bar for rescue', NULL, '2023-05-01', 60.00, 'Serviceable'),
-                    ('TOOL004', 'Bolt Cutter', 'Rescue Tool', 'Heavy duty bolt cutter', NULL, '2023-05-15', 110.00, 'Serviceable'),
-                    ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Rope for search and rescue', NULL, '2023-06-01', 50.00, 'Serviceable')");
+                INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus) VALUES
+                ('HOSE001', 'Fire Hose 1.5 x 15m', 'Hose', 'Standard fire hose', NULL, '2023-01-01', 150.00, 'Available'),
+                ('HOSE002', 'Fire Hose 2.5 x 15m', 'Hose', 'Heavy duty hose', NULL, '2023-01-15', 200.00, 'Available'),
+                ('HOSE003', 'Fire Hose 2.5 x 30m', 'Hose', 'Long length hose', NULL, '2023-02-01', 300.00, 'Available'),
+                ('NOZZLE001', 'Combination Nozzle', 'Nozzle', 'Multi-purpose nozzle', NULL, '2023-03-01', 80.00, 'Available'),
+                ('NOZZLE002', 'Fog Nozzle', 'Nozzle', 'Fog pattern nozzle', NULL, '2023-03-15', 75.00, 'Available'),
+                ('TOOL001', 'Halligan Tool', 'Rescue Tool', 'Multipurpose forcible entry tool', NULL, '2023-04-01', 120.00, 'Available'),
+                ('TOOL002', 'Flathead Axe', 'Rescue Tool', 'Fire axe', NULL, '2023-04-15', 90.00, 'Available'),
+                ('TOOL003', 'Pry Bar', 'Rescue Tool', 'Pry bar for rescue', NULL, '2023-05-01', 60.00, 'Available'),
+                ('TOOL004', 'Bolt Cutter', 'Rescue Tool', 'Heavy duty bolt cutter', NULL, '2023-05-15', 110.00, 'Available'),
+                ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Rope for search and rescue', NULL, '2023-06-01', 50.00, 'Available')");
             }
 
             // ---- Assignments (sample) ----

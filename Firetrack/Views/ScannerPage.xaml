@@ -8,13 +8,13 @@
              BackgroundColor="{StaticResource Background}">
 
     <Grid>
-        <!-- Camera preview -->
+        <!-- Camera preview – removed IsScanning binding -->
         <zxing:CameraBarcodeReaderView x:Name="cameraBarcodeReaderView"
                                        BarcodesDetected="OnBarcodesDetected"
                                        IsTorchOn="False"
                                        CameraLocation="Rear" />
 
-        <!-- Overlay UI (matches the image) -->
+        <!-- Overlay UI -->
         <VerticalStackLayout VerticalOptions="End"
                              HorizontalOptions="Fill"
                              Padding="20"

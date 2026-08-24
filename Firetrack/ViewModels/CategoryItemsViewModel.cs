@@ -38,7 +38,7 @@ namespace Firetrack.ViewModels
 
         public CategoryItemsViewModel(string categoryName)
         {
-            _db = App.Database; // no ! (allow null)
+            _db = App.Database;
             CategoryName = categoryName;
 
             LoadItemsCommand = new Command(OnLoadItems);
@@ -48,7 +48,14 @@ namespace Firetrack.ViewModels
             if (_db != null)
                 OnLoadItems();
             else
-                Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
+            {
+                // ✅ Use Application.Current.MainPage if Shell is not ready
+                var page = Application.Current?.MainPage;
+                if (page != null)
+                    page.DisplayAlert("Error", "Database not available.", "OK");
+                else
+                    System.Diagnostics.Debug.WriteLine("⚠️ Database not available and Shell/MainPage is null.");
+            }
         }
 
         private async void OnLoadItems()
