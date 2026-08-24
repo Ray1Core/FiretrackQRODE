@@ -5,14 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Firetrack.Models;
-
-#if ANDROID
-using Microsoft.Data.Sqlite;
-using DbConnection = Microsoft.Data.Sqlite.SqliteConnection;
-#else
-using Microsoft.Data.SqlClient;
-using DbConnection = Microsoft.Data.SqlClient.SqlConnection;
-#endif
+using Microsoft.Data.Sqlite;   // ✅ Always available
 
 namespace Firetrack.Services
 {
@@ -36,8 +29,10 @@ namespace Firetrack.Services
 
         private void InitializeDatabase()
         {
+            // Always use SQLite (both Android and Windows)
 #if ANDROID
             SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
+#endif
 
             var dbPath = _connectionString.Replace("Data Source=", "");
             var directory = System.IO.Path.GetDirectoryName(dbPath);
@@ -48,34 +43,11 @@ namespace Firetrack.Services
             connection.Open();
             CreateTables(connection);
             SeedData(connection);
-#else
-            EnsureDatabaseExists();
-            using var connection = new SqlConnection(_connectionString);
-            connection.Open();
-            CreateTables(connection);
-            SeedData(connection);
-#endif
         }
-
-#if !ANDROID
-        private void EnsureDatabaseExists()
-        {
-            var builder = new SqlConnectionStringBuilder(_connectionString)
-            {
-                InitialCatalog = "master"
-            };
-            using var connection = new SqlConnection(builder.ConnectionString);
-            connection.Open();
-            int dbExists = connection.ExecuteScalar<int>(
-                "SELECT COUNT(*) FROM sys.databases WHERE name = 'FiretrackDB'");
-            if (dbExists == 0)
-                connection.Execute("CREATE DATABASE FiretrackDB");
-        }
-#endif
 
         private void CreateTables(IDbConnection connection)
         {
-            // ---- AuditLogs (needed for LogActionAsync) ----
+            // ---- AuditLogs ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS AuditLogs (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -85,7 +57,7 @@ namespace Firetrack.Services
                     Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- PasswordResetOtps (needed for OTP) ----
+            // ---- PasswordResetOtps ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS PasswordResetOtps (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -104,20 +76,20 @@ namespace Firetrack.Services
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- Users ----
+            // ---- Users (with ProfileImagePath) ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Users (
-                UserId INTEGER PRIMARY KEY AUTOINCREMENT,
-                RoleId INTEGER NOT NULL,
-                FirstName TEXT NOT NULL,
-                LastName TEXT NOT NULL,
-                Email TEXT NOT NULL UNIQUE,
-                PasswordHash TEXT NOT NULL,
-                Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
-                ProfileImagePath TEXT NULL,   -- <-- NEW
-                CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
+                    UserId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    RoleId INTEGER NOT NULL,
+                    FirstName TEXT NOT NULL,
+                    LastName TEXT NOT NULL,
+                    Email TEXT NOT NULL UNIQUE,
+                    PasswordHash TEXT NOT NULL,
+                    Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
+                    ProfileImagePath TEXT NULL,
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
             // ---- Equipment ----
@@ -235,7 +207,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // SEED DATA (fixed SQL quotes)
+        // SEED DATA
         // ============================================================
         private void SeedData(IDbConnection connection)
         {
@@ -257,13 +229,13 @@ namespace Firetrack.Services
                 var personnelRoleId = connection.ExecuteScalar<int>("SELECT RoleId FROM Roles WHERE RoleName = 'Personnel'");
 
                 connection.Execute(@"
-                    INSERT INTO Users (RoleId, FirstName, LastName, Email, PasswordHash, Status) VALUES
-                    (@AdminRole, 'Admin', 'Chief', 'admin@firetrack.gov', 'admin123', 'Active'),
-                    (@PersonnelRole, 'John', 'Firefighter', 'john@firetrack.gov', 'user123', 'Active')",
+                    INSERT INTO Users (RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath) VALUES
+                    (@AdminRole, 'Admin', 'Chief', 'admin@firetrack.gov', 'admin123', 'Active', NULL),
+                    (@PersonnelRole, 'John', 'Firefighter', 'john@firetrack.gov', 'user123', 'Active', NULL)",
                     new { AdminRole = adminRoleId, PersonnelRole = personnelRoleId });
             }
 
-            // ---- Equipment (FIXED: removed problematic quotes) ----
+            // ---- Equipment ----
             int eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
             if (eqCount == 0)
             {
@@ -311,7 +283,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // AUDIT LOG METHODS (FIXED - added back)
+        // AUDIT LOG METHODS
         // ============================================================
         public async Task LogActionAsync(string username, string action, string? details = null)
         {
@@ -382,7 +354,6 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
 
-            // ===== ADD FALLBACK SEED CHECK =====
             try
             {
                 var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Users");
@@ -420,19 +391,18 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
 
-            // ---- Map Role string to RoleId if RoleId is 0 ----
             if (user.RoleId == 0 && !string.IsNullOrEmpty(user.Role))
             {
                 var roleId = await connection.ExecuteScalarAsync<int>(
                     "SELECT RoleId FROM Roles WHERE RoleName = @RoleName",
                     new { RoleName = user.Role });
-                user.RoleId = roleId > 0 ? roleId : 2; // default to Personnel (2)
+                user.RoleId = roleId > 0 ? roleId : 2;
             }
 
             string sql = @"
-            INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, UpdatedAt)
-            VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, CURRENT_TIMESTAMP);
-            SELECT last_insert_rowid();";
+                INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, UpdatedAt)
+                VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, CURRENT_TIMESTAMP);
+                SELECT last_insert_rowid();";
 
             return await connection.ExecuteScalarAsync<int>(sql, user);
         }
@@ -443,7 +413,6 @@ namespace Firetrack.Services
             var users = await connection.QueryAsync<UserModel>("SELECT * FROM Users");
             var result = users.ToList();
 
-            // Load roles for each user
             foreach (var user in result)
             {
                 var role = await connection.QueryFirstOrDefaultAsync(
@@ -458,12 +427,12 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
             string sql = @"
-        UPDATE Users 
-        SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
-            Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
-            ProfileImagePath = @ProfileImagePath,   -- <-- ADD THIS
-            UpdatedAt = CURRENT_TIMESTAMP
-        WHERE UserId = @UserId";
+                UPDATE Users 
+                SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
+                    Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
+                    ProfileImagePath = @ProfileImagePath,
+                    UpdatedAt = CURRENT_TIMESTAMP
+                WHERE UserId = @UserId";
             return await connection.ExecuteAsync(sql, user);
         }
 
@@ -477,12 +446,11 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // NOTIFICATION METHODS (FIXED - uses Email as string)
+        // NOTIFICATION METHODS
         // ============================================================
         public async Task<int> SaveNotificationAsync(NotificationModel notification)
         {
             using var connection = CreateConnection();
-            // Get UserId from Email
             var user = await GetUserByUsernameAsync(notification.Username);
             if (user == null) return 0;
 
@@ -649,19 +617,16 @@ namespace Firetrack.Services
 
             using var connection = CreateConnection();
 
-            // Update request status
             await connection.ExecuteAsync(
                 @"UPDATE Requests SET RequestStatus = 'Approved' 
                   WHERE EquipmentId = @EquipmentId",
                 new { EquipmentId = equipment.EquipmentId });
 
-            // Create assignment
             await connection.ExecuteAsync(@"
                 INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus)
                 VALUES (@EquipmentId, @UserId, @Date, 'Assigned')",
                 new { EquipmentId = equipment.EquipmentId, UserId = user.UserId, Date = DateTime.Now.Date });
 
-            // Update equipment status
             equipment.ConditionStatus = "Issued";
             equipment.AssignedToUsername = user.Username;
             equipment.RequestStatus = "Approved";
@@ -700,12 +665,11 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // TRANSACTION METHODS (keep for compatibility)
+        // TRANSACTION METHODS
         // ============================================================
         public async Task<int> SaveTransactionAsync(TransactionModel transaction)
         {
             using var connection = CreateConnection();
-            // Use AuditLogs as transaction log for now
             await LogActionAsync(transaction.FromUser, transaction.Action,
                 $"Equipment {transaction.EquipmentQR}: {transaction.FromUser} -> {transaction.ToUser}. Remarks: {transaction.Remarks}");
             return 1;
@@ -716,16 +680,16 @@ namespace Firetrack.Services
             using var connection = CreateConnection();
             var result = await connection.QueryAsync<TransactionModel>(
                 @"SELECT 
-            -1 as TransactionId,              -- ✅ Use -1 instead of 'TransactionId'
-            @QRCode as EquipmentQR,
-            Username as FromUser,
-            'System' as ToUser,
-            Timestamp,
-            Action,
-            Details as Remarks
-          FROM AuditLogs 
-          WHERE Details LIKE @Pattern
-          ORDER BY Timestamp DESC",
+                    -1 as TransactionId,
+                    @QRCode as EquipmentQR,
+                    Username as FromUser,
+                    'System' as ToUser,
+                    Timestamp,
+                    Action,
+                    Details as Remarks
+                  FROM AuditLogs 
+                  WHERE Details LIKE @Pattern
+                  ORDER BY Timestamp DESC",
                 new { QRCode = qrCode, Pattern = $"%{qrCode}%" });
             return result.ToList();
         }
@@ -735,15 +699,15 @@ namespace Firetrack.Services
             using var connection = CreateConnection();
             var result = await connection.QueryAsync<TransactionModel>(
                 @"SELECT 
-            -1 as TransactionId,              -- ✅ Use -1 instead of 'TransactionId'
-            'N/A' as EquipmentQR,
-            Username as FromUser,
-            'System' as ToUser,
-            Timestamp,
-            Action,
-            Details as Remarks
-          FROM AuditLogs 
-          ORDER BY Timestamp DESC");
+                    -1 as TransactionId,
+                    'N/A' as EquipmentQR,
+                    Username as FromUser,
+                    'System' as ToUser,
+                    Timestamp,
+                    Action,
+                    Details as Remarks
+                  FROM AuditLogs 
+                  ORDER BY Timestamp DESC");
             return result.ToList();
         }
 
@@ -867,15 +831,11 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // HELPER
+        // HELPER – returns a SQLite connection always
         // ============================================================
         private IDbConnection CreateConnection()
         {
-#if ANDROID
             return new SqliteConnection(_connectionString);
-#else
-            return new SqlConnection(_connectionString);
-#endif
         }
     }
 }
