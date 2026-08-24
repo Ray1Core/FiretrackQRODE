@@ -1,9 +1,10 @@
-﻿using Microsoft.Extensions.Logging;
-using Firetrack.Services;
-using SQLitePCL;
-using ZXing.Net.Maui.Controls;
+﻿using Firetrack.Services;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using PdfSharpCore.Fonts;
+using SQLitePCL;
+using ZXing.Net.Maui.Controls;
 
 namespace Firetrack;
 
@@ -11,10 +12,7 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
-        // ✅ Must be called before any database code ///
         Batteries_V2.Init();
-
-        // ✅ Explicitly set the SQLite provider for Android
         SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 
         var builder = MauiApp.CreateBuilder();
@@ -29,12 +27,15 @@ public static class MauiProgram
 
         builder.Services.AddSingleton<PdfGenerationService>();
 
-        // ✅ Register SyncService with proper connection strings
+        // ===== Register SyncService with connection strings =====
         builder.Services.AddSingleton<SyncService>(provider =>
         {
             string sqlitePath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
             string sqliteConnectionString = $"Data Source={sqlitePath}";
-            string sqlServerConnectionString = App.SqlServerConnectionString;
+
+            // ✅ Read SQL Server connection string from configuration
+            string sqlServerConnectionString = App.Configuration.GetConnectionString("SqlServer")
+                ?? "Data Source=(localdb)\\MSSQLLocalDB;Initial Catalog=FiretrackDB;Integrated Security=True;Connect Timeout=30;Encrypt=False;";
 
             return new SyncService(sqliteConnectionString, sqlServerConnectionString);
         });
@@ -43,8 +44,7 @@ public static class MauiProgram
         builder.Logging.AddDebug();
 #endif
 
-        // ===== ✅ FIX PDF FONT RESOLVER =====
-        // Register the custom font resolver BEFORE any PDF is generated
+        // Register PDF font resolver
         try
         {
             GlobalFontSettings.FontResolver = new PdfFontResolver();

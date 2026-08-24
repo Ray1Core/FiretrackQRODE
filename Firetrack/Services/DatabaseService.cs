@@ -107,16 +107,17 @@ namespace Firetrack.Services
             // ---- Users ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Users (
-                    UserId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    RoleId INTEGER NOT NULL,
-                    FirstName TEXT NOT NULL,
-                    LastName TEXT NOT NULL,
-                    Email TEXT NOT NULL UNIQUE,
-                    PasswordHash TEXT NOT NULL,
-                    Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
+                UserId INTEGER PRIMARY KEY AUTOINCREMENT,
+                RoleId INTEGER NOT NULL,
+                FirstName TEXT NOT NULL,
+                LastName TEXT NOT NULL,
+                Email TEXT NOT NULL UNIQUE,
+                PasswordHash TEXT NOT NULL,
+                Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
+                ProfileImagePath TEXT NULL,   -- <-- NEW
+                CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
             // ---- Equipment ----
@@ -429,9 +430,9 @@ namespace Firetrack.Services
             }
 
             string sql = @"
-        INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, UpdatedAt)
-        VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, CURRENT_TIMESTAMP);
-        SELECT last_insert_rowid();";
+            INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, UpdatedAt)
+            VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, CURRENT_TIMESTAMP);
+            SELECT last_insert_rowid();";
 
             return await connection.ExecuteScalarAsync<int>(sql, user);
         }
@@ -457,11 +458,12 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
             string sql = @"
-                UPDATE Users 
-                SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
-                    Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
-                    UpdatedAt = CURRENT_TIMESTAMP
-                WHERE UserId = @UserId";
+        UPDATE Users 
+        SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
+            Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
+            ProfileImagePath = @ProfileImagePath,   -- <-- ADD THIS
+            UpdatedAt = CURRENT_TIMESTAMP
+        WHERE UserId = @UserId";
             return await connection.ExecuteAsync(sql, user);
         }
 

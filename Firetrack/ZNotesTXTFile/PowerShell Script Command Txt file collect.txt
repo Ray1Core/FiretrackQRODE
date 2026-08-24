@@ -1,0 +1,42 @@
+﻿# ================================================================
+# GENERATE PROJECT TEXT FILES FOR RESEARCH & DEBUGGING
+# ================================================================
+# This script exports all code, XAML, NuGet packages, images,
+# project file, and folder structure into the ZNotesTXTFile folder.
+# Run this from the project root in PowerShell.
+#
+# To execute:
+#   1. Open PowerShell in the project root.
+#   2. Paste the entire script and press Enter.
+#   3. All .txt files will appear in Firetrack\ZNotesTXTFile\
+# ================================================================
+
+
+# Navigate to the project root
+cd "C:\Users\raymu\Downloads\Windows\BFG\BFFG\FiretrackGB1FFF-master"
+
+# Create the output folder if it doesn't exist
+$outDir = "Firetrack\ZNotesTXTFile"
+if (-not (Test-Path $outDir)) { New-Item -ItemType Directory -Path $outDir -Force | Out-Null }
+
+# Generate FullProjectCode.txt
+Get-ChildItem -Recurse -Include *.cs,*.xaml | 
+    Where-Object { $_.FullName -notmatch "\\bin\\|\\obj\\|\\packages\\" } | 
+    ForEach-Object { "===== $($_.FullName) ====="; Get-Content $_.FullName; "" } | 
+    Out-File "$outDir\FullProjectCode.txt"
+
+# Generate NuGetPackages.txt
+Get-Package | Format-Table Id, Version | Out-File "$outDir\NuGetPackages.txt"
+
+# Generate ImageFiles.txt
+Get-ChildItem -Recurse -Include *.png,*.jpg,*.jpeg,*.svg | 
+    ForEach-Object { $_.FullName } | 
+    Out-File "$outDir\ImageFiles.txt"
+
+# Generate ProjectFile.txt
+Get-Content Firetrack\Firetrack.csproj | Out-File "$outDir\ProjectFile.txt"
+
+# Generate FolderStructure.txt (using tree command)
+cmd /c "tree /F /A > $outDir\FolderStructure.txt"
+
+Write-Host "✅ All files generated in $outDir"

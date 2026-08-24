@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System.IO;
@@ -10,36 +11,67 @@ namespace Firetrack
     {
         public static UserModel? CurrentUser { get; set; }
         public static DatabaseService? Database { get; private set; }
-
-        public static string SqlServerConnectionString { get; set; } =
-            @"Data Source=10.209.102.18;Initial Catalog=FiretrackDB;User ID=firetrack_user;Password=yourpassword;Connect Timeout=30;Encrypt=False;";
+        public static IConfiguration Configuration { get; private set; } = null!;
 
         public App()
         {
             InitializeComponent();
             this.UserAppTheme = AppTheme.Dark;
+
+            // Load configuration from appsettings.json
+            var builder = new ConfigurationBuilder()
+                .SetBasePath(FileSystem.AppDataDirectory)
+                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
+
+            // On Windows, also look in the executable folder
+#if WINDOWS
+            var exeDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
+            builder.SetBasePath(exeDir);
+#endif
+
+            Configuration = builder.Build();
         }
 
         protected override Window CreateWindow(IActivationState? activationState)
         {
+            string connectionString;
+
 #if ANDROID
+            // On Android, always use SQLite
             string dbPath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
-            string connectionString = $"Data Source={dbPath}";
-
-            // ===== ADD THIS =====
-            // Log database file existence
-            bool dbExists = File.Exists(dbPath);
-            System.Diagnostics.Debug.WriteLine($"✅ Database file exists: {dbExists} at {dbPath}");
-
-            // Ensure directory exists
-            var dir = Path.GetDirectoryName(dbPath);
-            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
-            {
-                Directory.CreateDirectory(dir);
-                System.Diagnostics.Debug.WriteLine($"✅ Created directory: {dir}");
-            }
+            connectionString = $"Data Source={dbPath}";
 #else
-            string connectionString = SqlServerConnectionString;
+            // On Windows, try SQL Server first, then fallback to SQLite
+            string? serverCs = Configuration.GetConnectionString("SqlServer"); // ✅ nullable
+            bool useSqlServer = false;
+
+            if (!string.IsNullOrEmpty(serverCs))
+            {
+                try
+                {
+                    using var testConn = new Microsoft.Data.SqlClient.SqlConnection(serverCs);
+                    testConn.Open();
+                    useSqlServer = true;
+                    System.Diagnostics.Debug.WriteLine("✅ SQL Server connection successful.");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"⚠️ SQL Server connection failed: {ex.Message}. Falling back to SQLite.");
+                    useSqlServer = false;
+                }
+            }
+
+            if (useSqlServer && serverCs != null) // ✅ serverCs is not null here
+            {
+                connectionString = serverCs;
+            }
+            else
+            {
+                // Fallback to SQLite on Windows
+                string dbPath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
+                connectionString = $"Data Source={dbPath}";
+                System.Diagnostics.Debug.WriteLine("ℹ️ Using SQLite on Windows as fallback.");
+            }
 #endif
 
             try

@@ -15,14 +15,23 @@
                         WidthRequest="100"
                         HeightRequest="100"
                         StrokeShape="RoundRectangle 100"
-                        BackgroundColor="{StaticResource Surface}">
-                    <Image Source="profile.jpg"
+                        BackgroundColor="{StaticResource Surface}"
+                        HorizontalOptions="Center">
+                    <Image Source="{Binding ProfileImageSource}"
                            Aspect="AspectFill"
                            WidthRequest="100"
                            HeightRequest="100"
                            HorizontalOptions="Center"
                            VerticalOptions="Center" />
                 </Border>
+
+                <Button Text="Change Profile Picture"
+                        Command="{Binding ChangeProfilePictureCommand}"
+                        Style="{StaticResource PrimaryButton}"
+                        HeightRequest="40"
+                        FontSize="14"
+                        HorizontalOptions="Center" />
+
                 <Label Text="My Profile"
                        FontSize="28"
                        FontAttributes="Bold"
@@ -57,7 +66,7 @@
                     Style="{StaticResource PrimaryButton}"
                     Command="{Binding ChangePasswordCommand}" />
 
-            <!-- ✅ Logout Button -->
+            <!-- Logout Button -->
             <Button Text="🚪 Logout"
                     Style="{StaticResource DangerButton}"
                     Command="{Binding LogoutCommand}" />

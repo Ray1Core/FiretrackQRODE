@@ -1,0 +1,134 @@
+﻿-- ==========================================
+-- FIRE TRACK DATABASE SCHEMA (SQL Server)
+-- ==========================================
+
+
+CREATE DATABASE FiretrackDB;
+
+-- Roles Table
+CREATE TABLE roles (
+    role_id INT IDENTITY(1,1) PRIMARY KEY,
+    role_name VARCHAR(50) NOT NULL UNIQUE,
+    description TEXT,
+    created_at DATETIME DEFAULT GETDATE()
+);
+
+-- Users Table (added profile_image_path)
+CREATE TABLE users (
+    user_id INT IDENTITY(1,1) PRIMARY KEY,
+    role_id INT NOT NULL,
+    first_name VARCHAR(50) NOT NULL,
+    last_name VARCHAR(50) NOT NULL,
+    email VARCHAR(100) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    status VARCHAR(20) CHECK (status IN ('Active','Inactive','Suspended')) DEFAULT 'Active',
+    profile_image_path NVARCHAR(255) NULL,   -- NEW: stores relative path to image
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (role_id) REFERENCES roles(role_id)
+);
+
+-- Equipment Table
+CREATE TABLE equipment (
+    equipment_id INT IDENTITY(1,1) PRIMARY KEY,
+    property_number VARCHAR(100) NOT NULL UNIQUE,
+    item_name VARCHAR(150) NOT NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT,
+    serial_number VARCHAR(100),
+    acquisition_date DATE,
+    acquisition_cost DECIMAL(12,2),
+    condition_status VARCHAR(20) CHECK (condition_status IN ('Serviceable','Unserviceable','Under Repair','Disposed')) DEFAULT 'Serviceable',
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE()
+);
+
+-- Requests
+CREATE TABLE requests (
+    request_id INT IDENTITY(1,1) PRIMARY KEY,
+    user_id INT NOT NULL,
+    equipment_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    purpose TEXT NOT NULL,
+    request_status VARCHAR(20) CHECK (request_status IN ('Pending','Approved','Rejected')) DEFAULT 'Pending',
+    requested_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id)
+);
+
+-- Assignments
+CREATE TABLE assignments (
+    assignment_id INT IDENTITY(1,1) PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    user_id INT NOT NULL,
+    assigned_date DATE NOT NULL,
+    returned_date DATE NULL,
+    assignment_status VARCHAR(20) CHECK (assignment_status IN ('Assigned','Returned','Transferred')) DEFAULT 'Assigned',
+    remarks TEXT,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- Handshakes
+CREATE TABLE handshakes (
+    handshake_id INT IDENTITY(1,1) PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    from_user_id INT NOT NULL,
+    to_user_id INT NOT NULL,
+    transfer_date DATETIME DEFAULT GETDATE(),
+    status VARCHAR(20) CHECK (status IN ('Pending','Accepted','Rejected')) DEFAULT 'Pending',
+    notes TEXT,
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (from_user_id) REFERENCES users(user_id),
+    FOREIGN KEY (to_user_id) REFERENCES users(user_id)
+);
+
+-- Damage Reports
+CREATE TABLE damage_reports (
+    report_id INT IDENTITY(1,1) PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    reported_by INT NOT NULL,
+    incident_date DATE NOT NULL,
+    damage_description TEXT NOT NULL,
+    report_status VARCHAR(30) CHECK (report_status IN ('Reported','Under Inspection','Resolved','For Disposal')) DEFAULT 'Reported',
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (reported_by) REFERENCES users(user_id)
+);
+
+-- Disposal Requests
+CREATE TABLE disposal_requests (
+    disposal_id INT IDENTITY(1,1) PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    requested_by INT NOT NULL,
+    reason TEXT NOT NULL,
+    disposal_status VARCHAR(30) CHECK (disposal_status IN ('Pending Review','Approved','Completed','Rejected')) DEFAULT 'Pending Review',
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (requested_by) REFERENCES users(user_id)
+);
+
+-- Notifications
+CREATE TABLE notifications (
+    notification_id INT IDENTITY(1,1) PRIMARY KEY,
+    user_id INT NOT NULL,
+    title VARCHAR(150) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BIT DEFAULT 0,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
+);
+
+-- ICS Documents
+CREATE TABLE ics_documents (
+    ics_id INT IDENTITY(1,1) PRIMARY KEY,
+    equipment_id INT NOT NULL,
+    issued_to INT NOT NULL,
+    ics_number VARCHAR(100) NOT NULL UNIQUE,
+    date_issued DATE NOT NULL,
+    document_path VARCHAR(255),
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (issued_to) REFERENCES users(user_id)
+);
