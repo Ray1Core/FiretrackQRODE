@@ -3,6 +3,7 @@ using System.Windows.Input;
 using Firetrack.Models;
 using Firetrack.Services;
 using Firetrack.Views;
+using Firetrack.Helpers;                // <-- Added
 using Microsoft.Maui.Controls;
 
 namespace Firetrack.ViewModels
@@ -96,9 +97,9 @@ namespace Firetrack.ViewModels
             var navParams = new Dictionary<string, object> { { "equipment", item } };
 
             if (App.CurrentUser?.Role == "Personnel")
-                await Shell.Current.GoToAsync(nameof(EquipmentRequestDetailPage), navParams);
+                await Shell.Current.GoToAsync(Routes.EquipmentRequestDetail, navParams);  // <-- Updated
             else
-                await Shell.Current.GoToAsync(nameof(EquipmentDetailPage), navParams);
+                await Shell.Current.GoToAsync(Routes.EquipmentDetail, navParams);         // <-- Updated
         }
     }
 }

@@ -2,8 +2,9 @@
 using System.Windows.Input;
 using System.Threading.Tasks;
 using Firetrack.Models;
+using Firetrack.Helpers;                // <-- Added
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Devices;  // ✅ for DeviceInfo
+using Microsoft.Maui.Devices;          // ✅ for DeviceInfo
 
 namespace Firetrack.ViewModels
 {
@@ -45,7 +46,7 @@ namespace Firetrack.ViewModels
         {
             LoginCommand = new Command(OnLogin);
             GoToForgotPasswordCommand = new Command(async () =>
-                await Shell.Current.GoToAsync("//ForgotPasswordPage"));
+                await Shell.Current.GoToAsync(Routes.ForgotPassword));   // <-- Updated
         }
 
         private async void OnLogin()
@@ -81,7 +82,7 @@ namespace Firetrack.ViewModels
                     }
 
                     // Clear navigation stack and navigate to Dashboard
-                    await Shell.Current.GoToAsync("//DashboardPage");
+                    await Shell.Current.GoToAsync(Routes.Dashboard);   // <-- Updated
                 }
                 else
                 {

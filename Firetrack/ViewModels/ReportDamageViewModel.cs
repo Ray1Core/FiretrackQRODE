@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
@@ -159,7 +160,7 @@ namespace Firetrack.ViewModels
                     $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'.");
 
                 await Shell.Current.DisplayAlert("Success", "Damage report submitted successfully!", "OK");
-                await Shell.Current.GoToAsync("//DashboardPage");
+                await Shell.Current.GoToAsync(Routes.Dashboard);   // <-- Updated
             }
             catch (Exception ex)
             {

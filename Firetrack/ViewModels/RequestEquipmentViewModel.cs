@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
@@ -63,7 +64,8 @@ namespace Firetrack.ViewModels
         {
             if (equipment == null) return;
             var navParams = new Dictionary<string, object> { { "equipment", equipment } };
-            await Shell.Current.GoToAsync("EquipmentRequestDetailPage", navParams);
+            // ✅ Replaced with Routes.EquipmentRequestDetail
+            await Shell.Current.GoToAsync(Routes.EquipmentRequestDetail, navParams);
         }
     }
 }

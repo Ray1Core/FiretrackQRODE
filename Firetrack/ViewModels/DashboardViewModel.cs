@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Firetrack.Converters;
+using Firetrack.Helpers;                // <-- Added
 using QRCoder;
 using System.IO;
 using Microsoft.Maui.Storage;
@@ -187,64 +188,64 @@ namespace Firetrack.ViewModels
             LogoutCommand = new Command(OnLogout);
             DownloadPersonnelQRCommand = new Command(OnDownloadPersonnelQR);
 
-            // ---- Navigation commands ----
+            // ---- Navigation commands ---- (all replaced with Routes constants)
             GoToScannerCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//ScannerPage"); }
+                try { await Shell.Current.GoToAsync(Routes.Scanner); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToTransferCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//TransferPage"); }
+                try { await Shell.Current.GoToAsync(Routes.Transfer); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToAddUserCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//UserManagementPage"); }
+                try { await Shell.Current.GoToAsync(Routes.UserManagement); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToClearanceCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//ClearancePage"); }
+                try { await Shell.Current.GoToAsync(Routes.Clearance); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToInventoryCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//EquipmentCategoryPage"); }
+                try { await Shell.Current.GoToAsync(Routes.EquipmentCategory); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToRequestEquipmentCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//EquipmentCategoryPage"); }
+                try { await Shell.Current.GoToAsync(Routes.EquipmentCategory); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToProfileCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//ProfilePage"); }
+                try { await Shell.Current.GoToAsync(Routes.Profile); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToUserManagementCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//UserManagementPage"); }
+                try { await Shell.Current.GoToAsync(Routes.UserManagement); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToPendingRequestsCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//PendingRequestsPage"); }
+                try { await Shell.Current.GoToAsync(Routes.PendingRequests); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToNotificationsCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync("//NotificationsPage"); }
+                try { await Shell.Current.GoToAsync(Routes.Notifications); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
@@ -282,7 +283,7 @@ namespace Firetrack.ViewModels
             if (Shell.Current is AppShell shell)
                 shell.UpdateUserRoleVisibility();
 
-            await Shell.Current.GoToAsync("//LoginPage");
+            await Shell.Current.GoToAsync(Routes.Login);   // <-- Updated
         }
 
         // ---- Load Personnel QR ----
@@ -499,7 +500,7 @@ namespace Firetrack.ViewModels
             try
             {
                 var navigationParams = new Dictionary<string, object> { { "equipment", equipment } };
-                await Shell.Current.GoToAsync("ReportDamagePage", navigationParams);
+                await Shell.Current.GoToAsync(Routes.ReportDamage, navigationParams);   // <-- Updated
             }
             catch (Exception ex)
             {

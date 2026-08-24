@@ -1,9 +1,10 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Dispatching; // for MainThread
+using Microsoft.Maui.Dispatching;
 
 namespace Firetrack.ViewModels
 {
@@ -73,6 +74,7 @@ namespace Firetrack.ViewModels
             LoadCategoriesCommand = new Command(OnLoadCategories);
             SearchCommand = new Command(OnSearch);
             CategoryTappedCommand = new Command<CategoryGroup>(OnCategoryTapped);
+            // ✅ Replaced with Routes.AddEquipment
             GoToAddEquipmentCommand = new Command(async () =>
             {
                 if (_db == null)
@@ -80,7 +82,7 @@ namespace Firetrack.ViewModels
                     await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
                     return;
                 }
-                await Shell.Current.GoToAsync("//AddEquipmentPage");
+                await Shell.Current.GoToAsync(Routes.AddEquipment);
             });
 
             if (_db != null)
@@ -105,10 +107,8 @@ namespace Firetrack.ViewModels
             IsBusy = true;
             try
             {
-                // Run heavy query on background
                 var all = await Task.Run(async () => await _db.GetEquipmentsAsync());
 
-                // Update metrics on UI thread
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     AvailableCount = all.Count(e => e.Status == "Available");
@@ -139,7 +139,6 @@ namespace Firetrack.ViewModels
                     .ThenBy(c => c.Name)
                     .ToList();
 
-                // Update UI on main thread
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     Categories.Clear();
@@ -166,7 +165,8 @@ namespace Firetrack.ViewModels
         {
             if (category == null) return;
             var navParams = new Dictionary<string, object> { { "categoryName", category.Name } };
-            await Shell.Current.GoToAsync("//CategoryItemsPage", navParams);
+            // ✅ Replaced with Routes.CategoryItems
+            await Shell.Current.GoToAsync(Routes.CategoryItems, navParams);
         }
     }
 }

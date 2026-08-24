@@ -1,4 +1,5 @@
 ﻿using Firetrack.ViewModels;
+using Firetrack.Helpers;                // <-- Added
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Devices;
 using ZXing.Net.Maui;
@@ -40,7 +41,8 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
             if (!string.IsNullOrEmpty(_viewModel.ReturnToPage))
                 await Shell.Current.GoToAsync($"//{_viewModel.ReturnToPage}");
             else
-                await Shell.Current.GoToAsync("//DashboardPage");
+                // ✅ Replaced with Routes.Dashboard
+                await Shell.Current.GoToAsync(Routes.Dashboard);
             return;
         }
 

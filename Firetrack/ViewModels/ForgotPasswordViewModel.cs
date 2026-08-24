@@ -1,4 +1,5 @@
 ﻿using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 
@@ -51,7 +52,8 @@ namespace Firetrack.ViewModels
         {
             SendOtpCommand = new Command(OnSendOtp);
             ResetPasswordCommand = new Command(OnResetPassword);
-            GoBackCommand = new Command(async () => await Shell.Current.GoToAsync("//LoginPage"));
+            // ✅ Replaced with Routes.Login
+            GoBackCommand = new Command(async () => await Shell.Current.GoToAsync(Routes.Login));
         }
 
         private async void OnSendOtp()
@@ -131,7 +133,8 @@ namespace Firetrack.ViewModels
                 {
                     await App.Database.MarkOtpUsedAsync(Username, OtpCode);
                     await Shell.Current.DisplayAlert("Success", "Password reset successfully. Please login.", "OK");
-                    await Shell.Current.GoToAsync("//LoginPage");
+                    // ✅ Replaced with Routes.Login
+                    await Shell.Current.GoToAsync(Routes.Login);
                 }
                 else
                 {

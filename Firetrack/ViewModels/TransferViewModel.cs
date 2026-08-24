@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -223,7 +224,7 @@ namespace Firetrack.ViewModels
         }
 
         // =========================================================
-        // STEP 1 - SCAN EQUIPMENT  (UPDATED)
+        // STEP 1 - SCAN EQUIPMENT
         // =========================================================
 
         private async void OnScanEquipment()
@@ -233,11 +234,12 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "equipment" }
             };
-            await Shell.Current.GoToAsync("//ScannerPage", parameters);  // ✅ Added "//"
+            // ✅ Replaced with Routes.Scanner
+            await Shell.Current.GoToAsync(Routes.Scanner, parameters);
         }
 
         // =========================================================
-        // STEP 2 - SCAN CURRENT CUSTODIAN  (UPDATED)
+        // STEP 2 - SCAN CURRENT CUSTODIAN
         // =========================================================
 
         private async void OnScanCurrentCustodian()
@@ -247,11 +249,12 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "currentCustodian" }
             };
-            await Shell.Current.GoToAsync("//ScannerPage", parameters);  // ✅ Added "//"
+            // ✅ Replaced with Routes.Scanner
+            await Shell.Current.GoToAsync(Routes.Scanner, parameters);
         }
 
         // =========================================================
-        // STEP 3 - SCAN RECEIVING PERSON  (UPDATED)
+        // STEP 3 - SCAN RECEIVING PERSON
         // =========================================================
 
         private async void OnScanNewCustodian()
@@ -261,7 +264,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "newCustodian" }
             };
-            await Shell.Current.GoToAsync("//ScannerPage", parameters);  // ✅ Added "//"
+            // ✅ Replaced with Routes.Scanner
+            await Shell.Current.GoToAsync(Routes.Scanner, parameters);
         }
 
         // =========================================================

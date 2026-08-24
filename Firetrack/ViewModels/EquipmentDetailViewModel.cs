@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Dispatching;
@@ -87,7 +88,8 @@ namespace Firetrack.ViewModels
         private async void OnHistory()
         {
             var navParams = new Dictionary<string, object> { { "equipment", Equipment } };
-            await Shell.Current.GoToAsync("TransactionHistoryPage", navParams);
+            // ✅ Replaced with Routes.TransactionHistory
+            await Shell.Current.GoToAsync(Routes.TransactionHistory, navParams);
         }
 
         private async void OnDelete()

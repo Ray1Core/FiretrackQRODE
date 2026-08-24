@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 
@@ -91,7 +92,7 @@ namespace Firetrack.ViewModels
 
             App.CurrentUser = null;
             if (Shell.Current is AppShell shell) shell.UpdateUserRoleVisibility();
-            await Shell.Current.GoToAsync("//LoginPage");
+            await Shell.Current.GoToAsync(Routes.Login);   // <-- Updated
         }
     }
 }

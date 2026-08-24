@@ -1,4 +1,5 @@
 ﻿using Firetrack.Views;
+using Firetrack.Helpers;           // <-- Added
 using Microsoft.Maui.Controls;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -79,7 +80,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
             BackCommand = new Command(OnBack);
             LogoutCommand = new Command(OnLogout);
-            GoToNotificationsCommand = new Command(async () => await GoToAsync("//NotificationsPage"));
+            // ✅ Replaced hardcoded string with Routes.Notifications
+            GoToNotificationsCommand = new Command(async () => await GoToAsync(Routes.Notifications));
 
             this.Navigated += OnShellNavigated;
 
@@ -172,7 +174,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         App.CurrentUser = null;
         UpdateUserRoleVisibility();
-        await GoToAsync("//LoginPage");
+        // ✅ Replaced hardcoded string with Routes.Login
+        await GoToAsync(Routes.Login);
     }
 
     public void UpdateUserRoleVisibility()
@@ -278,10 +281,12 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         {
             args.Cancel();
             if (user == null)
-                GoToAsync("//LoginPage");
+                // ✅ Replaced hardcoded string with Routes.Login
+                GoToAsync(Routes.Login);
             else
             {
-                GoToAsync("//DashboardPage");
+                // ✅ Replaced hardcoded string with Routes.Dashboard
+                GoToAsync(Routes.Dashboard);
                 Application.Current?.MainPage?.DisplayAlert(
                     "Access Denied",
                     "You do not have permission to view this page.",

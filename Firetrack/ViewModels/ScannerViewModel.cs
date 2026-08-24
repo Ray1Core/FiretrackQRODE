@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;                // <-- Added
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -17,7 +18,7 @@ namespace Firetrack.ViewModels
         private EquipmentModel? _foundEquipment;
         private bool _isBusy;
         private string _returnToPage = string.Empty;
-        private string _scanMode = "equipment";   // NEW: default mode
+        private string _scanMode = "equipment";
 
         public bool IsScanning
         {
@@ -49,7 +50,6 @@ namespace Firetrack.ViewModels
             set { _returnToPage = value; OnPropertyChanged(); }
         }
 
-        // ✅ NEW: Scan mode (e.g., "equipment", "personnel", "admin")
         public string ScanMode
         {
             get => _scanMode;
@@ -70,7 +70,8 @@ namespace Firetrack.ViewModels
             if (!string.IsNullOrEmpty(ReturnToPage))
                 await Shell.Current.GoToAsync($"//{ReturnToPage}");
             else
-                await Shell.Current.GoToAsync("//DashboardPage");
+                // ✅ Replaced with Routes.Dashboard
+                await Shell.Current.GoToAsync(Routes.Dashboard);
         }
 
         public async Task ProcessScannedQR(string qrValue)
@@ -89,19 +90,17 @@ namespace Firetrack.ViewModels
                 var equipmentList = await _db.GetEquipmentsAsync();
                 var found = equipmentList.FirstOrDefault(e => e.QRCode == qrValue);
 
-                // If we are returning to a caller, pass the QR and mode back
                 if (!string.IsNullOrEmpty(ReturnToPage))
                 {
                     var navParams = new Dictionary<string, object>
                     {
                         { "scannedQR", qrValue },
-                        { "mode", ScanMode }   // ✅ Pass mode back
+                        { "mode", ScanMode }
                     };
                     await Shell.Current.GoToAsync($"..", navParams);
                     return;
                 }
 
-                // Standalone mode: show equipment details
                 if (found != null)
                 {
                     FoundEquipment = found;
