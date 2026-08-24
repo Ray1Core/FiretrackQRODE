@@ -2,6 +2,7 @@
 using System.Windows.Input;
 using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Views;          // ✅ Required for page type names
 using Microsoft.Maui.Controls;
 
 namespace Firetrack.ViewModels
@@ -80,11 +81,11 @@ namespace Firetrack.ViewModels
 
             var navParams = new Dictionary<string, object> { { "equipment", item } };
 
-            // ✅ Use absolute routes to avoid ambiguity
+            // ✅ Use relative navigation (nameof) to preserve back stack
             if (App.CurrentUser?.Role == "Personnel")
-                await Shell.Current.GoToAsync("//EquipmentRequestDetailPage", navParams);
+                await Shell.Current.GoToAsync(nameof(EquipmentRequestDetailPage), navParams);
             else
-                await Shell.Current.GoToAsync("//EquipmentDetailPage", navParams);
+                await Shell.Current.GoToAsync(nameof(EquipmentDetailPage), navParams);
         }
     }
 }

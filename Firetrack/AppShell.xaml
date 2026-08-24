@@ -28,14 +28,11 @@
     </Shell.FlyoutHeader>
 
     <!-- ========================================================== -->
-    <!-- ===== GLOBAL TITLE VIEW (Logout ONLY – no bell emoji) ===== -->
+    <!-- ===== GLOBAL TITLE VIEW (Logout ONLY) ===== -->
     <!-- ========================================================== -->
     <Shell.TitleView>
         <Grid ColumnDefinitions="*, Auto" Padding="10,0" ColumnSpacing="10">
-            <!-- Empty space to push logout to the right -->
             <Label Grid.Column="0" Text="" />
-
-            <!-- Logout Button (in header, not flyout) -->
             <Button Grid.Column="1"
                     Text="🚪"
                     Command="{Binding LogoutCommand}"
@@ -47,7 +44,9 @@
         </Grid>
     </Shell.TitleView>
 
+    <!-- ========================================================== -->
     <!-- ===== HIDDEN PAGES (not in flyout) ===== -->
+    <!-- ========================================================== -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
@@ -103,6 +102,7 @@
                   Route="DisposalRequestsPage"
                   Shell.FlyoutItemIsVisible="False" />
 
+    <!-- ===== ADD EQUIPMENT – HIDDEN (only accessible via button) ===== -->
     <ShellContent Title="Add Equipment"
                   ContentTemplate="{DataTemplate views:AddEquipmentPage}"
                   Route="AddEquipmentPage"
@@ -151,9 +151,7 @@
                       ContentTemplate="{DataTemplate views:AuditLogPage}"
                       Route="AuditLogPage" />
 
-        <ShellContent Title="Add Equipment"
-                      ContentTemplate="{DataTemplate views:AddEquipmentPage}"
-                      Route="AddEquipmentPage" />
+        <!-- 🔥 REMOVED: Add Equipment – it's now hidden above -->
     </FlyoutItem>
 
     <!-- ========================================================== -->
@@ -184,7 +182,7 @@
                       Route="ScannerPage" />
     </FlyoutItem>
 
-    <!-- ===== FLYOUT FOOTER (LOGOUT REMOVED – now in header) ===== -->
+    <!-- ===== FLYOUT FOOTER ===== -->
     <Shell.FlyoutFooter>
         <VerticalStackLayout Spacing="10" Padding="15,10">
             <Label Text="Fire Track v1.0"

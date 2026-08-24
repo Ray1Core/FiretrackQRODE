@@ -712,19 +712,18 @@ namespace Firetrack.Services
         public async Task<List<TransactionModel>> GetTransactionsForEquipmentAsync(string qrCode)
         {
             using var connection = CreateConnection();
-            // Query AuditLogs for equipment transactions
             var result = await connection.QueryAsync<TransactionModel>(
                 @"SELECT 
-                    'TransactionId' as TransactionId,
-                    @QRCode as EquipmentQR,
-                    Username as FromUser,
-                    'System' as ToUser,
-                    Timestamp,
-                    Action,
-                    Details as Remarks
-                  FROM AuditLogs 
-                  WHERE Details LIKE @Pattern
-                  ORDER BY Timestamp DESC",
+            -1 as TransactionId,              -- ✅ Use -1 instead of 'TransactionId'
+            @QRCode as EquipmentQR,
+            Username as FromUser,
+            'System' as ToUser,
+            Timestamp,
+            Action,
+            Details as Remarks
+          FROM AuditLogs 
+          WHERE Details LIKE @Pattern
+          ORDER BY Timestamp DESC",
                 new { QRCode = qrCode, Pattern = $"%{qrCode}%" });
             return result.ToList();
         }
@@ -734,15 +733,15 @@ namespace Firetrack.Services
             using var connection = CreateConnection();
             var result = await connection.QueryAsync<TransactionModel>(
                 @"SELECT 
-                    'TransactionId' as TransactionId,
-                    'N/A' as EquipmentQR,
-                    Username as FromUser,
-                    'System' as ToUser,
-                    Timestamp,
-                    Action,
-                    Details as Remarks
-                  FROM AuditLogs 
-                  ORDER BY Timestamp DESC");
+            -1 as TransactionId,              -- ✅ Use -1 instead of 'TransactionId'
+            'N/A' as EquipmentQR,
+            Username as FromUser,
+            'System' as ToUser,
+            Timestamp,
+            Action,
+            Details as Remarks
+          FROM AuditLogs 
+          ORDER BY Timestamp DESC");
             return result.ToList();
         }
 
