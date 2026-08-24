@@ -3,7 +3,7 @@ using Firetrack.Services;
 using SQLitePCL;
 using ZXing.Net.Maui.Controls;
 using Microsoft.Maui.Storage;
-using PdfSharpCore.Fonts;   // <-- ADD THIS
+using PdfSharpCore.Fonts;
 
 namespace Firetrack;
 
