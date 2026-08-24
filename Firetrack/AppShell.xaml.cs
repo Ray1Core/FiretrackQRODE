@@ -41,14 +41,12 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         get => UnreadCount > 0 ? $"🔔 {UnreadCount}" : "🔔";
     }
 
-    // NEW: Visibility for the back button in the TitleView
     public bool IsBackVisible
     {
         get => _isBackVisible;
         set { _isBackVisible = value; OnPropertyChanged(); }
     }
 
-    // NEW: Command for the back button
     public ICommand BackCommand { get; }
     public ICommand LogoutCommand { get; }
     public ICommand GoToNotificationsCommand { get; }
@@ -58,7 +56,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    // Define root routes (top-level pages that clear the stack)
     private static readonly HashSet<string> RootRoutes = new()
     {
         "DashboardPage",
@@ -75,21 +72,29 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
     public AppShell()
     {
-        InitializeComponent();
-        BindingContext = this;
+        try
+        {
+            InitializeComponent();
+            BindingContext = this;
 
-        BackCommand = new Command(OnBack);
-        LogoutCommand = new Command(OnLogout);
-        GoToNotificationsCommand = new Command(async () => await GoToAsync("//NotificationsPage"));
+            BackCommand = new Command(OnBack);
+            LogoutCommand = new Command(OnLogout);
+            GoToNotificationsCommand = new Command(async () => await GoToAsync("//NotificationsPage"));
 
-        // Subscribe to navigation events
-        this.Navigated += OnShellNavigated;
+            this.Navigated += OnShellNavigated;
 
-        UpdateUserRoleVisibility();
-        LoadUnreadCount();
+            UpdateUserRoleVisibility();
+            LoadUnreadCount();
 
-        // Set initial back button visibility
-        UpdateBackButtonVisibility();
+            // Safe call – will handle null state
+            UpdateBackButtonVisibility();
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"❌ AppShell constructor error: {ex}");
+            // Rethrow so the app fails visibly – but you can also show an alert.
+            throw;
+        }
     }
 
     private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
@@ -99,29 +104,48 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
     private void UpdateBackButtonVisibility()
     {
-        // Get the current route
-        var currentRoute = Current.CurrentState?.Location?.OriginalString?.Split('/').LastOrDefault() ?? string.Empty;
+        try
+        {
+            // 🔥 Critical: check if CurrentState is null (happens before first navigation)
+            var currentState = Current.CurrentState;
+            if (currentState == null)
+            {
+                IsBackVisible = false;
+                return;
+            }
 
-        // Back button is visible if the current route is NOT a root route
-        IsBackVisible = !RootRoutes.Contains(currentRoute);
+            var currentRoute = currentState.Location?.OriginalString?.Split('/').LastOrDefault() ?? string.Empty;
+            IsBackVisible = !RootRoutes.Contains(currentRoute);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"⚠️ UpdateBackButtonVisibility failed: {ex}");
+            IsBackVisible = false;
+        }
     }
 
     private async void OnBack()
     {
-        // Go back one step in the navigation stack
         await GoToAsync("..");
     }
 
     public void LoadUnreadCount()
     {
-        if (App.CurrentUser == null || App.Database == null) return;
+        if (App.CurrentUser == null || App.Database == null)
+        {
+            UnreadCount = 0;
+            return;
+        }
+
         try
         {
-            // Use a background thread to avoid blocking UI
             Task.Run(async () =>
             {
                 var notifications = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Email);
-                UnreadCount = notifications.Count(n => !n.IsRead);
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    UnreadCount = notifications.Count(n => !n.IsRead);
+                });
             });
         }
         catch
