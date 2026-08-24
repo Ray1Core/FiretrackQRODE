@@ -2,12 +2,13 @@
 using Firetrack.Services;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Dispatching;
 
 namespace Firetrack.ViewModels
 {
     public class EquipmentDetailViewModel : ViewModelBase
     {
-        private readonly DatabaseService _db;
+        private readonly DatabaseService? _db;
         private EquipmentModel _equipment = null!;
         private bool _isBusy;
 
@@ -29,7 +30,7 @@ namespace Firetrack.ViewModels
 
         public EquipmentDetailViewModel(EquipmentModel equipment)
         {
-            _db = App.Database!;
+            _db = App.Database;
             Equipment = equipment;
 
             EditCommand = new Command(OnEdit);
@@ -39,6 +40,12 @@ namespace Firetrack.ViewModels
 
         private async void OnEdit()
         {
+            if (_db == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
+                return;
+            }
+
             string newName = await Shell.Current.DisplayPromptAsync(
                 "Edit Equipment",
                 $"Current name: {Equipment.Name}\nEnter new name:",
@@ -51,7 +58,6 @@ namespace Firetrack.ViewModels
             if (!string.IsNullOrWhiteSpace(newName) && newName != Equipment.Name)
                 Equipment.Name = newName.Trim();
 
-            // ✅ Added "Disposed" to the action sheet
             string newStatus = await Shell.Current.DisplayActionSheet(
                 "Select Status",
                 "Cancel",
@@ -86,6 +92,12 @@ namespace Firetrack.ViewModels
 
         private async void OnDelete()
         {
+            if (_db == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
+                return;
+            }
+
             bool confirm = await Shell.Current.DisplayAlert(
                 "Confirm Delete",
                 $"Delete '{Equipment.Name}'?",

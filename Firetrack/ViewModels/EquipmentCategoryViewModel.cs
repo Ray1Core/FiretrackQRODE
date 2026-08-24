@@ -3,21 +3,20 @@ using Firetrack.Services;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
+using Microsoft.Maui.Dispatching; // for MainThread
 
 namespace Firetrack.ViewModels
 {
     public class EquipmentCategoryViewModel : ViewModelBase
     {
-        private readonly DatabaseService _db;
+        private readonly DatabaseService? _db;
         private ObservableCollection<CategoryGroup> _categories = new();
         private bool _isBusy;
         private bool _isAdmin;
         private string _searchText = string.Empty;
-
-        // ---- Simplified Metrics (only 3) ----
         private int _availableCount;
-        private int _stackInCount;    // Issued
-        private int _stackOutCount;   // Disposed
+        private int _stackInCount;
+        private int _stackOutCount;
 
         public ObservableCollection<CategoryGroup> Categories
         {
@@ -43,7 +42,6 @@ namespace Firetrack.ViewModels
             set { _searchText = value; OnPropertyChanged(); }
         }
 
-        // ---- Metric properties ----
         public int AvailableCount
         {
             get => _availableCount;
@@ -69,15 +67,26 @@ namespace Firetrack.ViewModels
 
         public EquipmentCategoryViewModel()
         {
-            _db = App.Database!;
+            _db = App.Database;
             IsAdmin = App.CurrentUser?.Role == "Admin";
 
             LoadCategoriesCommand = new Command(OnLoadCategories);
             SearchCommand = new Command(OnSearch);
             CategoryTappedCommand = new Command<CategoryGroup>(OnCategoryTapped);
-            GoToAddEquipmentCommand = new Command(async () => await Shell.Current.GoToAsync("//AddEquipmentPage"));
+            GoToAddEquipmentCommand = new Command(async () =>
+            {
+                if (_db == null)
+                {
+                    await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
+                    return;
+                }
+                await Shell.Current.GoToAsync("//AddEquipmentPage");
+            });
 
-            OnLoadCategories();
+            if (_db != null)
+                OnLoadCategories();
+            else
+                Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
         }
 
         private async void OnLoadCategories()
@@ -87,19 +96,26 @@ namespace Firetrack.ViewModels
 
         private async Task LoadCategoriesAsync()
         {
-            if (_db == null) return;
+            if (_db == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
+                return;
+            }
 
             IsBusy = true;
             try
             {
-                var all = await _db.GetEquipmentsAsync();
+                // Run heavy query on background
+                var all = await Task.Run(async () => await _db.GetEquipmentsAsync());
 
-                // ---- Update metrics (only three) ----
-                AvailableCount = all.Count(e => e.Status == "Available");
-                StackInCount = all.Count(e => e.Status == "Issued");
-                StackOutCount = all.Count(e => e.Status == "Disposed");
+                // Update metrics on UI thread
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    AvailableCount = all.Count(e => e.Status == "Available");
+                    StackInCount = all.Count(e => e.Status == "Issued");
+                    StackOutCount = all.Count(e => e.Status == "Disposed");
+                });
 
-                // ---- Apply search filter ----
                 var filtered = all;
                 if (!string.IsNullOrWhiteSpace(SearchText))
                 {
@@ -111,7 +127,6 @@ namespace Firetrack.ViewModels
                     ).ToList();
                 }
 
-                // ---- Group by Name + Type ----
                 var grouped = filtered
                     .GroupBy(e => new { e.Name, e.Type })
                     .Select(g => new CategoryGroup
@@ -124,9 +139,13 @@ namespace Firetrack.ViewModels
                     .ThenBy(c => c.Name)
                     .ToList();
 
-                Categories.Clear();
-                foreach (var item in grouped)
-                    Categories.Add(item);
+                // Update UI on main thread
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    Categories.Clear();
+                    foreach (var item in grouped)
+                        Categories.Add(item);
+                });
             }
             catch (Exception ex)
             {

@@ -11,6 +11,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     private bool _isAdmin;
     private bool _isPersonnel;
     private int _unreadCount;
+    private bool _isBackVisible;
 
     public bool IsAdmin
     {
@@ -40,6 +41,15 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         get => UnreadCount > 0 ? $"🔔 {UnreadCount}" : "🔔";
     }
 
+    // NEW: Visibility for the back button in the TitleView
+    public bool IsBackVisible
+    {
+        get => _isBackVisible;
+        set { _isBackVisible = value; OnPropertyChanged(); }
+    }
+
+    // NEW: Command for the back button
+    public ICommand BackCommand { get; }
     public ICommand LogoutCommand { get; }
     public ICommand GoToNotificationsCommand { get; }
 
@@ -48,26 +58,71 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
+    // Define root routes (top-level pages that clear the stack)
+    private static readonly HashSet<string> RootRoutes = new()
+    {
+        "DashboardPage",
+        "EquipmentCategoryPage",
+        "TransferPage",
+        "ClearancePage",
+        "UserManagementPage",
+        "PendingRequestsPage",
+        "DisposalRequestsPage",
+        "AuditLogPage",
+        "ProfilePage",
+        "ScannerPage"
+    };
+
     public AppShell()
     {
         InitializeComponent();
         BindingContext = this;
 
+        BackCommand = new Command(OnBack);
         LogoutCommand = new Command(OnLogout);
         GoToNotificationsCommand = new Command(async () => await GoToAsync("//NotificationsPage"));
 
+        // Subscribe to navigation events
+        this.Navigated += OnShellNavigated;
+
         UpdateUserRoleVisibility();
         LoadUnreadCount();
+
+        // Set initial back button visibility
+        UpdateBackButtonVisibility();
     }
 
-    // ✅ FIXED: Uses Email instead of Username
-    public async void LoadUnreadCount()
+    private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
+    {
+        UpdateBackButtonVisibility();
+    }
+
+    private void UpdateBackButtonVisibility()
+    {
+        // Get the current route
+        var currentRoute = Current.CurrentState?.Location?.OriginalString?.Split('/').LastOrDefault() ?? string.Empty;
+
+        // Back button is visible if the current route is NOT a root route
+        IsBackVisible = !RootRoutes.Contains(currentRoute);
+    }
+
+    private async void OnBack()
+    {
+        // Go back one step in the navigation stack
+        await GoToAsync("..");
+    }
+
+    public void LoadUnreadCount()
     {
         if (App.CurrentUser == null || App.Database == null) return;
         try
         {
-            var notifications = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Email);
-            UnreadCount = notifications.Count(n => !n.IsRead);
+            // Use a background thread to avoid blocking UI
+            Task.Run(async () =>
+            {
+                var notifications = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Email);
+                UnreadCount = notifications.Count(n => !n.IsRead);
+            });
         }
         catch
         {
@@ -81,7 +136,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         shell?.LoadUnreadCount();
     }
 
-    // ✅ FIXED: Uses Email instead of Username
     private async void OnLogout()
     {
         if (App.CurrentUser != null && App.Database != null)

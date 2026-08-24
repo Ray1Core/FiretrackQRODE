@@ -2,14 +2,14 @@
 using System.Windows.Input;
 using Firetrack.Models;
 using Firetrack.Services;
-using Firetrack.Views;          // ✅ Required for page type names
+using Firetrack.Views;
 using Microsoft.Maui.Controls;
 
 namespace Firetrack.ViewModels
 {
     public class CategoryItemsViewModel : ViewModelBase
     {
-        private readonly DatabaseService _db;
+        private readonly DatabaseService? _db; // nullable
         private string _categoryName = string.Empty;
         private ObservableCollection<EquipmentModel> _items = new();
         private bool _isBusy;
@@ -37,33 +37,47 @@ namespace Firetrack.ViewModels
 
         public CategoryItemsViewModel(string categoryName)
         {
-            _db = App.Database!;
+            _db = App.Database; // no ! (allow null)
             CategoryName = categoryName;
 
             LoadItemsCommand = new Command(OnLoadItems);
             ItemTappedCommand = new Command<EquipmentModel>(OnItemTapped);
 
-            OnLoadItems();
+            // Only load if database is available
+            if (_db != null)
+                OnLoadItems();
+            else
+                Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
         }
 
         private async void OnLoadItems()
         {
-            if (_db == null) return;
+            if (_db == null)
+            {
+                await Shell.Current.DisplayAlert("Error", "Database not available.", "OK");
+                return;
+            }
 
             IsBusy = true;
             try
             {
-                var all = await _db.GetEquipmentsAsync();
+                // Run heavy query on background thread
+                var all = await Task.Run(async () => await _db.GetEquipmentsAsync());
 
                 var filtered = all.Where(e => e.Name == CategoryName);
 
-                // Personnel sees only available items (no pending requests)
                 if (App.CurrentUser?.Role == "Personnel")
                     filtered = filtered.Where(e => e.Status == "Available" && string.IsNullOrEmpty(e.RequestStatus));
 
-                Items.Clear();
-                foreach (var item in filtered.OrderBy(e => e.QRCode))
-                    Items.Add(item);
+                var itemsList = filtered.OrderBy(e => e.QRCode).ToList();
+
+                // Update UI on main thread
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    Items.Clear();
+                    foreach (var item in itemsList)
+                        Items.Add(item);
+                });
             }
             catch (Exception ex)
             {
@@ -81,7 +95,6 @@ namespace Firetrack.ViewModels
 
             var navParams = new Dictionary<string, object> { { "equipment", item } };
 
-            // ✅ Use relative navigation (nameof) to preserve back stack
             if (App.CurrentUser?.Role == "Personnel")
                 await Shell.Current.GoToAsync(nameof(EquipmentRequestDetailPage), navParams);
             else

@@ -28,12 +28,31 @@
     </Shell.FlyoutHeader>
 
     <!-- ========================================================== -->
-    <!-- ===== GLOBAL TITLE VIEW (Logout ONLY) ===== -->
+    <!-- ===== GLOBAL TITLE VIEW (Back + Logout) ===== -->
     <!-- ========================================================== -->
     <Shell.TitleView>
-        <Grid ColumnDefinitions="*, Auto" Padding="10,0" ColumnSpacing="10">
-            <Label Grid.Column="0" Text="" />
-            <Button Grid.Column="1"
+        <Grid ColumnDefinitions="Auto, *, Auto" Padding="5,0" ColumnSpacing="5">
+            <!-- Back Button (visible only when on a detail page) -->
+            <Button Grid.Column="0"
+                    Text="‹"
+                    Command="{Binding BackCommand}"
+                    BackgroundColor="Transparent"
+                    TextColor="{StaticResource OnBackground}"
+                    FontSize="28"
+                    FontAttributes="Bold"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Start"
+                    IsVisible="{Binding IsBackVisible}"
+                    WidthRequest="44" />
+
+            <!-- Title (empty – the page title will be shown via the page's Title property) -->
+            <Label Grid.Column="1"
+                   Text=""
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center" />
+
+            <!-- Logout Button -->
+            <Button Grid.Column="2"
                     Text="🚪"
                     Command="{Binding LogoutCommand}"
                     BackgroundColor="Transparent"
@@ -44,9 +63,7 @@
         </Grid>
     </Shell.TitleView>
 
-    <!-- ========================================================== -->
     <!-- ===== HIDDEN PAGES (not in flyout) ===== -->
-    <!-- ========================================================== -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
@@ -150,8 +167,6 @@
         <ShellContent Title="Audit Log"
                       ContentTemplate="{DataTemplate views:AuditLogPage}"
                       Route="AuditLogPage" />
-
-        <!-- 🔥 REMOVED: Add Equipment – it's now hidden above -->
     </FlyoutItem>
 
     <!-- ========================================================== -->
@@ -191,5 +206,4 @@
                    HorizontalOptions="Center" />
         </VerticalStackLayout>
     </Shell.FlyoutFooter>
-
 </Shell>

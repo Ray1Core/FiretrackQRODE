@@ -56,6 +56,8 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
     {
         base.OnDisappearing();
         _viewModel.IsScanning = false;
+        // Dispose the camera handler to free resources
+        cameraBarcodeReaderView.Handler?.DisconnectHandler();
     }
 
     private async void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)

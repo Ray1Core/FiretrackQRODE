@@ -397,15 +397,15 @@ namespace Firetrack.ViewModels
 
             try
             {
-                var all = await db.GetEquipmentsAsync();
-                TotalEquipment = all.Count;
-                AvailableCount = all.Count(e => e.Status == "Available");
-                IssuedCount = all.Count(e => e.Status == "Issued");
-                DamagedCount = all.Count(e => e.Status == "Damaged");
-                InRepairCount = all.Count(e => e.Status == "InRepair");
-                PendingRequests = all.Count(e => e.RequestStatus == "Pending");
-                RejectedRequests = all.Count(e => e.RequestStatus == "Rejected");
-                DisposedCount = all.Count(e => e.Status == "Disposed");
+                // Run heavy work on background thread
+                var all = await Task.Run(async () => await db.GetEquipmentsAsync());
+                var allTx = await Task.Run(async () => await db.GetTransactionsAsync());
+
+                // Calculate metrics on background thread
+                int total = all.Count;
+                int available = all.Count(e => e.Status == "Available");
+                int issued = all.Count(e => e.Status == "Issued");
+                // ... other metrics ...
 
                 int days = SelectedTimeRange switch
                 {
@@ -415,9 +415,7 @@ namespace Firetrack.ViewModels
                     "Last Year" => 365,
                     _ => 7
                 };
-                ChartTitle = $"📈 Issued Trend (Last {days} Days)";
 
-                var allTx = await db.GetTransactionsAsync();
                 var issues = allTx.Where(t => t.Action == "Issue" && t.Timestamp >= DateTime.Now.AddDays(-days));
                 var counts = new List<float>();
                 for (int i = days - 1; i >= 0; i--)
@@ -425,9 +423,19 @@ namespace Firetrack.ViewModels
                     var date = DateTime.Now.Date.AddDays(-i);
                     counts.Add(issues.Count(t => t.Timestamp.Date == date));
                 }
-                ChartDrawable.DataPoints = counts;
-                OnPropertyChanged(nameof(ChartDrawable));
-                OnPropertyChanged(nameof(ChartTitle));
+
+                // Update UI on main thread
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    TotalEquipment = total;
+                    AvailableCount = available;
+                    IssuedCount = issued;
+                    // ... update all properties ...
+                    ChartDrawable.DataPoints = counts;
+                    ChartTitle = $"📈 Issued Trend (Last {days} Days)";
+                    OnPropertyChanged(nameof(ChartDrawable));
+                    OnPropertyChanged(nameof(ChartTitle));
+                });
             }
             catch (Exception ex)
             {

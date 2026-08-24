@@ -5,6 +5,11 @@
              Shell.TabBarIsVisible="False"
              BackgroundColor="{StaticResource Background}">
 
+    <!-- ✅ Hide the global TitleView (logout button) on Login page -->
+    <Shell.TitleView>
+        <Label />
+    </Shell.TitleView>
+
     <Grid Padding="30" VerticalOptions="Center">
         <VerticalStackLayout Spacing="24" HorizontalOptions="Fill">
 
@@ -74,7 +79,7 @@
                     FontAttributes="Bold"
                     FontSize="16" />
 
-            <!-- Forgot Password link (required for login flow) -->
+            <!-- Forgot Password link -->
             <Button Text="Forgot Password?"
                     Command="{Binding GoToForgotPasswordCommand}"
                     BackgroundColor="Transparent"
