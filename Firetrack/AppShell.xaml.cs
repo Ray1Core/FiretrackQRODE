@@ -108,7 +108,13 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     {
         try
         {
-            // 🔥 Critical: check if CurrentState is null (happens before first navigation)
+            // ✅ Guard against null Shell.Current
+            if (Current == null)
+            {
+                IsBackVisible = false;
+                return;
+            }
+
             var currentState = Current.CurrentState;
             if (currentState == null)
             {
