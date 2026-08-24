@@ -380,13 +380,28 @@ namespace Firetrack.Services
         public async Task<UserModel?> GetUserByUsernameAsync(string username)
         {
             using var connection = CreateConnection();
+
+            // ===== ADD FALLBACK SEED CHECK =====
+            try
+            {
+                var userCount = await connection.ExecuteScalarAsync<int>("SELECT COUNT(*) FROM Users");
+                if (userCount == 0)
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠️ Users table empty – running seed...");
+                    SeedData(connection);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Seed check failed: {ex.Message}");
+            }
+
             var user = await connection.QueryFirstOrDefaultAsync<UserModel>(
                 "SELECT * FROM Users WHERE Email = @Username",
                 new { Username = username });
 
             if (user != null)
             {
-                // Load Role
                 var role = await connection.QueryFirstOrDefaultAsync(
                     "SELECT RoleName FROM Roles WHERE RoleId = @RoleId",
                     new { user.RoleId });

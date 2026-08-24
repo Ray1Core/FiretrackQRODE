@@ -11,15 +11,12 @@ namespace Firetrack
         public static UserModel? CurrentUser { get; set; }
         public static DatabaseService? Database { get; private set; }
 
-        // Configurable SQL Server connection string using laptop's IP
-        // You need to create a SQL Server login (User ID/Password) for this to work
         public static string SqlServerConnectionString { get; set; } =
             @"Data Source=10.209.102.18;Initial Catalog=FiretrackDB;User ID=firetrack_user;Password=yourpassword;Connect Timeout=30;Encrypt=False;";
 
         public App()
         {
             InitializeComponent();
-            // Force dark theme for consistency across all pages
             this.UserAppTheme = AppTheme.Dark;
         }
 
@@ -28,18 +25,31 @@ namespace Firetrack
 #if ANDROID
             string dbPath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
             string connectionString = $"Data Source={dbPath}";
+
+            // ===== ADD THIS =====
+            // Log database file existence
+            bool dbExists = File.Exists(dbPath);
+            System.Diagnostics.Debug.WriteLine($"✅ Database file exists: {dbExists} at {dbPath}");
+
+            // Ensure directory exists
+            var dir = Path.GetDirectoryName(dbPath);
+            if (!string.IsNullOrEmpty(dir) && !Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+                System.Diagnostics.Debug.WriteLine($"✅ Created directory: {dir}");
+            }
 #else
-            // Use configurable connection string (can be changed at runtime)
             string connectionString = SqlServerConnectionString;
 #endif
 
             try
             {
                 Database = new DatabaseService(connectionString);
+                System.Diagnostics.Debug.WriteLine("✅ Database initialized successfully");
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Database initialization failed: {ex}");
+                System.Diagnostics.Debug.WriteLine($"❌ Database init failed: {ex}");
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
                     await Application.Current!.MainPage!.DisplayAlert("Error",
