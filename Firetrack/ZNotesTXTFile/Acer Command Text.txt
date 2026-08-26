@@ -1,0 +1,11 @@
+﻿// just taking the copy of the solution project //
+
+
+
+cd C:\Users\raymu\Downloads\Windows\BFG\BFFG\FiretrackGB1FFF-master
+Get-ChildItem -Recurse -Include *.cs,*.xaml | Where-Object { $_.FullName -notmatch "\\bin\\|\\obj\\|\\packages\\" } | ForEach-Object { "===== $($_.FullName) ====="; Get-Content $_.FullName; "" } | Out-File FullProjectCode.txt
+Get-Package | Format-Table Id, Version | Out-File NuGetPackages.txt
+Get-ChildItem -Recurse -Include *.png,*.jpg,*.jpeg,*.svg | ForEach-Object { $_.FullName } | Out-File ImageFiles.txt
+Get-Content Firetrack\Firetrack.csproj | Out-File ProjectFile.txt
+cmd /c tree /F /A > FolderStructure.txt
+Write-Host "✅ All files generated in $(Get-Location)"
