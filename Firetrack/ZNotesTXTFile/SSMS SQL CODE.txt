@@ -1,55 +1,19 @@
-﻿-- ============================================================
--- FIRE TRACK DATABASE SCHEMA (SQL Server – Revised)
--- ============================================================
--- Changes:
---   - TEXT → VARCHAR(MAX), DATETIME → DATETIME2
---   - Added categories lookup table
---   - equipment.category now references category_id
---   - Added indexes on all foreign keys
---   - Added triggers to auto-update updated_at
---   - Increased profile_image_path to NVARCHAR(500)
---   - Explicit ON DELETE NO ACTION for safety
--- ============================================================
+﻿-- ==========================================
+-- FIRE TRACK DATABASE SCHEMA (SQL Server)
+-- ==========================================
 
-USE master;
-GO
-
--- Drop existing database if it exists (CAUTION: removes all data)
-IF EXISTS (SELECT name FROM sys.databases WHERE name = N'FiretrackDB')
-    DROP DATABASE FiretrackDB;
-GO
 
 CREATE DATABASE FiretrackDB;
-GO
 
-USE FiretrackDB;
-GO
-
--- ============================================================
--- 1. CATEGORIES lookup table (new)
--- ============================================================
-CREATE TABLE categories (
-    category_id INT IDENTITY(1,1) PRIMARY KEY,
-    category_name VARCHAR(100) NOT NULL UNIQUE,
-    description VARCHAR(MAX) NULL,
-    created_at DATETIME2 DEFAULT GETDATE()
-);
-GO
-
--- ============================================================
--- 2. ROLES
--- ============================================================
+-- Roles Table
 CREATE TABLE roles (
     role_id INT IDENTITY(1,1) PRIMARY KEY,
     role_name VARCHAR(50) NOT NULL UNIQUE,
-    description VARCHAR(MAX) NULL,
-    created_at DATETIME2 DEFAULT GETDATE()
+    description TEXT,
+    created_at DATETIME DEFAULT GETDATE()
 );
-GO
 
--- ============================================================
--- 3. USERS (with extended image path)
--- ============================================================
+-- Users Table (added profile_image_path)
 CREATE TABLE users (
     user_id INT IDENTITY(1,1) PRIMARY KEY,
     role_id INT NOT NULL,
@@ -58,55 +22,41 @@ CREATE TABLE users (
     email VARCHAR(100) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     status VARCHAR(20) CHECK (status IN ('Active','Inactive','Suspended')) DEFAULT 'Active',
-    profile_image_path NVARCHAR(500) NULL,   -- extended length
-    created_at DATETIME2 DEFAULT GETDATE(),
-    updated_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_users_role FOREIGN KEY (role_id)
-        REFERENCES roles(role_id) ON DELETE NO ACTION
+    profile_image_path NVARCHAR(255) NULL,   -- NEW: stores relative path to image
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (role_id) REFERENCES roles(role_id)
 );
-GO
 
--- ============================================================
--- 4. EQUIPMENT (now uses category_id)
--- ============================================================
+-- Equipment Table
 CREATE TABLE equipment (
     equipment_id INT IDENTITY(1,1) PRIMARY KEY,
     property_number VARCHAR(100) NOT NULL UNIQUE,
     item_name VARCHAR(150) NOT NULL,
-    category_id INT NOT NULL,                 -- changed from VARCHAR category
-    description VARCHAR(MAX) NULL,            -- was TEXT
-    serial_number VARCHAR(100) NULL,
-    acquisition_date DATE NULL,
-    acquisition_cost DECIMAL(12,2) NULL,
+    category VARCHAR(100) NOT NULL,
+    description TEXT,
+    serial_number VARCHAR(100),
+    acquisition_date DATE,
+    acquisition_cost DECIMAL(12,2),
     condition_status VARCHAR(20) CHECK (condition_status IN ('Serviceable','Unserviceable','Under Repair','Disposed')) DEFAULT 'Serviceable',
-    created_at DATETIME2 DEFAULT GETDATE(),
-    updated_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_equipment_category FOREIGN KEY (category_id)
-        REFERENCES categories(category_id) ON DELETE NO ACTION
+    created_at DATETIME DEFAULT GETDATE(),
+    updated_at DATETIME DEFAULT GETDATE()
 );
-GO
 
--- ============================================================
--- 5. REQUESTS
--- ============================================================
+-- Requests
 CREATE TABLE requests (
     request_id INT IDENTITY(1,1) PRIMARY KEY,
     user_id INT NOT NULL,
     equipment_id INT NOT NULL,
     quantity INT NOT NULL DEFAULT 1,
-    purpose VARCHAR(MAX) NOT NULL,            -- was TEXT
-    request_status VARCHAR(20) CHECK (request_status IN ('Pending','Approved','Rejected','Cancelled')) DEFAULT 'Pending',
-    requested_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_requests_user FOREIGN KEY (user_id)
-        REFERENCES users(user_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_requests_equipment FOREIGN KEY (equipment_id)
-        REFERENCES equipment(equipment_id) ON DELETE NO ACTION
+    purpose TEXT NOT NULL,
+    request_status VARCHAR(20) CHECK (request_status IN ('Pending','Approved','Rejected')) DEFAULT 'Pending',
+    requested_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (user_id) REFERENCES users(user_id),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id)
 );
-GO
 
--- ============================================================
--- 6. ASSIGNMENTS
--- ============================================================
+-- Assignments
 CREATE TABLE assignments (
     assignment_id INT IDENTITY(1,1) PRIMARY KEY,
     equipment_id INT NOT NULL,
@@ -114,184 +64,71 @@ CREATE TABLE assignments (
     assigned_date DATE NOT NULL,
     returned_date DATE NULL,
     assignment_status VARCHAR(20) CHECK (assignment_status IN ('Assigned','Returned','Transferred')) DEFAULT 'Assigned',
-    remarks VARCHAR(MAX) NULL,                -- was TEXT
-    created_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_assignments_equipment FOREIGN KEY (equipment_id)
-        REFERENCES equipment(equipment_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_assignments_user FOREIGN KEY (user_id)
-        REFERENCES users(user_id) ON DELETE NO ACTION
+    remarks TEXT,
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
-GO
 
--- ============================================================
--- 7. HANDSHAKES
--- ============================================================
+-- Handshakes
 CREATE TABLE handshakes (
     handshake_id INT IDENTITY(1,1) PRIMARY KEY,
     equipment_id INT NOT NULL,
     from_user_id INT NOT NULL,
     to_user_id INT NOT NULL,
-    transfer_date DATETIME2 DEFAULT GETDATE(),
+    transfer_date DATETIME DEFAULT GETDATE(),
     status VARCHAR(20) CHECK (status IN ('Pending','Accepted','Rejected')) DEFAULT 'Pending',
-    notes VARCHAR(MAX) NULL,                  -- was TEXT
-    CONSTRAINT fk_handshakes_equipment FOREIGN KEY (equipment_id)
-        REFERENCES equipment(equipment_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_handshakes_from_user FOREIGN KEY (from_user_id)
-        REFERENCES users(user_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_handshakes_to_user FOREIGN KEY (to_user_id)
-        REFERENCES users(user_id) ON DELETE NO ACTION
+    notes TEXT,
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (from_user_id) REFERENCES users(user_id),
+    FOREIGN KEY (to_user_id) REFERENCES users(user_id)
 );
-GO
 
--- ============================================================
--- 8. DAMAGE REPORTS
--- ============================================================
+-- Damage Reports
 CREATE TABLE damage_reports (
     report_id INT IDENTITY(1,1) PRIMARY KEY,
     equipment_id INT NOT NULL,
     reported_by INT NOT NULL,
     incident_date DATE NOT NULL,
-    damage_description VARCHAR(MAX) NOT NULL, -- was TEXT
+    damage_description TEXT NOT NULL,
     report_status VARCHAR(30) CHECK (report_status IN ('Reported','Under Inspection','Resolved','For Disposal')) DEFAULT 'Reported',
-    created_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_damage_equipment FOREIGN KEY (equipment_id)
-        REFERENCES equipment(equipment_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_damage_reported_by FOREIGN KEY (reported_by)
-        REFERENCES users(user_id) ON DELETE NO ACTION
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (reported_by) REFERENCES users(user_id)
 );
-GO
 
--- ============================================================
--- 9. DISPOSAL REQUESTS
--- ============================================================
+-- Disposal Requests
 CREATE TABLE disposal_requests (
     disposal_id INT IDENTITY(1,1) PRIMARY KEY,
     equipment_id INT NOT NULL,
     requested_by INT NOT NULL,
-    reason VARCHAR(MAX) NOT NULL,             -- was TEXT
+    reason TEXT NOT NULL,
     disposal_status VARCHAR(30) CHECK (disposal_status IN ('Pending Review','Approved','Completed','Rejected')) DEFAULT 'Pending Review',
-    created_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_disposal_equipment FOREIGN KEY (equipment_id)
-        REFERENCES equipment(equipment_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_disposal_requested_by FOREIGN KEY (requested_by)
-        REFERENCES users(user_id) ON DELETE NO ACTION
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (requested_by) REFERENCES users(user_id)
 );
-GO
 
--- ============================================================
--- 10. NOTIFICATIONS
--- ============================================================
+-- Notifications
 CREATE TABLE notifications (
     notification_id INT IDENTITY(1,1) PRIMARY KEY,
     user_id INT NOT NULL,
     title VARCHAR(150) NOT NULL,
-    message VARCHAR(MAX) NOT NULL,            -- was TEXT
+    message TEXT NOT NULL,
     is_read BIT DEFAULT 0,
-    created_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_notifications_user FOREIGN KEY (user_id)
-        REFERENCES users(user_id) ON DELETE NO ACTION
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (user_id) REFERENCES users(user_id)
 );
-GO
 
--- ============================================================
--- 11. ICS DOCUMENTS
--- ============================================================
+-- ICS Documents
 CREATE TABLE ics_documents (
     ics_id INT IDENTITY(1,1) PRIMARY KEY,
     equipment_id INT NOT NULL,
     issued_to INT NOT NULL,
     ics_number VARCHAR(100) NOT NULL UNIQUE,
     date_issued DATE NOT NULL,
-    document_path VARCHAR(500) NULL,          -- increased length
-    created_at DATETIME2 DEFAULT GETDATE(),
-    CONSTRAINT fk_ics_equipment FOREIGN KEY (equipment_id)
-        REFERENCES equipment(equipment_id) ON DELETE NO ACTION,
-    CONSTRAINT fk_ics_issued_to FOREIGN KEY (issued_to)
-        REFERENCES users(user_id) ON DELETE NO ACTION
+    document_path VARCHAR(255),
+    created_at DATETIME DEFAULT GETDATE(),
+    FOREIGN KEY (equipment_id) REFERENCES equipment(equipment_id),
+    FOREIGN KEY (issued_to) REFERENCES users(user_id)
 );
-GO
-
--- ============================================================
--- 12. INDEXES (for all foreign key columns)
--- ============================================================
-CREATE INDEX idx_users_role_id ON users(role_id);
-CREATE INDEX idx_equipment_category_id ON equipment(category_id);
-CREATE INDEX idx_requests_user_id ON requests(user_id);
-CREATE INDEX idx_requests_equipment_id ON requests(equipment_id);
-CREATE INDEX idx_assignments_equipment_id ON assignments(equipment_id);
-CREATE INDEX idx_assignments_user_id ON assignments(user_id);
-CREATE INDEX idx_handshakes_equipment_id ON handshakes(equipment_id);
-CREATE INDEX idx_handshakes_from_user_id ON handshakes(from_user_id);
-CREATE INDEX idx_handshakes_to_user_id ON handshakes(to_user_id);
-CREATE INDEX idx_damage_reports_equipment_id ON damage_reports(equipment_id);
-CREATE INDEX idx_damage_reports_reported_by ON damage_reports(reported_by);
-CREATE INDEX idx_disposal_requests_equipment_id ON disposal_requests(equipment_id);
-CREATE INDEX idx_disposal_requests_requested_by ON disposal_requests(requested_by);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_ics_documents_equipment_id ON ics_documents(equipment_id);
-CREATE INDEX idx_ics_documents_issued_to ON ics_documents(issued_to);
-GO
-
--- ============================================================
--- 13. TRIGGERS to auto-update `updated_at` columns
--- ============================================================
-
--- Users trigger
-CREATE TRIGGER trg_users_updated
-ON users
-AFTER UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE users
-    SET updated_at = SYSDATETIME()
-    FROM inserted i
-    WHERE users.user_id = i.user_id;
-END;
-GO
-
--- Equipment trigger
-CREATE TRIGGER trg_equipment_updated
-ON equipment
-AFTER UPDATE
-AS
-BEGIN
-    SET NOCOUNT ON;
-    UPDATE equipment
-    SET updated_at = SYSDATETIME()
-    FROM inserted i
-    WHERE equipment.equipment_id = i.equipment_id;
-END;
-GO
-
--- ============================================================
--- 14. (Optional) Seed some default categories and roles
--- ============================================================
-INSERT INTO categories (category_name, description) VALUES
-    ('Pumps', 'Fire pumps and accessories'),
-    ('Hoses', 'Fire hoses and couplings'),
-    ('Nozzles', 'Fire fighting nozzles'),
-    ('Protective Gear', 'Helmets, gloves, boots, etc.'),
-    ('Vehicles', 'Fire trucks, utility vehicles'),
-    ('Extinguishers', 'Portable fire extinguishers'),
-    ('Rescue Tools', 'Jaws of life, cutters, spreaders'),
-    ('Communications', 'Radios, intercoms'),
-    ('Medical', 'First aid kits, stretchers');
-GO
-
-INSERT INTO roles (role_name, description) VALUES
-    ('Administrator', 'Full system access'),
-    ('Inventory Manager', 'Manages equipment catalog'),
-    ('Requestor', 'Can request equipment'),
-    ('Approver', 'Can approve/reject requests'),
-    ('Maintenance', 'Handles repairs and damage reports');
-GO
-
--- ============================================================
--- 15. (Optional) Sample admin user (password = 'admin123' – hash it in real app)
--- ============================================================
-INSERT INTO users (role_id, first_name, last_name, email, password_hash, status)
-VALUES (1, 'Admin', 'User', 'admin@firetrack.local', '$2a$12$KIXqR5R2e6xSqJ6xSqJ6xSqJ6xSqJ6xSqJ6xSqJ6', 'Active');
-GO
-
-PRINT 'FireTrackDB schema created successfully with all enhancements!';
