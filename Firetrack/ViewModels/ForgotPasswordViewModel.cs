@@ -1,5 +1,5 @@
 ﻿using Firetrack.Services;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 
@@ -7,6 +7,7 @@ namespace Firetrack.ViewModels
 {
     public class ForgotPasswordViewModel : ViewModelBase
     {
+        private readonly EmailService _emailService;
         private string _username = string.Empty;
         private string _otpCode = string.Empty;
         private string _newPassword = string.Empty;
@@ -48,11 +49,12 @@ namespace Firetrack.ViewModels
         public ICommand ResetPasswordCommand { get; }
         public ICommand GoBackCommand { get; }
 
-        public ForgotPasswordViewModel()
+        public ForgotPasswordViewModel(EmailService emailService)
         {
+            _emailService = emailService;
+
             SendOtpCommand = new Command(OnSendOtp);
             ResetPasswordCommand = new Command(OnResetPassword);
-            // ✅ Replaced with Routes.Login
             GoBackCommand = new Command(async () => await Shell.Current.GoToAsync(Routes.Login));
         }
 
@@ -80,14 +82,21 @@ namespace Firetrack.ViewModels
                 string otp = await App.Database.GenerateOtpAsync(Username);
                 _otpSent = true;
 
-                await Shell.Current.DisplayAlert("OTP Generated",
-                    $"Your OTP is: {otp}\nIt expires in 10 minutes.", "OK");
+                // Send OTP via email
+                await _emailService.SendOtpEmailAsync(user.Email, otp);
 
-                StatusMessage = "OTP sent to your registered email (or shown above).";
+                // Only show a success message, not the OTP itself
+                await Shell.Current.DisplayAlert("OTP Sent",
+                    $"An OTP has been sent to your registered email address ({user.Email}).\nIt expires in 10 minutes.",
+                    "OK");
+
+                StatusMessage = "OTP sent to your email.";
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error: {ex.Message}";
+                // Optionally, fallback to showing OTP in alert if email fails
+                // await Shell.Current.DisplayAlert("OTP (Fallback)", $"Your OTP is: {otp}", "OK");
             }
             finally
             {
@@ -133,7 +142,6 @@ namespace Firetrack.ViewModels
                 {
                     await App.Database.MarkOtpUsedAsync(Username, OtpCode);
                     await Shell.Current.DisplayAlert("Success", "Password reset successfully. Please login.", "OK");
-                    // ✅ Replaced with Routes.Login
                     await Shell.Current.GoToAsync(Routes.Login);
                 }
                 else

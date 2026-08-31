@@ -1,6 +1,7 @@
 ﻿using Firetrack.Models;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Drawing;
+using PdfSharpCore.Fonts;
 using System.IO;
 using System;
 using System.Linq;
@@ -10,8 +11,19 @@ namespace Firetrack.Services
 {
     public class PdfGenerationService
     {
-        // ✅ No static constructor needed – resolver is set in MauiProgram.cs
+        // Ensure the font resolver is set (fallback if not already set)
+        static PdfGenerationService()
+        {
+            if (GlobalFontSettings.FontResolver == null)
+            {
+                GlobalFontSettings.FontResolver = new PdfFontResolver();
+                System.Diagnostics.Debug.WriteLine("✅ PdfFontResolver registered from static constructor.");
+            }
+        }
 
+        /// <summary>
+        /// Generates an Inventory Custodian Slip (ICS) PDF.
+        /// </summary>
         public byte[] GenerateIcsPdf(EquipmentModel equipment, UserModel officer, UserModel issuer)
         {
             try
@@ -117,15 +129,23 @@ namespace Firetrack.Services
 
                 using var stream = new MemoryStream();
                 document.Save(stream, false);
-                return stream.ToArray();
+                byte[] result = stream.ToArray();
+
+                if (result == null || result.Length == 0)
+                    throw new InvalidOperationException("PDF document produced empty buffer.");
+
+                return result;
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ PDF generation failed: {ex}");
-                throw new Exception($"PDF generation failed: {ex.Message}", ex);
+                System.Diagnostics.Debug.WriteLine($"❌ ICS PDF generation failed: {ex}");
+                throw new Exception($"ICS PDF generation failed: {ex.Message}", ex);
             }
         }
 
+        /// <summary>
+        /// Generates a Clearance Certificate PDF.
+        /// </summary>
         public byte[] GenerateClearanceCertificate(UserModel officer, List<EquipmentModel> equipment)
         {
             try
@@ -205,7 +225,12 @@ namespace Firetrack.Services
 
                 using var stream = new MemoryStream();
                 document.Save(stream, false);
-                return stream.ToArray();
+                byte[] result = stream.ToArray();
+
+                if (result == null || result.Length == 0)
+                    throw new InvalidOperationException("PDF document produced empty buffer.");
+
+                return result;
             }
             catch (Exception ex)
             {
@@ -214,6 +239,9 @@ namespace Firetrack.Services
             }
         }
 
+        /// <summary>
+        /// Generates a Disposal Certificate PDF.
+        /// </summary>
         public byte[] GenerateDisposalCertificate(EquipmentModel equipment, UserModel approvedBy, string remarks = "")
         {
             try
@@ -297,7 +325,12 @@ namespace Firetrack.Services
 
                 using var stream = new MemoryStream();
                 document.Save(stream, false);
-                return stream.ToArray();
+                byte[] result = stream.ToArray();
+
+                if (result == null || result.Length == 0)
+                    throw new InvalidOperationException("PDF document produced empty buffer.");
+
+                return result;
             }
             catch (Exception ex)
             {

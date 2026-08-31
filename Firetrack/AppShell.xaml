@@ -5,7 +5,6 @@
        x:Class="Firetrack.AppShell"
        x:Name="MyShell">
 
-    <!-- ===== FLYOUT HEADER with LOGO ===== -->
     <Shell.FlyoutHeader>
         <VerticalStackLayout BackgroundColor="{StaticResource PrimaryColor}"
                              Padding="20"
@@ -27,12 +26,10 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ========================================================== -->
     <!-- ===== GLOBAL TITLE VIEW (Back + Logout) ===== -->
-    <!-- ========================================================== -->
     <Shell.TitleView>
-        <!-- ✅ Explicitly set BindingContext to the Shell instance -->
-        <Grid BindingContext="{Binding Source={RelativeSource AncestorType={x:Type Shell}}}"
+        <!-- ✅ NAMED GRID – enables code‑behind binding -->
+        <Grid x:Name="TitleViewGrid"
               ColumnDefinitions="Auto, *, Auto"
               Padding="5,0"
               ColumnSpacing="5"
@@ -51,7 +48,7 @@
                     IsVisible="{Binding IsBackVisible}"
                     WidthRequest="44" />
 
-            <!-- Title placeholder – empty (page title is shown via the page's Title property) -->
+            <!-- Empty Title -->
             <Label Grid.Column="1"
                    Text=""
                    VerticalOptions="Center"
@@ -69,141 +66,83 @@
         </Grid>
     </Shell.TitleView>
 
-    <!-- ===== HIDDEN PAGES (not in flyout) ===== -->
+    <!-- HIDDEN PAGES (not in flyout) -->
     <ShellContent Title="Login"
                   ContentTemplate="{DataTemplate views:LoginPage}"
                   Route="LoginPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="ForgotPassword"
                   ContentTemplate="{DataTemplate views:ForgotPasswordPage}"
                   Route="ForgotPasswordPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Notifications"
                   ContentTemplate="{DataTemplate views:NotificationsPage}"
                   Route="NotificationsPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Equipment Detail"
                   ContentTemplate="{DataTemplate views:EquipmentDetailPage}"
                   Route="EquipmentDetailPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Equipment Request Detail"
                   ContentTemplate="{DataTemplate views:EquipmentRequestDetailPage}"
                   Route="EquipmentRequestDetailPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Report Damage"
                   ContentTemplate="{DataTemplate views:ReportDamagePage}"
                   Route="ReportDamagePage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="ICS"
                   ContentTemplate="{DataTemplate views:IcsPage}"
                   Route="IcsPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Category Items"
                   ContentTemplate="{DataTemplate views:CategoryItemsPage}"
                   Route="CategoryItemsPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Transaction History"
                   ContentTemplate="{DataTemplate views:TransactionHistoryPage}"
                   Route="TransactionHistoryPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Audit Log"
                   ContentTemplate="{DataTemplate views:AuditLogPage}"
                   Route="AuditLogPage"
                   Shell.FlyoutItemIsVisible="False" />
-
     <ShellContent Title="Disposal Requests"
                   ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
                   Route="DisposalRequestsPage"
                   Shell.FlyoutItemIsVisible="False" />
-
-    <!-- ===== ADD EQUIPMENT – HIDDEN (only accessible via button) ===== -->
     <ShellContent Title="Add Equipment"
                   ContentTemplate="{DataTemplate views:AddEquipmentPage}"
                   Route="AddEquipmentPage"
                   Shell.FlyoutItemIsVisible="False" />
 
-    <!-- ========================================================== -->
-    <!-- ===== ADMIN FLYOUT GROUP ===== -->
-    <!-- ========================================================== -->
+    <!-- ADMIN FLYOUT -->
     <FlyoutItem Title="Admin"
                 FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsAdmin}">
-
-        <ShellContent Title="Dashboard"
-                      ContentTemplate="{DataTemplate views:DashboardPage}"
-                      Route="DashboardPage" />
-
-        <ShellContent Title="Inventory"
-                      ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
-                      Route="EquipmentCategoryPage" />
-
-        <ShellContent Title="Transfer"
-                      ContentTemplate="{DataTemplate views:TransferPage}"
-                      Route="TransferPage" />
-
-        <ShellContent Title="Clearance"
-                      ContentTemplate="{DataTemplate views:ClearancePage}"
-                      Route="ClearancePage" />
-
-        <ShellContent Title="User Management"
-                      ContentTemplate="{DataTemplate views:UserManagementPage}"
-                      Route="UserManagementPage" />
-
-        <ShellContent Title="Pending Requests"
-                      ContentTemplate="{DataTemplate views:PendingRequestsPage}"
-                      Route="PendingRequestsPage" />
-
-        <ShellContent Title="Disposal Requests"
-                      ContentTemplate="{DataTemplate views:DisposalRequestsPage}"
-                      Route="DisposalRequestsPage" />
-
-        <ShellContent Title="Scanner"
-                      ContentTemplate="{DataTemplate views:ScannerPage}"
-                      Route="ScannerPage" />
-
-        <ShellContent Title="Audit Log"
-                      ContentTemplate="{DataTemplate views:AuditLogPage}"
-                      Route="AuditLogPage" />
+        <ShellContent Title="Dashboard" ContentTemplate="{DataTemplate views:DashboardPage}" Route="DashboardPage" />
+        <ShellContent Title="Inventory" ContentTemplate="{DataTemplate views:EquipmentCategoryPage}" Route="EquipmentCategoryPage" />
+        <ShellContent Title="Transfer" ContentTemplate="{DataTemplate views:TransferPage}" Route="TransferPage" />
+        <ShellContent Title="Clearance" ContentTemplate="{DataTemplate views:ClearancePage}" Route="ClearancePage" />
+        <ShellContent Title="User Management" ContentTemplate="{DataTemplate views:UserManagementPage}" Route="UserManagementPage" />
+        <ShellContent Title="Pending Requests" ContentTemplate="{DataTemplate views:PendingRequestsPage}" Route="PendingRequestsPage" />
+        <ShellContent Title="Disposal Requests" ContentTemplate="{DataTemplate views:DisposalRequestsPage}" Route="DisposalRequestsPage" />
+        <ShellContent Title="Scanner" ContentTemplate="{DataTemplate views:ScannerPage}" Route="ScannerPage" />
+        <ShellContent Title="Audit Log" ContentTemplate="{DataTemplate views:AuditLogPage}" Route="AuditLogPage" />
     </FlyoutItem>
 
-    <!-- ========================================================== -->
-    <!-- ===== PERSONNEL FLYOUT GROUP ===== -->
-    <!-- ========================================================== -->
+    <!-- PERSONNEL FLYOUT -->
     <FlyoutItem Title="Personnel"
                 FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsPersonnel}">
-
-        <ShellContent Title="Dashboard"
-                      ContentTemplate="{DataTemplate views:DashboardPage}"
-                      Route="DashboardPage" />
-
-        <ShellContent Title="Request Equipment"
-                      ContentTemplate="{DataTemplate views:EquipmentCategoryPage}"
-                      Route="EquipmentCategoryPage" />
-
-        <ShellContent Title="Profile"
-                      ContentTemplate="{DataTemplate views:ProfilePage}"
-                      Route="ProfilePage" />
-
-        <ShellContent Title="Notifications"
-                      ContentTemplate="{DataTemplate views:NotificationsPage}"
-                      Route="NotificationsPage" />
-
-        <ShellContent Title="Scanner"
-                      ContentTemplate="{DataTemplate views:ScannerPage}"
-                      Route="ScannerPage" />
+        <ShellContent Title="Dashboard" ContentTemplate="{DataTemplate views:DashboardPage}" Route="DashboardPage" />
+        <ShellContent Title="Request Equipment" ContentTemplate="{DataTemplate views:EquipmentCategoryPage}" Route="EquipmentCategoryPage" />
+        <ShellContent Title="Profile" ContentTemplate="{DataTemplate views:ProfilePage}" Route="ProfilePage" />
+        <ShellContent Title="Notifications" ContentTemplate="{DataTemplate views:NotificationsPage}" Route="NotificationsPage" />
+        <ShellContent Title="Scanner" ContentTemplate="{DataTemplate views:ScannerPage}" Route="ScannerPage" />
     </FlyoutItem>
 
-    <!-- ===== FLYOUT FOOTER ===== -->
+    <!-- FOOTER -->
     <Shell.FlyoutFooter>
         <VerticalStackLayout Spacing="10" Padding="15,10">
             <Label Text="Fire Track v1.0"

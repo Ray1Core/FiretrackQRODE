@@ -42,9 +42,69 @@ namespace Firetrack.Services
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
+
+            // ⭐ NEW: Migrate the Equipment table to remove the CHECK constraint
+            MigrateEquipmentTableIfNeeded(connection);
+
             SeedData(connection);
         }
 
+        // ============================================================
+        // NEW: Migration to remove CHECK constraint on ConditionStatus
+        // ============================================================
+        private void MigrateEquipmentTableIfNeeded(IDbConnection connection)
+        {
+            // Check if the Equipment table has the CHECK constraint by reading the CREATE statement
+            var createSql = connection.QueryFirstOrDefault<string>(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='Equipment'");
+            if (string.IsNullOrEmpty(createSql))
+                return;
+
+            // If constraint exists, recreate table
+            if (createSql.Contains("CHECK (ConditionStatus IN ('Serviceable','Unserviceable','Under Repair','Disposed'))"))
+            {
+                System.Diagnostics.Debug.WriteLine("⚠️ Migrating Equipment table – removing CHECK constraint...");
+
+                // 1. Create a temporary table without the constraint
+                connection.Execute(@"
+                    CREATE TABLE Equipment_new (
+                        EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
+                        PropertyNumber TEXT NOT NULL UNIQUE,
+                        ItemName TEXT NOT NULL,
+                        Category TEXT NOT NULL,
+                        Description TEXT,
+                        SerialNumber TEXT,
+                        AcquisitionDate DATE,
+                        AcquisitionCost DECIMAL(12,2),
+                        ConditionStatus TEXT DEFAULT 'Available',
+                        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                        UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )");
+
+                // 2. Copy data from old table
+                connection.Execute(@"
+                    INSERT INTO Equipment_new (
+                        EquipmentId, PropertyNumber, ItemName, Category, Description,
+                        SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus,
+                        CreatedAt, UpdatedAt
+                    )
+                    SELECT
+                        EquipmentId, PropertyNumber, ItemName, Category, Description,
+                        SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus,
+                        CreatedAt, UpdatedAt
+                    FROM Equipment");
+
+                // 3. Drop old table and rename new one
+                connection.Execute("DROP TABLE Equipment");
+                connection.Execute("ALTER TABLE Equipment_new RENAME TO Equipment");
+
+                System.Diagnostics.Debug.WriteLine("✅ Equipment table migrated successfully.");
+            }
+        }
+
+        // ============================================================
+        // CREATE TABLES
+        // ============================================================
         private void CreateTables(IDbConnection connection)
         {
             // ---- AuditLogs ----
@@ -92,8 +152,7 @@ namespace Firetrack.Services
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
-            
-            // ---- Equipment ----
+            // ---- Equipment (no CHECK constraint anymore) ----
             connection.Execute(@"
             CREATE TABLE IF NOT EXISTS Equipment (
                 EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,

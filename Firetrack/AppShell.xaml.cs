@@ -1,5 +1,5 @@
 ﻿using Firetrack.Views;
-using Firetrack.Helpers;           // <-- Added
+using Firetrack.Helpers;
 using Microsoft.Maui.Controls;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
@@ -78,23 +78,22 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             InitializeComponent();
             BindingContext = this;
 
+            // ✅ EXPLICITLY BIND THE TITLE VIEW GRID TO THIS SHELL INSTANCE
+            TitleViewGrid.BindingContext = this;
+
             BackCommand = new Command(OnBack);
             LogoutCommand = new Command(OnLogout);
-            // ✅ Replaced hardcoded string with Routes.Notifications
             GoToNotificationsCommand = new Command(async () => await GoToAsync(Routes.Notifications));
 
             this.Navigated += OnShellNavigated;
 
             UpdateUserRoleVisibility();
             LoadUnreadCount();
-
-            // Safe call – will handle null state
             UpdateBackButtonVisibility();
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"❌ AppShell constructor error: {ex}");
-            // Rethrow so the app fails visibly – but you can also show an alert.
             throw;
         }
     }
@@ -108,7 +107,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     {
         try
         {
-            // ✅ Guard against null Shell.Current
             if (Current == null)
             {
                 IsBackVisible = false;
@@ -180,7 +178,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         App.CurrentUser = null;
         UpdateUserRoleVisibility();
-        // ✅ Replaced hardcoded string with Routes.Login
         await GoToAsync(Routes.Login);
     }
 
@@ -287,11 +284,9 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         {
             args.Cancel();
             if (user == null)
-                // ✅ Replaced hardcoded string with Routes.Login
                 GoToAsync(Routes.Login);
             else
             {
-                // ✅ Replaced hardcoded string with Routes.Dashboard
                 GoToAsync(Routes.Dashboard);
                 Application.Current?.MainPage?.DisplayAlert(
                     "Access Denied",

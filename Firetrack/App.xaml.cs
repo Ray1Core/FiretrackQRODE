@@ -1,6 +1,7 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;   // ✅ Added for IServiceProvider
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System.IO;
@@ -12,6 +13,9 @@ namespace Firetrack
         public static UserModel? CurrentUser { get; set; }
         public static DatabaseService? Database { get; private set; }
         public static IConfiguration Configuration { get; private set; } = null!;
+
+        // ✅ NEW: Expose the service provider from MauiProgram
+        public static IServiceProvider Services => MauiProgram.Services;
 
         public App()
         {
@@ -61,7 +65,7 @@ namespace Firetrack
                 }
             }
 
-            if (useSqlServer && serverCs != null) // ✅ serverCs is not null here
+            if (useSqlServer && serverCs != null)
             {
                 connectionString = serverCs;
             }

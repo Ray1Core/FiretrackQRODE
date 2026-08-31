@@ -5,26 +5,63 @@ namespace Firetrack.Services
 {
     public class PdfFontResolver : IFontResolver
     {
-        // REQUIRED: Default fallback font
         public string DefaultFontName => "Helvetica";
 
         public byte[]? GetFont(string faceName)
         {
-            // We don't need to return custom font data – we use built‑in PDF fonts
+            // No custom font data – use built‑in PDF fonts
             return null;
         }
 
         public FontResolverInfo ResolveTypeface(string familyName, bool bold, bool italic)
         {
-            // Map any requested font to a standard PDF font
-            if (familyName.Contains("Helvetica", StringComparison.OrdinalIgnoreCase))
-                return new FontResolverInfo("Helvetica");
-            if (familyName.Contains("Times", StringComparison.OrdinalIgnoreCase))
-                return new FontResolverInfo("TimesRoman");
-            if (familyName.Contains("Courier", StringComparison.OrdinalIgnoreCase))
-                return new FontResolverInfo("Courier");
+            // Map the requested font family to one of the standard PDF fonts.
+            // The built‑in fonts support bold/italic via separate names.
 
-            // Fallback to Helvetica
+            // Helvetica family
+            if (familyName.Contains("Helvetica", StringComparison.OrdinalIgnoreCase))
+            {
+                if (bold && italic)
+                    return new FontResolverInfo("Helvetica-BoldOblique");
+                if (bold)
+                    return new FontResolverInfo("Helvetica-Bold");
+                if (italic)
+                    return new FontResolverInfo("Helvetica-Oblique");
+                return new FontResolverInfo("Helvetica");
+            }
+
+            // Times / TimesRoman family
+            if (familyName.Contains("Times", StringComparison.OrdinalIgnoreCase))
+            {
+                if (bold && italic)
+                    return new FontResolverInfo("Times-BoldItalic");
+                if (bold)
+                    return new FontResolverInfo("Times-Bold");
+                if (italic)
+                    return new FontResolverInfo("Times-Italic");
+                return new FontResolverInfo("TimesRoman");
+            }
+
+            // Courier family
+            if (familyName.Contains("Courier", StringComparison.OrdinalIgnoreCase))
+            {
+                if (bold && italic)
+                    return new FontResolverInfo("Courier-BoldOblique");
+                if (bold)
+                    return new FontResolverInfo("Courier-Bold");
+                if (italic)
+                    return new FontResolverInfo("Courier-Oblique");
+                return new FontResolverInfo("Courier");
+            }
+
+            // Fallback – use Helvetica with bold/italic if requested
+            if (bold && italic)
+                return new FontResolverInfo("Helvetica-BoldOblique");
+            if (bold)
+                return new FontResolverInfo("Helvetica-Bold");
+            if (italic)
+                return new FontResolverInfo("Helvetica-Oblique");
+
             return new FontResolverInfo("Helvetica");
         }
     }
