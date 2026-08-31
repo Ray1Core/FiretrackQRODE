@@ -8,7 +8,6 @@ namespace Firetrack.Helpers
 {
     public static class Routes
     {
-        // All routes are absolute (prefixed with "//")
         public const string Login = "//LoginPage";
         public const string ForgotPassword = "//ForgotPasswordPage";
         public const string Dashboard = "//DashboardPage";

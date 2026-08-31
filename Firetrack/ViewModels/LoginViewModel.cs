@@ -2,9 +2,9 @@
 using System.Windows.Input;
 using System.Threading.Tasks;
 using Firetrack.Models;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using Microsoft.Maui.Controls;
-using Microsoft.Maui.Devices;          // ✅ for DeviceInfo
+using Microsoft.Maui.Devices;
 
 namespace Firetrack.ViewModels
 {
@@ -46,55 +46,105 @@ namespace Firetrack.ViewModels
         {
             LoginCommand = new Command(OnLogin);
             GoToForgotPasswordCommand = new Command(async () =>
-                await Shell.Current.GoToAsync(Routes.ForgotPassword));   // <-- Updated
+                await Shell.Current.GoToAsync(Routes.ForgotPassword));
         }
 
         private async void OnLogin()
         {
+            // ---- Clear previous errors ----
+            ErrorMessage = string.Empty;
+
+            // ---- Validate input ----
+            if (string.IsNullOrWhiteSpace(Username))
+            {
+                ErrorMessage = "Please enter your username.";
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(Password))
+            {
+                ErrorMessage = "Please enter your password.";
+                return;
+            }
+
+            // ---- Start busy indicator ----
+            IsBusy = true;
+
             try
             {
+                // ---- Get database instance ----
                 var db = App.Database;
                 if (db == null)
                 {
-                    ErrorMessage = "Database not available.";
+                    ErrorMessage = "Database not available. Please restart the app.";
+                    System.Diagnostics.Debug.WriteLine("❌ Login failed: Database is null.");
                     return;
                 }
 
-                IsBusy = true;
-                ErrorMessage = string.Empty;
-
+                // ---- Attempt to fetch user ----
+                System.Diagnostics.Debug.WriteLine($"🔍 Attempting login for user: {Username}");
                 var user = await db.GetUserByUsernameAsync(Username);
+
+                // ---- Validate user and password ----
                 if (user != null && user.Password == Password)
                 {
-                    // Set current user
+                    System.Diagnostics.Debug.WriteLine($"✅ Login successful for {Username} (Role: {user.Role})");
+
+                    // ---- Set current user ----
                     App.CurrentUser = user;
 
-                    // ✅ Log successful login
+                    // ---- Log the action ----
                     await db.LogActionAsync(
                         user.Username,
                         "Login",
                         $"User logged in from {DeviceInfo.Platform}");
 
-                    // Update Shell flyout visibility based on role
+                    // ---- Update Shell flyout visibility ----
                     if (Shell.Current is AppShell shell)
                     {
                         shell.UpdateUserRoleVisibility();
+                        shell.RefreshFlyoutItems();   // ← ADD THIS LINE
+                        shell.LoadUnreadCount();
                     }
 
-                    // Clear navigation stack and navigate to Dashboard
-                    await Shell.Current.GoToAsync(Routes.Dashboard);   // <-- Updated
+                    // ---- Navigate to Dashboard ----
+                    string dashboardRoute = user.Role == "Admin" ? "//AdminDashboard" : "//PersonnelDashboard";
+                    await Shell.Current.GoToAsync(dashboardRoute);
+
+                   
                 }
                 else
                 {
-                    ErrorMessage = "Invalid username or password";
+                    ErrorMessage = "Invalid username or password.";
+                    System.Diagnostics.Debug.WriteLine($"❌ Login failed for {Username}: Invalid credentials.");
                 }
             }
             catch (Exception ex)
             {
-                ErrorMessage = $"Error: {ex.Message}";
+                // ---- Catch ALL exceptions and log them ----
+                System.Diagnostics.Debug.WriteLine($"❌ LOGIN EXCEPTION: {ex}");
+                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
+
+                // ---- Specific handling for ArgumentException ----
+                if (ex is ArgumentException argEx)
+                {
+                    ErrorMessage = $"Login error: {argEx.Message} (Parameter: {argEx.ParamName})";
+                }
+                else
+                {
+                    ErrorMessage = $"Login error: {ex.Message}";
+                }
+
+                // ---- Optionally show a more detailed error in a dialog ----
+                try
+                {
+                    await Shell.Current.DisplayAlert("Login Error", ErrorMessage, "OK");
+                }
+                catch { /* Ignore if Shell is not ready */ }
             }
             finally
             {
+                // ---- Always reset busy state ----
                 IsBusy = false;
             }
         }

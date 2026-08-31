@@ -10,7 +10,7 @@
                 <ResourceDictionary Source="Resources/Styles/Styles.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Converters -->
+            <!-- Converters – all registered for use in XAML -->
             <converters:IsNotNullConverter x:Key="IsNotNullConverter" />
             <converters:StatusColorConverter x:Key="StatusColorConverter" />
             <converters:StatusToColorConverter x:Key="StatusToColorConverter" />
@@ -22,7 +22,6 @@
             <converters:StringToEmojiConverter x:Key="StringToEmojiConverter" />
             <converters:IsInventoryModeConverter x:Key="IsInventoryModeConverter" />
             <converters:IsDamagedConverter x:Key="IsDamagedConverter" />
-            <!-- NEW -->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

@@ -1,7 +1,6 @@
 ﻿using Firetrack.Models;
 using PdfSharpCore.Pdf;
 using PdfSharpCore.Drawing;
-using PdfSharpCore.Fonts;
 using System.IO;
 using System;
 using System.Linq;
@@ -11,19 +10,8 @@ namespace Firetrack.Services
 {
     public class PdfGenerationService
     {
-        // Ensure the font resolver is set (fallback if not already set)
-        static PdfGenerationService()
-        {
-            if (GlobalFontSettings.FontResolver == null)
-            {
-                GlobalFontSettings.FontResolver = new PdfFontResolver();
-                System.Diagnostics.Debug.WriteLine("✅ PdfFontResolver registered from static constructor.");
-            }
-        }
+        // No static constructor – no custom resolver needed
 
-        /// <summary>
-        /// Generates an Inventory Custodian Slip (ICS) PDF.
-        /// </summary>
         public byte[] GenerateIcsPdf(EquipmentModel equipment, UserModel officer, UserModel issuer)
         {
             try
@@ -32,10 +20,11 @@ namespace Firetrack.Services
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
 
-                var titleFont = new XFont("Helvetica-Bold", 18);
-                var headerFont = new XFont("Helvetica-Bold", 12);
-                var bodyFont = new XFont("Helvetica", 10);
-                var labelFont = new XFont("Helvetica-Bold", 10);
+                // Use standard fonts with style
+                var titleFont = new XFont("Helvetica", 18, XFontStyle.Bold);
+                var headerFont = new XFont("Helvetica", 12, XFontStyle.Bold);
+                var bodyFont = new XFont("Helvetica", 10, XFontStyle.Regular);
+                var labelFont = new XFont("Helvetica", 10, XFontStyle.Bold);
 
                 double yPos = 40;
                 const double leftMargin = 50;
@@ -143,9 +132,6 @@ namespace Firetrack.Services
             }
         }
 
-        /// <summary>
-        /// Generates a Clearance Certificate PDF.
-        /// </summary>
         public byte[] GenerateClearanceCertificate(UserModel officer, List<EquipmentModel> equipment)
         {
             try
@@ -154,9 +140,9 @@ namespace Firetrack.Services
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
 
-                var titleFont = new XFont("Helvetica-Bold", 20);
-                var headerFont = new XFont("Helvetica-Bold", 14);
-                var bodyFont = new XFont("Helvetica", 10);
+                var titleFont = new XFont("Helvetica", 20, XFontStyle.Bold);
+                var headerFont = new XFont("Helvetica", 14, XFontStyle.Bold);
+                var bodyFont = new XFont("Helvetica", 10, XFontStyle.Regular);
 
                 double yPos = 40;
                 const double leftMargin = 50;
@@ -239,9 +225,6 @@ namespace Firetrack.Services
             }
         }
 
-        /// <summary>
-        /// Generates a Disposal Certificate PDF.
-        /// </summary>
         public byte[] GenerateDisposalCertificate(EquipmentModel equipment, UserModel approvedBy, string remarks = "")
         {
             try
@@ -250,9 +233,9 @@ namespace Firetrack.Services
                 var page = document.AddPage();
                 var gfx = XGraphics.FromPdfPage(page);
 
-                var titleFont = new XFont("Helvetica-Bold", 18);
-                var headerFont = new XFont("Helvetica-Bold", 12);
-                var bodyFont = new XFont("Helvetica", 10);
+                var titleFont = new XFont("Helvetica", 18, XFontStyle.Bold);
+                var headerFont = new XFont("Helvetica", 12, XFontStyle.Bold);
+                var bodyFont = new XFont("Helvetica", 10, XFontStyle.Regular);
 
                 double yPos = 40;
                 const double leftMargin = 50;

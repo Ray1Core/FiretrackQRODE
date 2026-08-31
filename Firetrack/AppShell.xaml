@@ -26,19 +26,18 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== GLOBAL TITLE VIEW (Back + Logout) ===== -->
+    <!-- ===== GLOBAL TITLE VIEW (with Clicked events) ===== -->
     <Shell.TitleView>
-        <!-- ✅ NAMED GRID – enables code‑behind binding -->
         <Grid x:Name="TitleViewGrid"
               ColumnDefinitions="Auto, *, Auto"
               Padding="5,0"
               ColumnSpacing="5"
               HeightRequest="44">
 
-            <!-- Back Button -->
+            <!-- ✅ Back Button – uses Clicked event -->
             <Button Grid.Column="0"
                     Text="‹"
-                    Command="{Binding BackCommand}"
+                    Clicked="OnBackClicked"
                     BackgroundColor="Transparent"
                     TextColor="{StaticResource OnBackground}"
                     FontSize="28"
@@ -48,16 +47,16 @@
                     IsVisible="{Binding IsBackVisible}"
                     WidthRequest="44" />
 
-            <!-- Empty Title -->
+            <!-- Empty Title placeholder -->
             <Label Grid.Column="1"
                    Text=""
                    VerticalOptions="Center"
                    HorizontalOptions="Center" />
 
-            <!-- Logout Button -->
+            <!-- ✅ Logout Button – uses Clicked event -->
             <Button Grid.Column="2"
                     Text="🚪"
-                    Command="{Binding LogoutCommand}"
+                    Clicked="OnLogoutClicked"
                     BackgroundColor="Transparent"
                     TextColor="{StaticResource DangerColor}"
                     FontSize="20"
@@ -120,7 +119,9 @@
     <FlyoutItem Title="Admin"
                 FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsAdmin}">
-        <ShellContent Title="Dashboard" ContentTemplate="{DataTemplate views:DashboardPage}" Route="DashboardPage" />
+        <ShellContent Title="Dashboard" 
+                  ContentTemplate="{DataTemplate views:DashboardPage}" 
+                  Route="AdminDashboard" />
         <ShellContent Title="Inventory" ContentTemplate="{DataTemplate views:EquipmentCategoryPage}" Route="EquipmentCategoryPage" />
         <ShellContent Title="Transfer" ContentTemplate="{DataTemplate views:TransferPage}" Route="TransferPage" />
         <ShellContent Title="Clearance" ContentTemplate="{DataTemplate views:ClearancePage}" Route="ClearancePage" />
@@ -135,7 +136,9 @@
     <FlyoutItem Title="Personnel"
                 FlyoutDisplayOptions="AsMultipleItems"
                 IsVisible="{Binding IsPersonnel}">
-        <ShellContent Title="Dashboard" ContentTemplate="{DataTemplate views:DashboardPage}" Route="DashboardPage" />
+        <ShellContent Title="Dashboard" 
+                  ContentTemplate="{DataTemplate views:DashboardPage}" 
+                  Route="PersonnelDashboard" />
         <ShellContent Title="Request Equipment" ContentTemplate="{DataTemplate views:EquipmentCategoryPage}" Route="EquipmentCategoryPage" />
         <ShellContent Title="Profile" ContentTemplate="{DataTemplate views:ProfilePage}" Route="ProfilePage" />
         <ShellContent Title="Notifications" ContentTemplate="{DataTemplate views:NotificationsPage}" Route="NotificationsPage" />
