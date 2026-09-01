@@ -99,19 +99,17 @@ namespace Firetrack.ViewModels
                         "Login",
                         $"User logged in from {DeviceInfo.Platform}");
 
-                    // ---- Update Shell flyout visibility ----
+                    // ---- Update Shell flyout visibility and badge ----
                     if (Shell.Current is AppShell shell)
                     {
-                        shell.UpdateUserRoleVisibility();
-                        shell.RefreshFlyoutItems();   // ← ADD THIS LINE
-                        shell.LoadUnreadCount();
+                        shell.UpdateUserRoleVisibility();   // updates IsAdmin/IsPersonnel bindings
+                        shell.LoadUnreadCount();            // loads notification badge
+                        // ❌ NO RefreshFlyoutItems() – flyout is static from XAML
                     }
 
-                    // ---- Navigate to Dashboard ----
+                    // ---- Navigate to appropriate Dashboard ----
                     string dashboardRoute = user.Role == "Admin" ? "//AdminDashboard" : "//PersonnelDashboard";
                     await Shell.Current.GoToAsync(dashboardRoute);
-
-                   
                 }
                 else
                 {

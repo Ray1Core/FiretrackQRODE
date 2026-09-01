@@ -8,9 +8,10 @@ namespace Firetrack.Helpers
 {
     public static class Routes
     {
+        // ---- Absolute routes (must start with "//") ----
         public const string Login = "//LoginPage";
         public const string ForgotPassword = "//ForgotPasswordPage";
-        public const string Dashboard = "//DashboardPage";
+        public const string Dashboard = "//DashboardPage";          // fallback
         public const string EquipmentCategory = "//EquipmentCategoryPage";
         public const string Transfer = "//TransferPage";
         public const string Clearance = "//ClearancePage";

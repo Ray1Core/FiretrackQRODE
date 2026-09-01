@@ -51,7 +51,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         set { _isBackVisible = value; OnPropertyChanged(); }
     }
 
-    // ---- Commands (kept for other uses) ----
+    // ---- Commands ----
     public ICommand BackCommand { get; }
     public ICommand LogoutCommand { get; }
     public ICommand GoToNotificationsCommand { get; }
@@ -61,7 +61,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    // ========== ✅ UPDATED RootRoutes ==========
+    // ---- Root routes for back button visibility ----
     private static readonly HashSet<string> RootRoutes = new()
     {
         "AdminDashboard",
@@ -88,7 +88,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             // Bind the TitleView Grid to this Shell for IsBackVisible binding
             TitleViewGrid.BindingContext = this;
 
-            // Commands (kept for other uses)
+            // Commands
             BackCommand = new Command(OnBack);
             LogoutCommand = new Command(OnLogout);
             GoToNotificationsCommand = new Command(async () => await GoToAsync(Routes.Notifications));
@@ -139,7 +139,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
     }
 
-    // ========== CLICKED EVENT HANDLERS ==========
+    // ========== CLICKED EVENT HANDLERS (used in XAML) ==========
 
     private async void OnBackClicked(object sender, EventArgs e)
     {
@@ -156,6 +156,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
     private async void OnLogoutClicked(object sender, EventArgs e)
     {
+        // ---- FIXED: Removed RefreshFlyoutItems() ----
         if (App.CurrentUser != null && App.Database != null)
         {
             await App.Database.LogActionAsync(
@@ -165,12 +166,11 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
 
         App.CurrentUser = null;
-        UpdateUserRoleVisibility();
-        RefreshFlyoutItems();  // ← ADDED: Rebuild flyout after logout
+        UpdateUserRoleVisibility();   // hides flyout items via bindings
         await GoToAsync(Routes.Login);
     }
 
-    // ---- Original OnBack and OnLogout (kept for command compatibility) ----
+    // ---- Command-based methods (kept for compatibility) ----
     private async void OnBack()
     {
         try
@@ -185,6 +185,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
     private async void OnLogout()
     {
+        // ---- FIXED: Removed RefreshFlyoutItems() ----
         if (App.CurrentUser != null && App.Database != null)
         {
             await App.Database.LogActionAsync(
@@ -195,7 +196,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         App.CurrentUser = null;
         UpdateUserRoleVisibility();
-        RefreshFlyoutItems();  // ← ADDED: Rebuild flyout after logout
         await GoToAsync(Routes.Login);
     }
 
@@ -253,155 +253,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 
         OnPropertyChanged(nameof(IsAdmin));
         OnPropertyChanged(nameof(IsPersonnel));
-    }
-
-    // ---- Dynamically rebuild flyout items based on role ----
-    public void RefreshFlyoutItems()
-    {
-        try
-        {
-            // Save hidden pages (Login, ForgotPassword, etc.)
-            // Use OfType<ShellContent>() – works correctly despite CA2021 warning.
-#pragma warning disable CA2021
-            var hiddenItems = this.Items
-                .OfType<ShellContent>()
-                .Where(content => content.FlyoutItemIsVisible == false)
-                .ToList();
-#pragma warning restore CA2021
-
-            // Clear all items
-            this.Items.Clear();
-
-            var user = App.CurrentUser;
-            if (user == null)
-            {
-                // No user logged in – only show hidden pages (Login, ForgotPassword)
-                foreach (var hidden in hiddenItems)
-                {
-                    this.Items.Add(hidden);
-                }
-                return;
-            }
-
-            if (user.Role == "Admin")
-            {
-                // Create Admin Flyout
-                var adminFlyout = new FlyoutItem
-                {
-                    Title = "Admin",
-                    FlyoutDisplayOptions = FlyoutDisplayOptions.AsMultipleItems
-                };
-
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Dashboard",
-                    ContentTemplate = new DataTemplate(typeof(Views.DashboardPage)),
-                    Route = "AdminDashboard"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Inventory",
-                    ContentTemplate = new DataTemplate(typeof(Views.EquipmentCategoryPage)),
-                    Route = "EquipmentCategoryPage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Transfer",
-                    ContentTemplate = new DataTemplate(typeof(Views.TransferPage)),
-                    Route = "TransferPage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Clearance",
-                    ContentTemplate = new DataTemplate(typeof(Views.ClearancePage)),
-                    Route = "ClearancePage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "User Management",
-                    ContentTemplate = new DataTemplate(typeof(Views.UserManagementPage)),
-                    Route = "UserManagementPage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Pending Requests",
-                    ContentTemplate = new DataTemplate(typeof(Views.PendingRequestsPage)),
-                    Route = "PendingRequestsPage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Disposal Requests",
-                    ContentTemplate = new DataTemplate(typeof(Views.DisposalRequestsPage)),
-                    Route = "DisposalRequestsPage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Scanner",
-                    ContentTemplate = new DataTemplate(typeof(Views.ScannerPage)),
-                    Route = "ScannerPage"
-                });
-                adminFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Audit Log",
-                    ContentTemplate = new DataTemplate(typeof(Views.AuditLogPage)),
-                    Route = "AuditLogPage"
-                });
-
-                this.Items.Add(adminFlyout);
-            }
-            else if (user.Role == "Personnel")
-            {
-                // Create Personnel Flyout
-                var personnelFlyout = new FlyoutItem
-                {
-                    Title = "Personnel",
-                    FlyoutDisplayOptions = FlyoutDisplayOptions.AsMultipleItems
-                };
-
-                personnelFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Dashboard",
-                    ContentTemplate = new DataTemplate(typeof(Views.DashboardPage)),
-                    Route = "PersonnelDashboard"
-                });
-                personnelFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Request Equipment",
-                    ContentTemplate = new DataTemplate(typeof(Views.EquipmentCategoryPage)),
-                    Route = "EquipmentCategoryPage"
-                });
-                personnelFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Profile",
-                    ContentTemplate = new DataTemplate(typeof(Views.ProfilePage)),
-                    Route = "ProfilePage"
-                });
-                personnelFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Notifications",
-                    ContentTemplate = new DataTemplate(typeof(Views.NotificationsPage)),
-                    Route = "NotificationsPage"
-                });
-                personnelFlyout.Items.Add(new ShellContent
-                {
-                    Title = "Scanner",
-                    ContentTemplate = new DataTemplate(typeof(Views.ScannerPage)),
-                    Route = "ScannerPage"
-                });
-
-                this.Items.Add(personnelFlyout);
-            }
-
-            // Re-add hidden pages (Login, ForgotPassword, etc.)
-            foreach (var hidden in hiddenItems)
-            {
-                this.Items.Add(hidden);
-            }
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"❌ RefreshFlyoutItems error: {ex}");
-        }
     }
 
     // ---- Navigation permission checks ----
