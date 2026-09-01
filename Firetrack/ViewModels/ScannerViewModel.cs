@@ -1,6 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using System;
 using System.Linq;
 using System.Threading.Tasks;
@@ -69,15 +69,12 @@ namespace Firetrack.ViewModels
         {
             try
             {
-                // If ReturnToPage is set, navigate there
                 if (!string.IsNullOrEmpty(ReturnToPage))
                 {
-                    // Use absolute navigation with "//" to ensure it works from any context
                     await Shell.Current.GoToAsync($"//{ReturnToPage}");
                 }
                 else
                 {
-                    // Navigate to the correct dashboard based on role
                     var user = App.CurrentUser;
                     string dashboardRoute = user?.Role == "Admin" ? "//AdminDashboard" : "//PersonnelDashboard";
                     await Shell.Current.GoToAsync(dashboardRoute);
@@ -86,7 +83,6 @@ namespace Firetrack.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Scanner cancel navigation failed: {ex.Message}");
-                // Fallback – just go back if possible
                 await Shell.Current.GoToAsync("..");
             }
         }
