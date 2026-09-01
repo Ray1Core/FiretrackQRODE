@@ -11,7 +11,12 @@ namespace Firetrack.Helpers
         // ---- Absolute routes (must start with "//") ----
         public const string Login = "//LoginPage";
         public const string ForgotPassword = "//ForgotPasswordPage";
-        public const string Dashboard = "//DashboardPage";          // fallback
+
+        // Role-specific dashboards (no generic Dashboard)
+        public const string AdminDashboard = "//AdminDashboard";
+        public const string PersonnelDashboard = "//PersonnelDashboard";
+
+        // Other pages
         public const string EquipmentCategory = "//EquipmentCategoryPage";
         public const string Transfer = "//TransferPage";
         public const string Clearance = "//ClearancePage";
@@ -21,7 +26,10 @@ namespace Firetrack.Helpers
         public const string Scanner = "//ScannerPage";
         public const string AuditLog = "//AuditLogPage";
         public const string Profile = "//ProfilePage";
-        public const string Notifications = "//NotificationsPage";
+
+        // ---- Unique route to avoid ambiguity ----
+        public const string Notifications = "//MyNotifications";
+
         public const string EquipmentDetail = "//EquipmentDetailPage";
         public const string EquipmentRequestDetail = "//EquipmentRequestDetailPage";
         public const string ReportDamage = "//ReportDamagePage";
@@ -29,5 +37,12 @@ namespace Firetrack.Helpers
         public const string CategoryItems = "//CategoryItemsPage";
         public const string TransactionHistory = "//TransactionHistoryPage";
         public const string AddEquipment = "//AddEquipmentPage";
+
+        // ---- Helper to get the correct dashboard for the current user ----
+        public static string GetDashboardRoute()
+        {
+            var user = App.CurrentUser;
+            return user?.Role == "Admin" ? AdminDashboard : PersonnelDashboard;
+        }
     }
 }

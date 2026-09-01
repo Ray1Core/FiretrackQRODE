@@ -61,12 +61,18 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    // ---- Root routes for back button visibility ----
+    // ---- Helper to get the correct dashboard route ----
+    private string GetDashboardRoute()
+    {
+        var user = App.CurrentUser;
+        return user?.Role == "Admin" ? Routes.AdminDashboard : Routes.PersonnelDashboard;
+    }
+
+    // ---- Root routes for back button visibility (only top‑level pages) ----
     private static readonly HashSet<string> RootRoutes = new()
     {
         "AdminDashboard",
         "PersonnelDashboard",
-        "DashboardPage",
         "EquipmentCategoryPage",
         "TransferPage",
         "ClearancePage",
@@ -150,13 +156,13 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"Back navigation failed: {ex.Message}");
-            await GoToAsync(Routes.Dashboard);
+            // Fallback to the correct dashboard
+            await GoToAsync(GetDashboardRoute());
         }
     }
 
     private async void OnLogoutClicked(object sender, EventArgs e)
     {
-        // ---- FIXED: Removed RefreshFlyoutItems() ----
         if (App.CurrentUser != null && App.Database != null)
         {
             await App.Database.LogActionAsync(
@@ -179,13 +185,12 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
         catch
         {
-            await GoToAsync(Routes.Dashboard);
+            await GoToAsync(GetDashboardRoute());
         }
     }
 
     private async void OnLogout()
     {
-        // ---- FIXED: Removed RefreshFlyoutItems() ----
         if (App.CurrentUser != null && App.Database != null)
         {
             await App.Database.LogActionAsync(
@@ -256,11 +261,13 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     }
 
     // ---- Navigation permission checks ----
+    // Include all valid route names (as defined in Routes.cs and ShellContent)
     private readonly HashSet<string> _validRoutes = new()
     {
-        "LoginPage", "ForgotPasswordPage", "DashboardPage",
+        "LoginPage", "ForgotPasswordPage",
+        "MyNotifications",                     // unique route for notifications
         "ScannerPage", "TransferPage",
-        "ClearancePage", "ProfilePage", "NotificationsPage",
+        "ClearancePage", "ProfilePage",
         "EquipmentCategoryPage", "CategoryItemsPage",
         "EquipmentDetailPage", "EquipmentRequestDetailPage",
         "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
@@ -298,20 +305,19 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         if (isAdmin)
             return true;
 
+        // Personnel allowed routes
         var allowedForPersonnel = new HashSet<string>
         {
-            "DashboardPage",
+            "PersonnelDashboard",
             "ProfilePage",
-            "RequestEquipmentPage",
             "ReportDamagePage",
             "ScannerPage",
-            "NotificationsPage",
+            "MyNotifications",
             "TransactionHistoryPage",
             "IcsPage",
             "EquipmentRequestDetailPage",
             "EquipmentCategoryPage",
-            "CategoryItemsPage",
-            "PersonnelDashboard"
+            "CategoryItemsPage"
         };
 
         return allowedForPersonnel.Contains(route);
@@ -342,7 +348,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
                 GoToAsync(Routes.Login);
             else
             {
-                GoToAsync(Routes.Dashboard);
+                // Fallback to the correct dashboard
+                GoToAsync(GetDashboardRoute());
                 Application.Current?.MainPage?.DisplayAlert(
                     "Access Denied",
                     "You do not have permission to view this page.",

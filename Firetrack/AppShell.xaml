@@ -75,9 +75,9 @@
                   Route="ForgotPasswordPage"
                   Shell.FlyoutItemIsVisible="False" />
     <ShellContent Title="Notifications"
-                  ContentTemplate="{DataTemplate views:NotificationsPage}"
-                  Route="NotificationsPage"
-                  Shell.FlyoutItemIsVisible="False" />
+              ContentTemplate="{DataTemplate views:NotificationsPage}"
+              Route="MyNotifications"
+              Shell.FlyoutItemIsVisible="False" />
     <ShellContent Title="Equipment Detail"
                   ContentTemplate="{DataTemplate views:EquipmentDetailPage}"
                   Route="EquipmentDetailPage"

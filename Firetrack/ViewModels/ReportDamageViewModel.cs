@@ -160,7 +160,7 @@ namespace Firetrack.ViewModels
                     $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'.");
 
                 await Shell.Current.DisplayAlert("Success", "Damage report submitted successfully!", "OK");
-                await Shell.Current.GoToAsync(Routes.Dashboard);   // <-- Updated
+                await Shell.Current.GoToAsync(Routes.GetDashboardRoute());
             }
             catch (Exception ex)
             {

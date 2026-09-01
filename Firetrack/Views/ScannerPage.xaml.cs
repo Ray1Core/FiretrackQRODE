@@ -38,7 +38,7 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
             if (!string.IsNullOrEmpty(_viewModel.ReturnToPage))
                 await Shell.Current.GoToAsync($"//{_viewModel.ReturnToPage}");
             else
-                await Shell.Current.GoToAsync(Routes.Dashboard);
+                await Shell.Current.GoToAsync(Routes.GetDashboardRoute());
             return;
         }
 
