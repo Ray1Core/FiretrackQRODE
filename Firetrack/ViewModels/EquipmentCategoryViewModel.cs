@@ -1,6 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
@@ -74,7 +74,6 @@ namespace Firetrack.ViewModels
             LoadCategoriesCommand = new Command(OnLoadCategories);
             SearchCommand = new Command(OnSearch);
             CategoryTappedCommand = new Command<CategoryGroup>(OnCategoryTapped);
-            // ✅ Replaced with Routes.AddEquipment
             GoToAddEquipmentCommand = new Command(async () =>
             {
                 if (_db == null)
@@ -165,7 +164,6 @@ namespace Firetrack.ViewModels
         {
             if (category == null) return;
             var navParams = new Dictionary<string, object> { { "categoryName", category.Name } };
-            // ✅ Replaced with Routes.CategoryItems
             await Shell.Current.GoToAsync(Routes.CategoryItems, navParams);
         }
     }

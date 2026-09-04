@@ -16,6 +16,7 @@
                        FontAttributes="Bold"
                        TextColor="{StaticResource OnBackground}"
                        VerticalOptions="Center" />
+                <!-- Add button already visible only for Admin -->
                 <Button Grid.Column="1"
                         Text="➕ Add"
                         Command="{Binding GoToAddEquipmentCommand}"
@@ -26,8 +27,12 @@
             </Grid>
         </VerticalStackLayout>
 
-        <!-- Status Metrics (only 3) -->
-        <Grid Grid.Row="1" Padding="15,0,15,10" ColumnDefinitions="*,*,*" ColumnSpacing="6">
+        <!-- Status Metrics (Available, Stack In, Stack Out) – visible ONLY for Admin -->
+        <Grid Grid.Row="1" 
+              Padding="15,0,15,10" 
+              ColumnDefinitions="*,*,*" 
+              ColumnSpacing="6"
+              IsVisible="{Binding IsAdmin}">
             <Border Grid.Column="0" BackgroundColor="{StaticResource SuccessColor}" Padding="6,4" StrokeThickness="0" StrokeShape="RoundRectangle 6">
                 <VerticalStackLayout Spacing="0" HorizontalOptions="Center">
                     <Label Text="{Binding AvailableCount}" FontSize="16" FontAttributes="Bold" TextColor="White" HorizontalOptions="Center" />
@@ -98,14 +103,14 @@
                                        VerticalOptions="Center"
                                        LineBreakMode="WordWrap"
                                        MaxLines="2" />
-                                <!-- Quantity badge -->
+                                <!-- Quantity badge – updated StringFormat -->
                                 <Border Grid.Row="2"
                                         BackgroundColor="{StaticResource PrimaryColor}"
                                         StrokeThickness="0"
                                         Padding="8,4"
                                         StrokeShape="RoundRectangle 12"
                                         HorizontalOptions="Center">
-                                    <Label Text="{Binding Count, StringFormat='×{0}'}"
+                                    <Label Text="{Binding Count, StringFormat='Quantity: {0}'}"
                                            FontSize="12"
                                            TextColor="White" />
                                 </Border>

@@ -12,22 +12,21 @@ namespace Firetrack.Helpers
         public const string Login = "//LoginPage";
         public const string ForgotPassword = "//ForgotPasswordPage";
 
-        // Role-specific dashboards (no generic Dashboard)
+        // Role-specific dashboards
         public const string AdminDashboard = "//AdminDashboard";
         public const string PersonnelDashboard = "//PersonnelDashboard";
 
-        // Other pages
+        // Other pages (note: Scanner is now role-aware, so we keep the old constant for reference)
         public const string EquipmentCategory = "//EquipmentCategoryPage";
         public const string Transfer = "//TransferPage";
         public const string Clearance = "//ClearancePage";
         public const string UserManagement = "//UserManagementPage";
         public const string PendingRequests = "//PendingRequestsPage";
         public const string DisposalRequests = "//DisposalRequestsPage";
-        public const string Scanner = "//ScannerPage";
         public const string AuditLog = "//AuditLogPage";
         public const string Profile = "//ProfilePage";
 
-        // ---- Unique route to avoid ambiguity ----
+        // Notifications – unique route
         public const string Notifications = "//MyNotifications";
 
         public const string EquipmentDetail = "//EquipmentDetailPage";
@@ -37,6 +36,13 @@ namespace Firetrack.Helpers
         public const string CategoryItems = "//CategoryItemsPage";
         public const string TransactionHistory = "//TransactionHistoryPage";
         public const string AddEquipment = "//AddEquipmentPage";
+
+        // ---- Role‑aware scanner route ----
+        public static string GetScannerRoute()
+        {
+            var user = App.CurrentUser;
+            return user?.Role == "Admin" ? "//AdminScanner" : "//PersonnelScanner";
+        }
 
         // ---- Helper to get the correct dashboard for the current user ----
         public static string GetDashboardRoute()

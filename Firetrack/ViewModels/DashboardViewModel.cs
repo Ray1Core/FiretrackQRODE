@@ -191,7 +191,7 @@ namespace Firetrack.ViewModels
             // ---- Navigation commands ---- (all replaced with Routes constants)
             GoToScannerCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync(Routes.Scanner); }
+                try { await Shell.Current.GoToAsync(Routes.GetScannerRoute()); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 

@@ -1,6 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 
@@ -210,6 +210,7 @@ namespace Firetrack.ViewModels
         {
             _db = App.Database!;
 
+            // ---- UPDATED: all scan commands now use Routes.GetScannerRoute() ----
             ScanEquipmentCommand = new Command(OnScanEquipment);
             ScanCurrentCustodianCommand = new Command(OnScanCurrentCustodian);
             ScanNewCustodianCommand = new Command(OnScanNewCustodian);
@@ -234,8 +235,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "equipment" }
             };
-            // ✅ Replaced with Routes.Scanner
-            await Shell.Current.GoToAsync(Routes.Scanner, parameters);
+            // Use role-aware scanner route
+            await Shell.Current.GoToAsync(Routes.GetScannerRoute(), parameters);
         }
 
         // =========================================================
@@ -249,8 +250,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "currentCustodian" }
             };
-            // ✅ Replaced with Routes.Scanner
-            await Shell.Current.GoToAsync(Routes.Scanner, parameters);
+            // Use role-aware scanner route
+            await Shell.Current.GoToAsync(Routes.GetScannerRoute(), parameters);
         }
 
         // =========================================================
@@ -264,8 +265,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "newCustodian" }
             };
-            // ✅ Replaced with Routes.Scanner
-            await Shell.Current.GoToAsync(Routes.Scanner, parameters);
+            // Use role-aware scanner route
+            await Shell.Current.GoToAsync(Routes.GetScannerRoute(), parameters);
         }
 
         // =========================================================
