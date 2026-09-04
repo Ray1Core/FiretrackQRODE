@@ -73,7 +73,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     {
         "AdminDashboard",
         "PersonnelDashboard",
-        "EquipmentCategoryPage",
+        "AdminEquipmentCategory",   // ← NEW
+        "PersonnelEquipmentCategory", // ← NEW
         "TransferPage",
         "ClearancePage",
         "UserManagementPage",
@@ -81,7 +82,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "DisposalRequestsPage",
         "AuditLogPage",
         "ProfilePage",
-        "ScannerPage"
+        "AdminScanner",
+        "PersonnelScanner"
     };
 
     // ---- Constructor ----
@@ -265,10 +267,11 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     private readonly HashSet<string> _validRoutes = new()
     {
         "LoginPage", "ForgotPasswordPage",
-        "MyNotifications",                     // unique route for notifications
-        "ScannerPage", "TransferPage",
-        "ClearancePage", "ProfilePage",
-        "EquipmentCategoryPage", "CategoryItemsPage",
+        "MyNotifications",
+        "AdminScanner", "PersonnelScanner",
+        "TransferPage", "ClearancePage", "ProfilePage",
+        "AdminEquipmentCategory", "PersonnelEquipmentCategory",  // ← NEW
+        "CategoryItemsPage",
         "EquipmentDetailPage", "EquipmentRequestDetailPage",
         "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
         "UserManagementPage",
@@ -311,12 +314,12 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             "PersonnelDashboard",
             "ProfilePage",
             "ReportDamagePage",
-            "ScannerPage",
+            "PersonnelScanner",
             "MyNotifications",
             "TransactionHistoryPage",
             "IcsPage",
             "EquipmentRequestDetailPage",
-            "EquipmentCategoryPage",
+            "PersonnelEquipmentCategory",
             "CategoryItemsPage"
         };
 

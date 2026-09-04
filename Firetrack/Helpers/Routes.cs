@@ -16,35 +16,40 @@ namespace Firetrack.Helpers
         public const string AdminDashboard = "//AdminDashboard";
         public const string PersonnelDashboard = "//PersonnelDashboard";
 
-        // Other pages (note: Scanner is now role-aware, so we keep the old constant for reference)
-        public const string EquipmentCategory = "//EquipmentCategoryPage";
+        // ---- Admin-only pages (only one occurrence, so no ambiguity) ----
         public const string Transfer = "//TransferPage";
         public const string Clearance = "//ClearancePage";
         public const string UserManagement = "//UserManagementPage";
         public const string PendingRequests = "//PendingRequestsPage";
         public const string DisposalRequests = "//DisposalRequestsPage";
         public const string AuditLog = "//AuditLogPage";
+        public const string AddEquipment = "//AddEquipmentPage";
+
+        // ---- Shared pages (used by both roles) ----
         public const string Profile = "//ProfilePage";
-
-        // Notifications – unique route
         public const string Notifications = "//MyNotifications";
-
         public const string EquipmentDetail = "//EquipmentDetailPage";
         public const string EquipmentRequestDetail = "//EquipmentRequestDetailPage";
         public const string ReportDamage = "//ReportDamagePage";
         public const string Ics = "//IcsPage";
         public const string CategoryItems = "//CategoryItemsPage";
         public const string TransactionHistory = "//TransactionHistoryPage";
-        public const string AddEquipment = "//AddEquipmentPage";
 
-        // ---- Role‑aware scanner route ----
+        // ---- Role-aware routes (must call methods) ----
+        public static string GetEquipmentCategoryRoute()
+        {
+            var user = App.CurrentUser;
+            // Routes are now unique: "AdminEquipmentCategory" and "PersonnelEquipmentCategory"
+            return user?.Role == "Admin" ? "//AdminEquipmentCategory" : "//PersonnelEquipmentCategory";
+        }
+
         public static string GetScannerRoute()
         {
             var user = App.CurrentUser;
+            // Routes are already unique: "AdminScanner" and "PersonnelScanner"
             return user?.Role == "Admin" ? "//AdminScanner" : "//PersonnelScanner";
         }
 
-        // ---- Helper to get the correct dashboard for the current user ----
         public static string GetDashboardRoute()
         {
             var user = App.CurrentUser;

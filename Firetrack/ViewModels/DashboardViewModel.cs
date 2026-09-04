@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Firetrack.Converters;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using QRCoder;
 using System.IO;
 using Microsoft.Maui.Storage;
@@ -188,7 +188,7 @@ namespace Firetrack.ViewModels
             LogoutCommand = new Command(OnLogout);
             DownloadPersonnelQRCommand = new Command(OnDownloadPersonnelQR);
 
-            // ---- Navigation commands ---- (all replaced with Routes constants)
+            // ---- Navigation commands ----
             GoToScannerCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync(Routes.GetScannerRoute()); }
@@ -213,15 +213,16 @@ namespace Firetrack.ViewModels
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
+            // ===== FIXED: Use GetEquipmentCategoryRoute() instead of removed constant =====
             GoToInventoryCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync(Routes.EquipmentCategory); }
+                try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
             GoToRequestEquipmentCommand = new Command(async () =>
             {
-                try { await Shell.Current.GoToAsync(Routes.EquipmentCategory); }
+                try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", $"Navigation failed: {ex.Message}", "OK"); }
             });
 
@@ -283,7 +284,7 @@ namespace Firetrack.ViewModels
             if (Shell.Current is AppShell shell)
                 shell.UpdateUserRoleVisibility();
 
-            await Shell.Current.GoToAsync(Routes.Login);   // <-- Updated
+            await Shell.Current.GoToAsync(Routes.Login);
         }
 
         // ---- Load Personnel QR ----
@@ -292,7 +293,6 @@ namespace Firetrack.ViewModels
             var user = App.CurrentUser;
             if (user == null || user.Role == "Admin") return;
 
-            // Get the QR code from user
             PersonnelQR = user.PersonalQR ?? string.Empty;
 
             if (string.IsNullOrEmpty(PersonnelQR)) return;
@@ -322,7 +322,6 @@ namespace Firetrack.ViewModels
 
             try
             {
-                // Generate QR image bytes again (we don't store them)
                 var generator = new QRCodeGenerator();
                 var qrCodeData = generator.CreateQrCode(PersonnelQR, QRCodeGenerator.ECCLevel.Q);
                 var qrCode = new PngByteQRCode(qrCodeData);
@@ -334,7 +333,6 @@ namespace Firetrack.ViewModels
                 var filePath = Path.Combine(downloadsPath, fileName);
                 await File.WriteAllBytesAsync(filePath, pngBytes);
 
-                // Open/share the file
                 await Launcher.Default.OpenAsync(new OpenFileRequest
                 {
                     File = new ReadOnlyFile(filePath)
@@ -388,7 +386,7 @@ namespace Firetrack.ViewModels
             OnPropertyChanged(nameof(UserRole));
             LoadData();
             LoadMetrics();
-            LoadPersonnelQR(); // Refresh QR after any user change
+            LoadPersonnelQR();
         }
 
         private async void LoadMetrics()
@@ -398,15 +396,12 @@ namespace Firetrack.ViewModels
 
             try
             {
-                // Run heavy work on background thread
                 var all = await Task.Run(async () => await db.GetEquipmentsAsync());
                 var allTx = await Task.Run(async () => await db.GetTransactionsAsync());
 
-                // Calculate metrics on background thread
                 int total = all.Count;
                 int available = all.Count(e => e.Status == "Available");
                 int issued = all.Count(e => e.Status == "Issued");
-                // ... other metrics ...
 
                 int days = SelectedTimeRange switch
                 {
@@ -425,13 +420,11 @@ namespace Firetrack.ViewModels
                     counts.Add(issues.Count(t => t.Timestamp.Date == date));
                 }
 
-                // Update UI on main thread
                 MainThread.BeginInvokeOnMainThread(() =>
                 {
                     TotalEquipment = total;
                     AvailableCount = available;
                     IssuedCount = issued;
-                    // ... update all properties ...
                     ChartDrawable.DataPoints = counts;
                     ChartTitle = $"📈 Issued Trend (Last {days} Days)";
                     OnPropertyChanged(nameof(ChartDrawable));
@@ -500,7 +493,7 @@ namespace Firetrack.ViewModels
             try
             {
                 var navigationParams = new Dictionary<string, object> { { "equipment", equipment } };
-                await Shell.Current.GoToAsync(Routes.ReportDamage, navigationParams);   // <-- Updated
+                await Shell.Current.GoToAsync(Routes.ReportDamage, navigationParams);
             }
             catch (Exception ex)
             {

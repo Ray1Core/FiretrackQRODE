@@ -126,7 +126,7 @@ namespace Firetrack.Services
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- Users ----
+            // ---- Users (with PersonalQR) ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Users (
                     UserId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,6 +137,7 @@ namespace Firetrack.Services
                     PasswordHash TEXT NOT NULL,
                     Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
                     ProfileImagePath TEXT NULL,
+                    PersonalQR TEXT NULL,                           -- ← NEW COLUMN
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
@@ -257,7 +258,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // SEED DATA
+        // SEED DATA (with PersonalQR)
         // ============================================================
         private void SeedData(IDbConnection connection)
         {
@@ -271,7 +272,7 @@ namespace Firetrack.Services
                     ('Personnel', 'Firefighter / regular user')");
             }
 
-            // ---- Users ----
+            // ---- Users (with PersonalQR) ----
             int userCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
             if (userCount == 0)
             {
@@ -279,9 +280,9 @@ namespace Firetrack.Services
                 var personnelRoleId = connection.ExecuteScalar<int>("SELECT RoleId FROM Roles WHERE RoleName = 'Personnel'");
 
                 connection.Execute(@"
-                    INSERT INTO Users (RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath) VALUES
-                    (@AdminRole, 'Admin', 'Chief', 'admin@firetrack.gov', 'admin123', 'Active', NULL),
-                    (@PersonnelRole, 'John', 'Firefighter', 'john@firetrack.gov', 'user123', 'Active', NULL)",
+                    INSERT INTO Users (RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, PersonalQR) VALUES
+                    (@AdminRole, 'Admin', 'Chief', 'admin@firetrack.gov', 'admin123', 'Active', NULL, 'ADMIN-001'),
+                    (@PersonnelRole, 'John', 'Firefighter', 'john@firetrack.gov', 'user123', 'Active', NULL, 'PERSON-001')",
                     new { AdminRole = adminRoleId, PersonnelRole = personnelRoleId });
             }
 
@@ -398,7 +399,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // USER METHODS
+        // USER METHODS (with PersonalQR handling)
         // ============================================================
         public async Task<UserModel?> GetUserByUsernameAsync(string username)
         {
@@ -441,17 +442,27 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
 
+            // ---- Assign RoleId if only RoleName is provided ----
             if (user.RoleId == 0 && !string.IsNullOrEmpty(user.Role))
             {
                 var roleId = await connection.ExecuteScalarAsync<int>(
                     "SELECT RoleId FROM Roles WHERE RoleName = @RoleName",
                     new { RoleName = user.Role });
-                user.RoleId = roleId > 0 ? roleId : 2;
+                user.RoleId = roleId > 0 ? roleId : 2; // default to Personnel
+            }
+
+            // ---- Generate PersonalQR for new users if not set ----
+            if (user.UserId == 0 && string.IsNullOrEmpty(user.PersonalQR))
+            {
+                // Generate a unique QR code based on role and a random suffix
+                var role = user.Role ?? "PERSON";
+                var suffix = Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
+                user.PersonalQR = $"{role.ToUpper()}-{suffix}";
             }
 
             string sql = @"
-                INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, UpdatedAt)
-                VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, CURRENT_TIMESTAMP);
+                INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, PersonalQR, UpdatedAt)
+                VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, @PersonalQR, CURRENT_TIMESTAMP);
                 SELECT last_insert_rowid();";
 
             return await connection.ExecuteScalarAsync<int>(sql, user);
@@ -480,7 +491,7 @@ namespace Firetrack.Services
                 UPDATE Users 
                 SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
                     Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
-                    ProfileImagePath = @ProfileImagePath,
+                    ProfileImagePath = @ProfileImagePath, PersonalQR = @PersonalQR,
                     UpdatedAt = CURRENT_TIMESTAMP
                 WHERE UserId = @UserId";
             return await connection.ExecuteAsync(sql, user);
@@ -881,7 +892,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // ===== NEW METHOD: DAMAGE REPORTS =====
+        // DAMAGE REPORTS
         // ============================================================
         public async Task<int> SaveDamageReportAsync(DamageReportModel report)
         {
@@ -918,7 +929,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // ===== NEW METHOD: ICS DOCUMENTS =====
+        // ICS DOCUMENTS
         // ============================================================
         public async Task<int> SaveIcsDocumentAsync(IcsDocumentModel ics)
         {

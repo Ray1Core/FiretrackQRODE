@@ -1,5 +1,5 @@
 ﻿using Firetrack.ViewModels;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
 using Microsoft.Maui.Controls;
 
 namespace Firetrack.Views;
@@ -14,7 +14,7 @@ public partial class RequestEquipmentPage : ContentPage
     protected override async void OnAppearing()
     {
         base.OnAppearing();
-        // ✅ Replaced with Routes.EquipmentCategory
-        await Shell.Current.GoToAsync(Routes.EquipmentCategory);
+        // Redirect to the role‑appropriate Equipment Category page
+        await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute());
     }
 }
