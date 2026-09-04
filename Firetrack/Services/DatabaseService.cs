@@ -5,7 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Dapper;
 using Firetrack.Models;
-using Microsoft.Data.Sqlite;   // ✅ Always available
+using Microsoft.Data.Sqlite;
 
 namespace Firetrack.Services
 {
@@ -29,7 +29,6 @@ namespace Firetrack.Services
 
         private void InitializeDatabase()
         {
-            // Always use SQLite (both Android and Windows)
 #if ANDROID
             SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 #endif
@@ -42,30 +41,24 @@ namespace Firetrack.Services
             using var connection = new SqliteConnection(_connectionString);
             connection.Open();
             CreateTables(connection);
-
-            // ⭐ NEW: Migrate the Equipment table to remove the CHECK constraint
             MigrateEquipmentTableIfNeeded(connection);
-
             SeedData(connection);
         }
 
         // ============================================================
-        // NEW: Migration to remove CHECK constraint on ConditionStatus
+        // MIGRATION: Remove CHECK constraint on Equipment
         // ============================================================
         private void MigrateEquipmentTableIfNeeded(IDbConnection connection)
         {
-            // Check if the Equipment table has the CHECK constraint by reading the CREATE statement
             var createSql = connection.QueryFirstOrDefault<string>(
                 "SELECT sql FROM sqlite_master WHERE type='table' AND name='Equipment'");
             if (string.IsNullOrEmpty(createSql))
                 return;
 
-            // If constraint exists, recreate table
             if (createSql.Contains("CHECK (ConditionStatus IN ('Serviceable','Unserviceable','Under Repair','Disposed'))"))
             {
                 System.Diagnostics.Debug.WriteLine("⚠️ Migrating Equipment table – removing CHECK constraint...");
 
-                // 1. Create a temporary table without the constraint
                 connection.Execute(@"
                     CREATE TABLE Equipment_new (
                         EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -81,7 +74,6 @@ namespace Firetrack.Services
                         UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                     )");
 
-                // 2. Copy data from old table
                 connection.Execute(@"
                     INSERT INTO Equipment_new (
                         EquipmentId, PropertyNumber, ItemName, Category, Description,
@@ -94,16 +86,14 @@ namespace Firetrack.Services
                         CreatedAt, UpdatedAt
                     FROM Equipment");
 
-                // 3. Drop old table and rename new one
                 connection.Execute("DROP TABLE Equipment");
                 connection.Execute("ALTER TABLE Equipment_new RENAME TO Equipment");
-
                 System.Diagnostics.Debug.WriteLine("✅ Equipment table migrated successfully.");
             }
         }
 
         // ============================================================
-        // CREATE TABLES
+        // CREATE TABLES (ALL 12 TABLES – MATCHES YOUR ERD)
         // ============================================================
         private void CreateTables(IDbConnection connection)
         {
@@ -136,7 +126,7 @@ namespace Firetrack.Services
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- Users (with ProfileImagePath) ----
+            // ---- Users ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Users (
                     UserId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -152,21 +142,21 @@ namespace Firetrack.Services
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
-            // ---- Equipment (no CHECK constraint anymore) ----
+            // ---- Equipment ----
             connection.Execute(@"
-            CREATE TABLE IF NOT EXISTS Equipment (
-                EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
-                PropertyNumber TEXT NOT NULL UNIQUE,
-                ItemName TEXT NOT NULL,
-                Category TEXT NOT NULL,
-                Description TEXT,
-                SerialNumber TEXT,
-                AcquisitionDate DATE,
-                AcquisitionCost DECIMAL(12,2),
-                ConditionStatus TEXT DEFAULT 'Available',
-                CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )");
+                CREATE TABLE IF NOT EXISTS Equipment (
+                    EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
+                    PropertyNumber TEXT NOT NULL UNIQUE,
+                    ItemName TEXT NOT NULL,
+                    Category TEXT NOT NULL,
+                    Description TEXT,
+                    SerialNumber TEXT,
+                    AcquisitionDate DATE,
+                    AcquisitionCost DECIMAL(12,2),
+                    ConditionStatus TEXT DEFAULT 'Available',
+                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )");
 
             // ---- Requests ----
             connection.Execute(@"
@@ -300,17 +290,17 @@ namespace Firetrack.Services
             if (eqCount == 0)
             {
                 connection.Execute(@"
-                INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus) VALUES
-                ('HOSE001', 'Fire Hose 1.5 x 15m', 'Hose', 'Standard fire hose', NULL, '2023-01-01', 150.00, 'Available'),
-                ('HOSE002', 'Fire Hose 2.5 x 15m', 'Hose', 'Heavy duty hose', NULL, '2023-01-15', 200.00, 'Available'),
-                ('HOSE003', 'Fire Hose 2.5 x 30m', 'Hose', 'Long length hose', NULL, '2023-02-01', 300.00, 'Available'),
-                ('NOZZLE001', 'Combination Nozzle', 'Nozzle', 'Multi-purpose nozzle', NULL, '2023-03-01', 80.00, 'Available'),
-                ('NOZZLE002', 'Fog Nozzle', 'Nozzle', 'Fog pattern nozzle', NULL, '2023-03-15', 75.00, 'Available'),
-                ('TOOL001', 'Halligan Tool', 'Rescue Tool', 'Multipurpose forcible entry tool', NULL, '2023-04-01', 120.00, 'Available'),
-                ('TOOL002', 'Flathead Axe', 'Rescue Tool', 'Fire axe', NULL, '2023-04-15', 90.00, 'Available'),
-                ('TOOL003', 'Pry Bar', 'Rescue Tool', 'Pry bar for rescue', NULL, '2023-05-01', 60.00, 'Available'),
-                ('TOOL004', 'Bolt Cutter', 'Rescue Tool', 'Heavy duty bolt cutter', NULL, '2023-05-15', 110.00, 'Available'),
-                ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Rope for search and rescue', NULL, '2023-06-01', 50.00, 'Available')");
+                    INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus) VALUES
+                    ('HOSE001', 'Fire Hose 1.5 x 15m', 'Hose', 'Standard fire hose', NULL, '2023-01-01', 150.00, 'Available'),
+                    ('HOSE002', 'Fire Hose 2.5 x 15m', 'Hose', 'Heavy duty hose', NULL, '2023-01-15', 200.00, 'Available'),
+                    ('HOSE003', 'Fire Hose 2.5 x 30m', 'Hose', 'Long length hose', NULL, '2023-02-01', 300.00, 'Available'),
+                    ('NOZZLE001', 'Combination Nozzle', 'Nozzle', 'Multi-purpose nozzle', NULL, '2023-03-01', 80.00, 'Available'),
+                    ('NOZZLE002', 'Fog Nozzle', 'Nozzle', 'Fog pattern nozzle', NULL, '2023-03-15', 75.00, 'Available'),
+                    ('TOOL001', 'Halligan Tool', 'Rescue Tool', 'Multipurpose forcible entry tool', NULL, '2023-04-01', 120.00, 'Available'),
+                    ('TOOL002', 'Flathead Axe', 'Rescue Tool', 'Fire axe', NULL, '2023-04-15', 90.00, 'Available'),
+                    ('TOOL003', 'Pry Bar', 'Rescue Tool', 'Pry bar for rescue', NULL, '2023-05-01', 60.00, 'Available'),
+                    ('TOOL004', 'Bolt Cutter', 'Rescue Tool', 'Heavy duty bolt cutter', NULL, '2023-05-15', 110.00, 'Available'),
+                    ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Rope for search and rescue', NULL, '2023-06-01', 50.00, 'Available')");
             }
 
             // ---- Assignments (sample) ----
@@ -886,6 +876,81 @@ namespace Firetrack.Services
             using var connection = CreateConnection();
             var result = await connection.QueryAsync<HandshakeModel>(
                 "SELECT * FROM Handshakes WHERE ToUserId = @UserId AND Status = 'Pending'",
+                new { UserId = userId });
+            return result.ToList();
+        }
+
+        // ============================================================
+        // ===== NEW METHOD: DAMAGE REPORTS =====
+        // ============================================================
+        public async Task<int> SaveDamageReportAsync(DamageReportModel report)
+        {
+            using var connection = CreateConnection();
+            string sql = @"INSERT INTO DamageReports (EquipmentId, ReportedBy, IncidentDate, DamageDescription, ReportStatus, CreatedAt)
+                           VALUES (@EquipmentId, @ReportedBy, @IncidentDate, @DamageDescription, @ReportStatus, @CreatedAt);
+                           SELECT last_insert_rowid();";
+            return await connection.ExecuteScalarAsync<int>(sql, report);
+        }
+
+        public async Task<List<DamageReportModel>> GetDamageReportsForEquipmentAsync(int equipmentId)
+        {
+            using var connection = CreateConnection();
+            var result = await connection.QueryAsync<DamageReportModel>(
+                "SELECT * FROM DamageReports WHERE EquipmentId = @EquipmentId ORDER BY CreatedAt DESC",
+                new { EquipmentId = equipmentId });
+            return result.ToList();
+        }
+
+        public async Task<List<DamageReportModel>> GetAllDamageReportsAsync()
+        {
+            using var connection = CreateConnection();
+            var result = await connection.QueryAsync<DamageReportModel>(
+                "SELECT * FROM DamageReports ORDER BY CreatedAt DESC");
+            return result.ToList();
+        }
+
+        public async Task<int> UpdateDamageReportStatusAsync(int reportId, string status)
+        {
+            using var connection = CreateConnection();
+            return await connection.ExecuteAsync(
+                "UPDATE DamageReports SET ReportStatus = @Status WHERE ReportId = @ReportId",
+                new { Status = status, ReportId = reportId });
+        }
+
+        // ============================================================
+        // ===== NEW METHOD: ICS DOCUMENTS =====
+        // ============================================================
+        public async Task<int> SaveIcsDocumentAsync(IcsDocumentModel ics)
+        {
+            using var connection = CreateConnection();
+            string sql = @"INSERT INTO IcsDocuments (EquipmentId, IssuedTo, IcsNumber, DateIssued, DocumentPath, CreatedAt)
+                           VALUES (@EquipmentId, @IssuedTo, @IcsNumber, @DateIssued, @DocumentPath, @CreatedAt);
+                           SELECT last_insert_rowid();";
+            return await connection.ExecuteScalarAsync<int>(sql, ics);
+        }
+
+        public async Task<IcsDocumentModel?> GetIcsByNumberAsync(string icsNumber)
+        {
+            using var connection = CreateConnection();
+            return await connection.QueryFirstOrDefaultAsync<IcsDocumentModel>(
+                "SELECT * FROM IcsDocuments WHERE IcsNumber = @IcsNumber",
+                new { IcsNumber = icsNumber });
+        }
+
+        public async Task<List<IcsDocumentModel>> GetIcsDocumentsForEquipmentAsync(int equipmentId)
+        {
+            using var connection = CreateConnection();
+            var result = await connection.QueryAsync<IcsDocumentModel>(
+                "SELECT * FROM IcsDocuments WHERE EquipmentId = @EquipmentId ORDER BY CreatedAt DESC",
+                new { EquipmentId = equipmentId });
+            return result.ToList();
+        }
+
+        public async Task<List<IcsDocumentModel>> GetIcsDocumentsForUserAsync(int userId)
+        {
+            using var connection = CreateConnection();
+            var result = await connection.QueryAsync<IcsDocumentModel>(
+                "SELECT * FROM IcsDocuments WHERE IssuedTo = @UserId ORDER BY CreatedAt DESC",
                 new { UserId = userId });
             return result.ToList();
         }
