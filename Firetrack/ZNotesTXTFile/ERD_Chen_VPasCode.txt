@@ -1,0 +1,227 @@
+﻿@startchen
+' ============================================================
+' FIRE TRACK DATABASE - COMPLETE CHEN ERD (Conceptual)
+' ============================================================
+' All tables from DatabaseService.cs are included.
+' Rectangles = Entities | Diamonds = Relationships | Ovals = Attributes
+' ============================================================
+
+' ----- ENTITIES (Rectangles) -----
+entity roles {
+    role_id
+    role_name
+    description
+    created_at
+}
+
+entity users {
+    user_id
+    role_id
+    first_name
+    last_name
+    email
+    password_hash
+    status
+    profile_image_path
+    created_at
+    updated_at
+}
+
+entity equipment {
+    equipment_id
+    property_number
+    item_name
+    category
+    description
+    serial_number
+    acquisition_date
+    acquisition_cost
+    condition_status
+    created_at
+    updated_at
+}
+
+entity handshakes {
+    handshake_id
+    transfer_date
+    status
+    notes
+}
+
+entity damage_reports {
+    report_id
+    incident_date
+    damage_description
+    report_status
+    created_at
+}
+
+entity disposal_requests {
+    disposal_id
+    reason
+    disposal_status
+    created_at
+}
+
+entity notifications {
+    notification_id
+    title
+    message
+    is_read
+    created_at
+}
+
+entity ics_documents {
+    ics_id
+    ics_number
+    date_issued
+    document_path
+    created_at
+}
+
+' ============================================================
+' NEW ENTITIES (from DatabaseService.cs)
+' ============================================================
+
+entity AuditLogs {
+    id
+    username
+    action
+    details
+    timestamp
+}
+
+entity PasswordResetOtps {
+    id
+    username
+    otp_code
+    expiry
+    is_used
+}
+
+' ----- RELATIONSHIPS (Diamonds) with their own attributes -----
+relationship Has {
+}
+
+relationship Requests {
+    quantity
+    purpose
+    request_status
+    requested_at
+}
+
+relationship Assigns {
+    assigned_date
+    returned_date
+    assignment_status
+    remarks
+    created_at
+}
+
+relationship HandshakeFrom {
+}
+
+relationship HandshakeTo {
+}
+
+relationship HandshakeEquip {
+}
+
+relationship DamageReported {
+}
+
+relationship DamageEquip {
+}
+
+relationship DisposalRequested {
+}
+
+relationship DisposalEquip {
+}
+
+relationship Notifies {
+}
+
+relationship DocumentsEquip {
+}
+
+relationship DocumentsIssued {
+}
+
+' ============================================================
+' NEW RELATIONSHIPS (Diamonds) for Logs & OTPs
+' ============================================================
+
+relationship Logs {
+}
+
+relationship Resets {
+}
+
+' ----- CONNECTIONS (all shapes are now linked!) -----
+
+' 1. roles ↔ users
+roles -1- Has
+Has -N- users
+
+' 2. users ↔ equipment via Requests (many-to-many)
+users -N- Requests
+Requests -N- equipment
+
+' 3. equipment ↔ users via Assigns (many-to-many)
+equipment -N- Assigns
+Assigns -N- users
+
+' 4. handshakes – from_user
+users -1- HandshakeFrom
+HandshakeFrom -N- handshakes
+
+' 5. handshakes – to_user
+users -1- HandshakeTo
+HandshakeTo -N- handshakes
+
+' 6. handshakes – equipment
+equipment -1- HandshakeEquip
+HandshakeEquip -N- handshakes
+
+' 7. damage_reports – reported_by
+users -1- DamageReported
+DamageReported -N- damage_reports
+
+' 8. damage_reports – equipment
+equipment -1- DamageEquip
+DamageEquip -N- damage_reports
+
+' 9. disposal_requests – requested_by
+users -1- DisposalRequested
+DisposalRequested -N- disposal_requests
+
+' 10. disposal_requests – equipment
+equipment -1- DisposalEquip
+DisposalEquip -N- disposal_requests
+
+' 11. notifications – user
+users -1- Notifies
+Notifies -N- notifications
+
+' 12. ics_documents – equipment
+equipment -1- DocumentsEquip
+DocumentsEquip -N- ics_documents
+
+' 13. ics_documents – issued_to
+users -1- DocumentsIssued
+DocumentsIssued -N- ics_documents
+
+' ============================================================
+' NEW CONNECTIONS (AuditLogs & PasswordResetOtps)
+' ============================================================
+
+' 14. users ↔ AuditLogs (one-to-many, via username)
+users -1- Logs
+Logs -N- AuditLogs
+
+' 15. users ↔ PasswordResetOtps (one-to-many, via username)
+users -1- Resets
+Resets -N- PasswordResetOtps
+
+@enduml
