@@ -14,7 +14,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     private int _unreadCount;
     private bool _isBackVisible;
 
-    // ---- Properties for flyout visibility ----
     public bool IsAdmin
     {
         get => _isAdmin;
@@ -27,54 +26,38 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         set { _isPersonnel = value; OnPropertyChanged(); }
     }
 
-    // ---- Notification badge ----
+    // Notification badge – not used in flyout anymore, but keep for future use
     public int UnreadCount
     {
         get => _unreadCount;
-        set
-        {
-            _unreadCount = value;
-            OnPropertyChanged();
-            OnPropertyChanged(nameof(NotificationBadgeText));
-        }
+        set { _unreadCount = value; OnPropertyChanged(); }
     }
 
-    public string NotificationBadgeText
-    {
-        get => UnreadCount > 0 ? $"🔔 {UnreadCount}" : "🔔";
-    }
-
-    // ---- Back button visibility ----
     public bool IsBackVisible
     {
         get => _isBackVisible;
         set { _isBackVisible = value; OnPropertyChanged(); }
     }
 
-    // ---- Commands ----
     public ICommand BackCommand { get; }
     public ICommand LogoutCommand { get; }
-    public ICommand GoToNotificationsCommand { get; }
 
     public new event PropertyChangedEventHandler? PropertyChanged;
-
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
 
-    // ---- Helper to get the correct dashboard route ----
     private string GetDashboardRoute()
     {
         var user = App.CurrentUser;
         return user?.Role == "Admin" ? Routes.AdminDashboard : Routes.PersonnelDashboard;
     }
 
-    // ---- Root routes for back button visibility (only top‑level pages) ----
     private static readonly HashSet<string> RootRoutes = new()
     {
         "AdminDashboard",
         "PersonnelDashboard",
-        "AdminEquipmentCategory",   // ← NEW
-        "PersonnelEquipmentCategory", // ← NEW
+        "AdminEquipmentCategory",
+        "PersonnelEquipmentCategory",
         "TransferPage",
         "ClearancePage",
         "UserManagementPage",
@@ -86,25 +69,20 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "PersonnelScanner"
     };
 
-    // ---- Constructor ----
     public AppShell()
     {
         try
         {
             InitializeComponent();
 
-            // Bind the TitleView Grid to this Shell for IsBackVisible binding
             TitleViewGrid.BindingContext = this;
 
-            // Commands
             BackCommand = new Command(OnBack);
             LogoutCommand = new Command(OnLogout);
-            GoToNotificationsCommand = new Command(async () => await GoToAsync(Routes.Notifications));
 
             this.Navigated += OnShellNavigated;
 
             UpdateUserRoleVisibility();
-            LoadUnreadCount();
             UpdateBackButtonVisibility();
         }
         catch (Exception ex)
@@ -114,7 +92,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
     }
 
-    // ---- Navigation events ----
     private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
     {
         UpdateBackButtonVisibility();
@@ -147,18 +124,14 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
     }
 
-    // ========== CLICKED EVENT HANDLERS (used in XAML) ==========
-
     private async void OnBackClicked(object sender, EventArgs e)
     {
         try
         {
             await GoToAsync("..");
         }
-        catch (Exception ex)
+        catch
         {
-            System.Diagnostics.Debug.WriteLine($"Back navigation failed: {ex.Message}");
-            // Fallback to the correct dashboard
             await GoToAsync(GetDashboardRoute());
         }
     }
@@ -174,11 +147,10 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
 
         App.CurrentUser = null;
-        UpdateUserRoleVisibility();   // hides flyout items via bindings
+        UpdateUserRoleVisibility();
         await GoToAsync(Routes.Login);
     }
 
-    // ---- Command-based methods (kept for compatibility) ----
     private async void OnBack()
     {
         try
@@ -206,39 +178,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         await GoToAsync(Routes.Login);
     }
 
-    // ---- Notification badge update ----
-    public void LoadUnreadCount()
-    {
-        if (App.CurrentUser == null || App.Database == null)
-        {
-            UnreadCount = 0;
-            return;
-        }
-
-        try
-        {
-            Task.Run(async () =>
-            {
-                var notifications = await App.Database.GetNotificationsForUserAsync(App.CurrentUser.Email);
-                MainThread.BeginInvokeOnMainThread(() =>
-                {
-                    UnreadCount = notifications.Count(n => !n.IsRead);
-                });
-            });
-        }
-        catch
-        {
-            UnreadCount = 0;
-        }
-    }
-
-    public static void RefreshUnreadCount()
-    {
-        var shell = Current as AppShell;
-        shell?.LoadUnreadCount();
-    }
-
-    // ---- Role visibility ----
+    // ===== ROLE VISIBILITY =====
     public void UpdateUserRoleVisibility()
     {
         var user = App.CurrentUser;
@@ -258,19 +198,21 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             IsPersonnel = true;
         }
 
+        // Force UI update
         OnPropertyChanged(nameof(IsAdmin));
         OnPropertyChanged(nameof(IsPersonnel));
+
+        System.Diagnostics.Debug.WriteLine($"🔍 UpdateUserRoleVisibility: IsAdmin={IsAdmin}, IsPersonnel={IsPersonnel}, User={user?.Email}");
     }
 
-    // ---- Navigation permission checks ----
-    // Include all valid route names (as defined in Routes.cs and ShellContent)
+    // ===== ROUTE VALIDATION =====
     private readonly HashSet<string> _validRoutes = new()
     {
         "LoginPage", "ForgotPasswordPage",
         "MyNotifications",
         "AdminScanner", "PersonnelScanner",
         "TransferPage", "ClearancePage", "ProfilePage",
-        "AdminEquipmentCategory", "PersonnelEquipmentCategory",  // ← NEW
+        "AdminEquipmentCategory", "PersonnelEquipmentCategory",
         "CategoryItemsPage",
         "EquipmentDetailPage", "EquipmentRequestDetailPage",
         "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
@@ -351,7 +293,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
                 GoToAsync(Routes.Login);
             else
             {
-                // Fallback to the correct dashboard
                 GoToAsync(GetDashboardRoute());
                 Application.Current?.MainPage?.DisplayAlert(
                     "Access Denied",

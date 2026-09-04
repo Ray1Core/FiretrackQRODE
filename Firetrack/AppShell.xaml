@@ -33,8 +33,6 @@
               Padding="5,0"
               ColumnSpacing="5"
               HeightRequest="44">
-
-            <!-- Back Button -->
             <Button Grid.Column="0"
                     Text="‹"
                     Clicked="OnBackClicked"
@@ -46,14 +44,10 @@
                     HorizontalOptions="Start"
                     IsVisible="{Binding IsBackVisible}"
                     WidthRequest="44" />
-
-            <!-- Empty Title placeholder -->
             <Label Grid.Column="1"
                    Text=""
                    VerticalOptions="Center"
                    HorizontalOptions="Center" />
-
-            <!-- Logout Button -->
             <Button Grid.Column="2"
                     Text="🚪"
                     Clicked="OnLogoutClicked"
@@ -74,6 +68,7 @@
                   ContentTemplate="{DataTemplate views:ForgotPasswordPage}"
                   Route="ForgotPasswordPage"
                   Shell.FlyoutItemIsVisible="False" />
+    <!-- Notifications – hidden from flyout, accessible only via Dashboard -->
     <ShellContent Title="Notifications"
                   ContentTemplate="{DataTemplate views:NotificationsPage}"
                   Route="MyNotifications"
@@ -125,7 +120,6 @@
         <ShellContent Title="Inventory" 
                       ContentTemplate="{DataTemplate views:EquipmentCategoryPage}" 
                       Route="AdminEquipmentCategory" />
-        <!-- ← UNIQUE ROUTE -->
         <ShellContent Title="Transfer" 
                       ContentTemplate="{DataTemplate views:TransferPage}" 
                       Route="TransferPage" />
@@ -141,7 +135,6 @@
         <ShellContent Title="Disposal Requests" 
                       ContentTemplate="{DataTemplate views:DisposalRequestsPage}" 
                       Route="DisposalRequestsPage" />
-        <!-- Scanner – unique route -->
         <ShellContent Title="Scanner" 
                       ContentTemplate="{DataTemplate views:ScannerPage}" 
                       Route="AdminScanner" />
@@ -160,14 +153,9 @@
         <ShellContent Title="Request Equipment" 
                       ContentTemplate="{DataTemplate views:EquipmentCategoryPage}" 
                       Route="PersonnelEquipmentCategory" />
-        <!-- ← UNIQUE ROUTE -->
         <ShellContent Title="Profile" 
                       ContentTemplate="{DataTemplate views:ProfilePage}" 
                       Route="ProfilePage" />
-        <ShellContent Title="Notifications" 
-                      ContentTemplate="{DataTemplate views:NotificationsPage}" 
-                      Route="NotificationsPage" />
-        <!-- Scanner – unique route -->
         <ShellContent Title="Scanner" 
                       ContentTemplate="{DataTemplate views:ScannerPage}" 
                       Route="PersonnelScanner" />

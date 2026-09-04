@@ -32,8 +32,8 @@ namespace Firetrack.ViewModels
                 // Mark all as read
                 await App.Database.MarkAllNotificationsAsReadAsync(App.CurrentUser.Username);
 
-                // ✅ Refresh the global notification badge
-                AppShell.RefreshUnreadCount();
+                // 🔥 Removed: AppShell.RefreshUnreadCount(); – no longer needed
+                // (If you want to update a badge elsewhere, add a separate method.)
             }
             catch (Exception ex)
             {

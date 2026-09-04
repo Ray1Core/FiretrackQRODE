@@ -51,10 +51,8 @@ namespace Firetrack.ViewModels
 
         private async void OnLogin()
         {
-            // ---- Clear previous errors ----
             ErrorMessage = string.Empty;
 
-            // ---- Validate input ----
             if (string.IsNullOrWhiteSpace(Username))
             {
                 ErrorMessage = "Please enter your username.";
@@ -67,12 +65,10 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            // ---- Start busy indicator ----
             IsBusy = true;
 
             try
             {
-                // ---- Get database instance ----
                 var db = App.Database;
                 if (db == null)
                 {
@@ -81,11 +77,9 @@ namespace Firetrack.ViewModels
                     return;
                 }
 
-                // ---- Attempt to fetch user ----
                 System.Diagnostics.Debug.WriteLine($"🔍 Attempting login for user: {Username}");
                 var user = await db.GetUserByUsernameAsync(Username);
 
-                // ---- Validate user and password ----
                 if (user != null && user.Password == Password)
                 {
                     System.Diagnostics.Debug.WriteLine($"✅ Login successful for {Username} (Role: {user.Role})");
@@ -99,15 +93,20 @@ namespace Firetrack.ViewModels
                         "Login",
                         $"User logged in from {DeviceInfo.Platform}");
 
-                    // ---- Update Shell flyout visibility and badge ----
+                    // ---- Refresh flyout visibility ----
                     if (Shell.Current is AppShell shell)
                     {
-                        shell.UpdateUserRoleVisibility();   // updates IsAdmin/IsPersonnel bindings
-                        shell.LoadUnreadCount();            // loads notification badge
-                        // ❌ NO RefreshFlyoutItems() – flyout is static from XAML
+                        shell.UpdateUserRoleVisibility();
+
+                        // 🔥 Force the flyout to close and reopen so it picks up the new IsAdmin/IsPersonnel bindings
+                        Shell.Current.FlyoutIsPresented = false;
+                        // A small delay helps the UI settle; then we can optionally open it again if needed
+                        await Task.Delay(100);
+                        // You can uncomment the next line if you want the flyout to open automatically after login
+                        // Shell.Current.FlyoutIsPresented = true;
                     }
 
-                    // ---- Navigate to appropriate Dashboard ----
+                    // ---- Navigate to the correct dashboard ----
                     string dashboardRoute = user.Role == "Admin" ? "//AdminDashboard" : "//PersonnelDashboard";
                     await Shell.Current.GoToAsync(dashboardRoute);
                 }
@@ -119,21 +118,8 @@ namespace Firetrack.ViewModels
             }
             catch (Exception ex)
             {
-                // ---- Catch ALL exceptions and log them ----
                 System.Diagnostics.Debug.WriteLine($"❌ LOGIN EXCEPTION: {ex}");
-                System.Diagnostics.Debug.WriteLine($"Stack Trace: {ex.StackTrace}");
-
-                // ---- Specific handling for ArgumentException ----
-                if (ex is ArgumentException argEx)
-                {
-                    ErrorMessage = $"Login error: {argEx.Message} (Parameter: {argEx.ParamName})";
-                }
-                else
-                {
-                    ErrorMessage = $"Login error: {ex.Message}";
-                }
-
-                // ---- Optionally show a more detailed error in a dialog ----
+                ErrorMessage = $"Login error: {ex.Message}";
                 try
                 {
                     await Shell.Current.DisplayAlert("Login Error", ErrorMessage, "OK");
@@ -142,7 +128,6 @@ namespace Firetrack.ViewModels
             }
             finally
             {
-                // ---- Always reset busy state ----
                 IsBusy = false;
             }
         }
