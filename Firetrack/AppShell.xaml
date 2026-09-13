@@ -31,7 +31,7 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== GLOBAL TITLE VIEW (only logout button) ===== -->
+    <!-- ===== GLOBAL TITLE VIEW (Logout button text updated) ===== -->
     <Shell.TitleView>
         <Grid x:Name="TitleViewGrid"
               ColumnDefinitions="*, Auto"
@@ -42,12 +42,15 @@
                    Text=""
                    VerticalOptions="Center"
                    HorizontalOptions="Center" />
+            <!-- Changed from emoji to normal text -->
             <Button Grid.Column="1"
-                    Text="ðŸšª"
+                    Text="Logout"
                     Clicked="OnLogoutClicked"
                     BackgroundColor="Transparent"
                     TextColor="White"
-                    FontSize="20"
+                    FontSize="16"
+                    FontAttributes="Bold"
+                    Padding="10,0"
                     VerticalOptions="Center"
                     HorizontalOptions="End" />
         </Grid>
