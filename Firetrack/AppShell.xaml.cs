@@ -39,9 +39,20 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         {
             InitializeComponent();
 
-            // ===== CRITICAL FIX: Set BindingContext so FlyoutItem IsVisible bindings work =====
-            BindingContext = this;
+            // ===== CRITICAL FIX: Register detail pages as global routes =====
+            // This allows them to be pushed onto the navigation stack (shows back button)
+            // and prevents the "Relative routing to shell elements" crash.
+            Routing.RegisterRoute(nameof(CategoryItemsPage), typeof(CategoryItemsPage));
+            Routing.RegisterRoute(nameof(EquipmentDetailPage), typeof(EquipmentDetailPage));
+            Routing.RegisterRoute(nameof(EquipmentRequestDetailPage), typeof(EquipmentRequestDetailPage));
+            Routing.RegisterRoute(nameof(ReportDamagePage), typeof(ReportDamagePage));
+            Routing.RegisterRoute(nameof(IcsPage), typeof(IcsPage));
+            Routing.RegisterRoute(nameof(TransactionHistoryPage), typeof(TransactionHistoryPage));
+            Routing.RegisterRoute(nameof(AddEquipmentPage), typeof(AddEquipmentPage));
+            Routing.RegisterRoute(nameof(NotificationsPage), typeof(NotificationsPage));
 
+            // Set BindingContext so FlyoutItem IsVisible bindings work
+            BindingContext = this;
             TitleViewGrid.BindingContext = this;
 
             UpdateUserRoleVisibility();
@@ -98,21 +109,24 @@ public partial class AppShell : Shell, INotifyPropertyChanged
     // ===== ROUTE VALIDATION =====
     private readonly HashSet<string> _validRoutes = new()
     {
+        // Root pages (absolute routes)
         "LoginPage", "ForgotPasswordPage",
-        "MyNotifications",
-        "AdminScanner", "PersonnelScanner",
-        "TransferPage", "ClearancePage", "ProfilePage",
+        "AdminDashboard", "PersonnelDashboard",
         "AdminEquipmentCategory", "PersonnelEquipmentCategory",
+        "TransferPage", "ClearancePage", "UserManagementPage",
+        "PendingRequestsPage", "DisposalRequestsPage",
+        "AuditLogPage", "ProfilePage",
+        "AdminScanner", "PersonnelScanner",
+
+        // Detail pages (relative routes, pushed onto stack)
         "CategoryItemsPage",
-        "EquipmentDetailPage", "EquipmentRequestDetailPage",
-        "ReportDamagePage", "IcsPage", "TransactionHistoryPage",
-        "UserManagementPage",
+        "EquipmentDetailPage",
+        "EquipmentRequestDetailPage",
+        "ReportDamagePage",
+        "IcsPage",
+        "TransactionHistoryPage",
         "AddEquipmentPage",
-        "PendingRequestsPage",
-        "AuditLogPage",
-        "DisposalRequestsPage",
-        "AdminDashboard",
-        "PersonnelDashboard"
+        "NotificationsPage"
     };
 
     private bool IsValidRoute(string route)
@@ -147,7 +161,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             "ProfilePage",
             "ReportDamagePage",
             "PersonnelScanner",
-            "MyNotifications",
+            "NotificationsPage",
             "TransactionHistoryPage",
             "IcsPage",
             "EquipmentRequestDetailPage",

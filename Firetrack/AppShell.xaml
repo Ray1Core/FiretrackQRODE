@@ -53,17 +53,9 @@
         </Grid>
     </Shell.TitleView>
 
-    <!-- ===== HIDDEN PAGES (not in flyout) ===== -->
+    <!-- ===== ROOT PAGES (Flyout accessible, absolute routes only) ===== -->
     <ShellContent Title="Login" ContentTemplate="{DataTemplate views:LoginPage}" Route="LoginPage" Shell.FlyoutItemIsVisible="False" />
     <ShellContent Title="ForgotPassword" ContentTemplate="{DataTemplate views:ForgotPasswordPage}" Route="ForgotPasswordPage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Notifications" ContentTemplate="{DataTemplate views:NotificationsPage}" Route="MyNotifications" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Equipment Detail" ContentTemplate="{DataTemplate views:EquipmentDetailPage}" Route="EquipmentDetailPage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Equipment Request Detail" ContentTemplate="{DataTemplate views:EquipmentRequestDetailPage}" Route="EquipmentRequestDetailPage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Report Damage" ContentTemplate="{DataTemplate views:ReportDamagePage}" Route="ReportDamagePage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="ICS" ContentTemplate="{DataTemplate views:IcsPage}" Route="IcsPage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Category Items" ContentTemplate="{DataTemplate views:CategoryItemsPage}" Route="CategoryItemsPage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Transaction History" ContentTemplate="{DataTemplate views:TransactionHistoryPage}" Route="TransactionHistoryPage" Shell.FlyoutItemIsVisible="False" />
-    <ShellContent Title="Add Equipment" ContentTemplate="{DataTemplate views:AddEquipmentPage}" Route="AddEquipmentPage" Shell.FlyoutItemIsVisible="False" />
 
     <!-- ===== ADMIN FLYOUT ===== -->
     <FlyoutItem Title="Admin"

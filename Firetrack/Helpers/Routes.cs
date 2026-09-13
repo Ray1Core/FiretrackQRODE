@@ -17,13 +17,13 @@
         public const string PendingRequests = "//PendingRequestsPage";
         public const string DisposalRequests = "//DisposalRequestsPage";
         public const string AuditLog = "//AuditLogPage";
-        public const string AddEquipment = "//AddEquipmentPage";
 
         // Shared root pages
         public const string Profile = "//ProfilePage";
-        public const string Notifications = "//MyNotifications";
 
         // ---- Relative routes (detail pages, PUSH onto stack, shows back button) ----
+        public const string AddEquipment = "AddEquipmentPage";
+        public const string Notifications = "NotificationsPage";
         public const string EquipmentDetail = "EquipmentDetailPage";
         public const string EquipmentRequestDetail = "EquipmentRequestDetailPage";
         public const string ReportDamage = "ReportDamagePage";
