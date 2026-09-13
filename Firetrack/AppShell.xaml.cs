@@ -3,7 +3,6 @@ using Firetrack.Helpers;
 using Microsoft.Maui.Controls;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
-using System.Windows.Input;
 
 namespace Firetrack;
 
@@ -11,8 +10,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
 {
     private bool _isAdmin;
     private bool _isPersonnel;
-    private int _unreadCount;
-    private bool _isBackVisible;
 
     public bool IsAdmin
     {
@@ -26,22 +23,6 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         set { _isPersonnel = value; OnPropertyChanged(); }
     }
 
-    // Notification badge – not used in flyout anymore, but keep for future use
-    public int UnreadCount
-    {
-        get => _unreadCount;
-        set { _unreadCount = value; OnPropertyChanged(); }
-    }
-
-    public bool IsBackVisible
-    {
-        get => _isBackVisible;
-        set { _isBackVisible = value; OnPropertyChanged(); }
-    }
-
-    public ICommand BackCommand { get; }
-    public ICommand LogoutCommand { get; }
-
     public new event PropertyChangedEventHandler? PropertyChanged;
     protected new void OnPropertyChanged([CallerMemberName] string? name = null) =>
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
@@ -52,38 +33,18 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         return user?.Role == "Admin" ? Routes.AdminDashboard : Routes.PersonnelDashboard;
     }
 
-    private static readonly HashSet<string> RootRoutes = new()
-    {
-        "AdminDashboard",
-        "PersonnelDashboard",
-        "AdminEquipmentCategory",
-        "PersonnelEquipmentCategory",
-        "TransferPage",
-        "ClearancePage",
-        "UserManagementPage",
-        "PendingRequestsPage",
-        "DisposalRequestsPage",
-        "AuditLogPage",
-        "ProfilePage",
-        "AdminScanner",
-        "PersonnelScanner"
-    };
-
     public AppShell()
     {
         try
         {
             InitializeComponent();
 
+            // ===== CRITICAL FIX: Set BindingContext so FlyoutItem IsVisible bindings work =====
+            BindingContext = this;
+
             TitleViewGrid.BindingContext = this;
 
-            BackCommand = new Command(OnBack);
-            LogoutCommand = new Command(OnLogout);
-
-            this.Navigated += OnShellNavigated;
-
             UpdateUserRoleVisibility();
-            UpdateBackButtonVisibility();
         }
         catch (Exception ex)
         {
@@ -92,78 +53,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         }
     }
 
-    private void OnShellNavigated(object? sender, ShellNavigatedEventArgs e)
-    {
-        UpdateBackButtonVisibility();
-    }
-
-    private void UpdateBackButtonVisibility()
-    {
-        try
-        {
-            if (Current == null)
-            {
-                IsBackVisible = false;
-                return;
-            }
-
-            var currentState = Current.CurrentState;
-            if (currentState == null)
-            {
-                IsBackVisible = false;
-                return;
-            }
-
-            var currentRoute = currentState.Location?.OriginalString?.Split('/').LastOrDefault() ?? string.Empty;
-            IsBackVisible = !RootRoutes.Contains(currentRoute);
-        }
-        catch (Exception ex)
-        {
-            System.Diagnostics.Debug.WriteLine($"⚠️ UpdateBackButtonVisibility failed: {ex}");
-            IsBackVisible = false;
-        }
-    }
-
-    private async void OnBackClicked(object sender, EventArgs e)
-    {
-        try
-        {
-            await GoToAsync("..");
-        }
-        catch
-        {
-            await GoToAsync(GetDashboardRoute());
-        }
-    }
-
     private async void OnLogoutClicked(object sender, EventArgs e)
-    {
-        if (App.CurrentUser != null && App.Database != null)
-        {
-            await App.Database.LogActionAsync(
-                App.CurrentUser.Email,
-                "Logout",
-                "User logged out");
-        }
-
-        App.CurrentUser = null;
-        UpdateUserRoleVisibility();
-        await GoToAsync(Routes.Login);
-    }
-
-    private async void OnBack()
-    {
-        try
-        {
-            await GoToAsync("..");
-        }
-        catch
-        {
-            await GoToAsync(GetDashboardRoute());
-        }
-    }
-
-    private async void OnLogout()
     {
         if (App.CurrentUser != null && App.Database != null)
         {

@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Maui.Storage;
 using SQLitePCL;
 using ZXing.Net.Maui.Controls;
-using PdfSharpCore.Fonts;   // <-- add this
+using PdfSharpCore.Fonts;
 
 namespace Firetrack;
 
@@ -25,6 +25,7 @@ public static class MauiProgram
             .UseBarcodeReader()
             .ConfigureFonts(fonts =>
             {
+                // Ensure the alias matches exactly what is used in the XAML/App.xaml
                 fonts.AddFont("OpenSans-Regular.ttf", "OpenSansRegular");
                 fonts.AddFont("OpenSans-Semibold.ttf", "OpenSansSemibold");
             });

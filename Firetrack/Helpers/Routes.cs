@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Firetrack.Helpers
+﻿namespace Firetrack.Helpers
 {
     public static class Routes
     {
-        // ---- Absolute routes (must start with "//") ----
+        // ---- Absolute routes (root pages, no back button, flyout accessible) ----
         public const string Login = "//LoginPage";
         public const string ForgotPassword = "//ForgotPasswordPage";
 
@@ -16,7 +10,7 @@ namespace Firetrack.Helpers
         public const string AdminDashboard = "//AdminDashboard";
         public const string PersonnelDashboard = "//PersonnelDashboard";
 
-        // ---- Admin-only pages (only one occurrence, so no ambiguity) ----
+        // Admin-only root pages
         public const string Transfer = "//TransferPage";
         public const string Clearance = "//ClearancePage";
         public const string UserManagement = "//UserManagementPage";
@@ -25,28 +19,28 @@ namespace Firetrack.Helpers
         public const string AuditLog = "//AuditLogPage";
         public const string AddEquipment = "//AddEquipmentPage";
 
-        // ---- Shared pages (used by both roles) ----
+        // Shared root pages
         public const string Profile = "//ProfilePage";
         public const string Notifications = "//MyNotifications";
-        public const string EquipmentDetail = "//EquipmentDetailPage";
-        public const string EquipmentRequestDetail = "//EquipmentRequestDetailPage";
-        public const string ReportDamage = "//ReportDamagePage";
-        public const string Ics = "//IcsPage";
-        public const string CategoryItems = "//CategoryItemsPage";
-        public const string TransactionHistory = "//TransactionHistoryPage";
 
-        // ---- Role-aware routes (must call methods) ----
+        // ---- Relative routes (detail pages, PUSH onto stack, shows back button) ----
+        public const string EquipmentDetail = "EquipmentDetailPage";
+        public const string EquipmentRequestDetail = "EquipmentRequestDetailPage";
+        public const string ReportDamage = "ReportDamagePage";
+        public const string Ics = "IcsPage";
+        public const string CategoryItems = "CategoryItemsPage";
+        public const string TransactionHistory = "TransactionHistoryPage";
+
+        // ---- Role-aware routes ----
         public static string GetEquipmentCategoryRoute()
         {
             var user = App.CurrentUser;
-            // Routes are now unique: "AdminEquipmentCategory" and "PersonnelEquipmentCategory"
             return user?.Role == "Admin" ? "//AdminEquipmentCategory" : "//PersonnelEquipmentCategory";
         }
 
         public static string GetScannerRoute()
         {
             var user = App.CurrentUser;
-            // Routes are already unique: "AdminScanner" and "PersonnelScanner"
             return user?.Role == "Admin" ? "//AdminScanner" : "//PersonnelScanner";
         }
 
