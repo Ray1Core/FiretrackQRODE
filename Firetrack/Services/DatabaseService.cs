@@ -6,16 +6,23 @@ using System.Threading.Tasks;
 using Dapper;
 using Firetrack.Models;
 using Microsoft.Data.Sqlite;
+using Microsoft.Data.SqlClient;
 
 namespace Firetrack.Services
 {
     public class DatabaseService
     {
         private readonly string _connectionString;
+        private readonly bool _useSqlServer;
 
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
+            // Determine if we are using SQL Server or SQLite based on the connection string
+            _useSqlServer = connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+                            connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase) &&
+                            !connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase);
+
             try
             {
                 InitializeDatabase();
@@ -27,26 +34,51 @@ namespace Firetrack.Services
             }
         }
 
+        // ============================================================
+        // HELPER: Returns the correct IDbConnection based on the mode
+        // ============================================================
+        private IDbConnection CreateConnection()
+        {
+            if (_useSqlServer)
+                return new SqlConnection(_connectionString);
+            else
+                return new SqliteConnection(_connectionString);
+        }
+
+        // ============================================================
+        // HELPER: Returns SQL dialect specific keywords
+        // ============================================================
+        private string AutoIncrementKeyword => _useSqlServer ? "IDENTITY(1,1)" : "AUTOINCREMENT";
+        private string LastInsertIdFunction => _useSqlServer ? "SCOPE_IDENTITY()" : "last_insert_rowid()";
+        private string DateTimeNowFunction => _useSqlServer ? "GETDATE()" : "CURRENT_TIMESTAMP";
+        private string BooleanTrueValue => _useSqlServer ? "1" : "1";
+
         private void InitializeDatabase()
         {
 #if ANDROID
             SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 #endif
 
-            var dbPath = _connectionString.Replace("Data Source=", "");
-            var directory = System.IO.Path.GetDirectoryName(dbPath);
-            if (!string.IsNullOrEmpty(directory) && !System.IO.Directory.Exists(directory))
-                System.IO.Directory.CreateDirectory(directory);
+            if (!_useSqlServer)
+            {
+                // Ensure the directory exists for SQLite
+                var dbPath = _connectionString.Replace("Data Source=", "").Trim();
+                var directory = System.IO.Path.GetDirectoryName(dbPath);
+                if (!string.IsNullOrEmpty(directory) && !System.IO.Directory.Exists(directory))
+                    System.IO.Directory.CreateDirectory(directory);
+            }
 
-            using var connection = new SqliteConnection(_connectionString);
+            using var connection = CreateConnection();
             connection.Open();
             CreateTables(connection);
-            MigrateEquipmentTableIfNeeded(connection);
+            if (!_useSqlServer) // Migration logic is only needed for SQLite
+                MigrateEquipmentTableIfNeeded(connection);
             SeedData(connection);
         }
 
         private void MigrateEquipmentTableIfNeeded(IDbConnection connection)
         {
+            // This migration only applies to SQLite
             var createSql = connection.QueryFirstOrDefault<string>(
                 "SELECT sql FROM sqlite_master WHERE type='table' AND name='Equipment'");
             if (string.IsNullOrEmpty(createSql))
@@ -91,149 +123,173 @@ namespace Firetrack.Services
 
         private void CreateTables(IDbConnection connection)
         {
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS AuditLogs (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Username TEXT NOT NULL,
-                    Action TEXT NOT NULL,
-                    Details TEXT NULL,
-                    Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+            // ---- AuditLogs ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='AuditLogs' AND xtype='U')
+                CREATE TABLE AuditLogs (
+                    Id INT PRIMARY KEY {AutoIncrementKeyword},
+                    Username NVARCHAR(255) NOT NULL,
+                    Action NVARCHAR(255) NOT NULL,
+                    Details NVARCHAR(MAX) NULL,
+                    Timestamp DATETIME NOT NULL DEFAULT {DateTimeNowFunction}
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS PasswordResetOtps (
-                    Id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Username TEXT NOT NULL,
-                    OtpCode TEXT NOT NULL,
+            // ---- PasswordResetOtps ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='PasswordResetOtps' AND xtype='U')
+                CREATE TABLE PasswordResetOtps (
+                    Id INT PRIMARY KEY {AutoIncrementKeyword},
+                    Username NVARCHAR(255) NOT NULL,
+                    OtpCode NVARCHAR(10) NOT NULL,
                     Expiry DATETIME NOT NULL,
-                    IsUsed INTEGER NOT NULL DEFAULT 0
+                    IsUsed INT NOT NULL DEFAULT 0
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Roles (
-                    RoleId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    RoleName TEXT NOT NULL UNIQUE,
-                    Description TEXT,
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            // ---- Roles ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Roles' AND xtype='U')
+                CREATE TABLE Roles (
+                    RoleId INT PRIMARY KEY {AutoIncrementKeyword},
+                    RoleName NVARCHAR(50) NOT NULL UNIQUE,
+                    Description NVARCHAR(255),
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction}
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Users (
-                    UserId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    RoleId INTEGER NOT NULL,
-                    FirstName TEXT NOT NULL,
-                    LastName TEXT NOT NULL,
-                    Email TEXT NOT NULL UNIQUE,
-                    PasswordHash TEXT NOT NULL,
-                    Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
-                    ProfileImagePath TEXT NULL,
-                    PersonalQR TEXT NULL,
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            // ---- Users ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Users' AND xtype='U')
+                CREATE TABLE Users (
+                    UserId INT PRIMARY KEY {AutoIncrementKeyword},
+                    RoleId INT NOT NULL,
+                    FirstName NVARCHAR(100) NOT NULL,
+                    LastName NVARCHAR(100) NOT NULL,
+                    Email NVARCHAR(255) NOT NULL UNIQUE,
+                    PasswordHash NVARCHAR(255) NOT NULL,
+                    Status NVARCHAR(20) DEFAULT 'Active',
+                    ProfileImagePath NVARCHAR(500) NULL,
+                    PersonalQR NVARCHAR(100) NULL,
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
+                    UpdatedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Equipment (
-                    EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PropertyNumber TEXT NOT NULL UNIQUE,
-                    ItemName TEXT NOT NULL,
-                    Category TEXT NOT NULL,
-                    Description TEXT,
-                    SerialNumber TEXT,
+            // ---- Equipment ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Equipment' AND xtype='U')
+                CREATE TABLE Equipment (
+                    EquipmentId INT PRIMARY KEY {AutoIncrementKeyword},
+                    PropertyNumber NVARCHAR(100) NOT NULL UNIQUE,
+                    ItemName NVARCHAR(255) NOT NULL,
+                    Category NVARCHAR(100) NOT NULL,
+                    Description NVARCHAR(MAX),
+                    SerialNumber NVARCHAR(100),
                     AcquisitionDate DATE,
                     AcquisitionCost DECIMAL(12,2),
-                    ConditionStatus TEXT DEFAULT 'Available',
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    ConditionStatus NVARCHAR(50) DEFAULT 'Available',
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
+                    UpdatedAt DATETIME DEFAULT {DateTimeNowFunction}
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Requests (
-                    RequestId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    UserId INTEGER NOT NULL,
-                    EquipmentId INTEGER NOT NULL,
-                    Quantity INTEGER NOT NULL DEFAULT 1,
-                    Purpose TEXT NOT NULL,
-                    RequestStatus TEXT CHECK(RequestStatus IN ('Pending', 'Approved', 'Rejected')) DEFAULT 'Pending',
-                    RequestedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            // ---- Requests ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Requests' AND xtype='U')
+                CREATE TABLE Requests (
+                    RequestId INT PRIMARY KEY {AutoIncrementKeyword},
+                    UserId INT NOT NULL,
+                    EquipmentId INT NOT NULL,
+                    Quantity INT NOT NULL DEFAULT 1,
+                    Purpose NVARCHAR(MAX) NOT NULL,
+                    RequestStatus NVARCHAR(20) DEFAULT 'Pending',
+                    RequestedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (UserId) REFERENCES Users(UserId),
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Assignments (
-                    AssignmentId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    EquipmentId INTEGER NOT NULL,
-                    UserId INTEGER NOT NULL,
+            // ---- Assignments ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Assignments' AND xtype='U')
+                CREATE TABLE Assignments (
+                    AssignmentId INT PRIMARY KEY {AutoIncrementKeyword},
+                    EquipmentId INT NOT NULL,
+                    UserId INT NOT NULL,
                     AssignedDate DATE NOT NULL,
                     ReturnedDate DATE NULL,
-                    AssignmentStatus TEXT CHECK(AssignmentStatus IN ('Assigned', 'Returned', 'Transferred')) DEFAULT 'Assigned',
-                    Remarks TEXT,
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    AssignmentStatus NVARCHAR(20) DEFAULT 'Assigned',
+                    Remarks NVARCHAR(MAX),
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (UserId) REFERENCES Users(UserId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Handshakes (
-                    HandshakeId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    EquipmentId INTEGER NOT NULL,
-                    FromUserId INTEGER NOT NULL,
-                    ToUserId INTEGER NOT NULL,
-                    TransferDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    Status TEXT CHECK(Status IN ('Pending', 'Accepted', 'Rejected')) DEFAULT 'Pending',
-                    Notes TEXT,
+            // ---- Handshakes ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Handshakes' AND xtype='U')
+                CREATE TABLE Handshakes (
+                    HandshakeId INT PRIMARY KEY {AutoIncrementKeyword},
+                    EquipmentId INT NOT NULL,
+                    FromUserId INT NOT NULL,
+                    ToUserId INT NOT NULL,
+                    TransferDate DATETIME DEFAULT {DateTimeNowFunction},
+                    Status NVARCHAR(20) DEFAULT 'Pending',
+                    Notes NVARCHAR(MAX),
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (FromUserId) REFERENCES Users(UserId),
                     FOREIGN KEY (ToUserId) REFERENCES Users(UserId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS DamageReports (
-                    ReportId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    EquipmentId INTEGER NOT NULL,
-                    ReportedBy INTEGER NOT NULL,
+            // ---- DamageReports ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DamageReports' AND xtype='U')
+                CREATE TABLE DamageReports (
+                    ReportId INT PRIMARY KEY {AutoIncrementKeyword},
+                    EquipmentId INT NOT NULL,
+                    ReportedBy INT NOT NULL,
                     IncidentDate DATE NOT NULL,
-                    DamageDescription TEXT NOT NULL,
-                    ReportStatus TEXT CHECK(ReportStatus IN ('Reported', 'Under Inspection', 'Resolved', 'For Disposal')) DEFAULT 'Reported',
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    DamageDescription NVARCHAR(MAX) NOT NULL,
+                    ReportStatus NVARCHAR(30) DEFAULT 'Reported',
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (ReportedBy) REFERENCES Users(UserId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS DisposalRequests (
-                    DisposalId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    EquipmentId INTEGER NOT NULL,
-                    RequestedBy INTEGER NOT NULL,
-                    Reason TEXT NOT NULL,
-                    DisposalStatus TEXT CHECK(DisposalStatus IN ('Pending Review', 'Approved', 'Completed', 'Rejected')) DEFAULT 'Pending Review',
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            // ---- DisposalRequests ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='DisposalRequests' AND xtype='U')
+                CREATE TABLE DisposalRequests (
+                    DisposalId INT PRIMARY KEY {AutoIncrementKeyword},
+                    EquipmentId INT NOT NULL,
+                    RequestedBy INT NOT NULL,
+                    Reason NVARCHAR(MAX) NOT NULL,
+                    DisposalStatus NVARCHAR(30) DEFAULT 'Pending Review',
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (RequestedBy) REFERENCES Users(UserId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS Notifications (
-                    NotificationId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    UserId INTEGER NOT NULL,
-                    Title TEXT NOT NULL,
-                    Message TEXT NOT NULL,
-                    IsRead BOOLEAN DEFAULT 0,
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            // ---- Notifications ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Notifications' AND xtype='U')
+                CREATE TABLE Notifications (
+                    NotificationId INT PRIMARY KEY {AutoIncrementKeyword},
+                    UserId INT NOT NULL,
+                    Title NVARCHAR(255) NOT NULL,
+                    Message NVARCHAR(MAX) NOT NULL,
+                    IsRead BIT DEFAULT 0,
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (UserId) REFERENCES Users(UserId)
                 )");
 
-            connection.Execute(@"
-                CREATE TABLE IF NOT EXISTS IcsDocuments (
-                    IcsId INTEGER PRIMARY KEY AUTOINCREMENT,
-                    EquipmentId INTEGER NOT NULL,
-                    IssuedTo INTEGER NOT NULL,
-                    IcsNumber TEXT NOT NULL UNIQUE,
+            // ---- IcsDocuments ----
+            connection.Execute($@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='IcsDocuments' AND xtype='U')
+                CREATE TABLE IcsDocuments (
+                    IcsId INT PRIMARY KEY {AutoIncrementKeyword},
+                    EquipmentId INT NOT NULL,
+                    IssuedTo INT NOT NULL,
+                    IcsNumber NVARCHAR(100) NOT NULL UNIQUE,
                     DateIssued DATE NOT NULL,
-                    DocumentPath TEXT,
-                    CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    DocumentPath NVARCHAR(500),
+                    CreatedAt DATETIME DEFAULT {DateTimeNowFunction},
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (IssuedTo) REFERENCES Users(UserId)
                 )");
@@ -308,17 +364,19 @@ namespace Firetrack.Services
             }
         }
 
+        // ============================================================
+        // AUDIT LOG METHODS
+        // ============================================================
         public async Task LogActionAsync(string username, string action, string? details = null)
         {
             using var connection = CreateConnection();
-            string sql = @"INSERT INTO AuditLogs (Username, Action, Details, Timestamp)
-                           VALUES (@Username, @Action, @Details, @Timestamp)";
+            string sql = $@"INSERT INTO AuditLogs (Username, Action, Details, Timestamp)
+                           VALUES (@Username, @Action, @Details, {DateTimeNowFunction})";
             await connection.ExecuteAsync(sql, new
             {
                 Username = username,
                 Action = action,
-                Details = details,
-                Timestamp = DateTime.Now
+                Details = details
             });
         }
 
@@ -330,11 +388,14 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
+        // ============================================================
+        // OTP METHODS
+        // ============================================================
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = CreateConnection();
             await connection.ExecuteAsync(
-                "DELETE FROM PasswordResetOtps WHERE Username = @Username OR Expiry < DATETIME('now')",
+                $"DELETE FROM PasswordResetOtps WHERE Username = @Username OR Expiry < {DateTimeNowFunction}",
                 new { Username = username });
 
             var random = new Random();
@@ -353,8 +414,8 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
             var result = await connection.QueryFirstOrDefaultAsync<OtpModel>(
-                @"SELECT * FROM PasswordResetOtps 
-                  WHERE Username = @Username AND OtpCode = @OtpCode AND IsUsed = 0 AND Expiry > DATETIME('now')",
+                $@"SELECT * FROM PasswordResetOtps 
+                  WHERE Username = @Username AND OtpCode = @OtpCode AND IsUsed = 0 AND Expiry > {DateTimeNowFunction}",
                 new { Username = username, OtpCode = otpCode });
             return result != null;
         }
@@ -367,6 +428,9 @@ namespace Firetrack.Services
                 new { Username = username, OtpCode = otpCode });
         }
 
+        // ============================================================
+        // USER METHODS
+        // ============================================================
         public async Task<UserModel?> GetUserByUsernameAsync(string username)
         {
             using var connection = CreateConnection();
@@ -423,10 +487,25 @@ namespace Firetrack.Services
                 user.PersonalQR = $"{role.ToUpper()}-{suffix}";
             }
 
-            string sql = @"
-                INSERT OR REPLACE INTO Users (UserId, RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, PersonalQR, UpdatedAt)
-                VALUES (@UserId, @RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, @PersonalQR, CURRENT_TIMESTAMP);
-                SELECT last_insert_rowid();";
+            string sql;
+            if (user.UserId == 0)
+            {
+                sql = $@"
+                    INSERT INTO Users (RoleId, FirstName, LastName, Email, PasswordHash, Status, ProfileImagePath, PersonalQR, UpdatedAt)
+                    VALUES (@RoleId, @FirstName, @LastName, @Email, @PasswordHash, @Status, @ProfileImagePath, @PersonalQR, {DateTimeNowFunction});
+                    SELECT {LastInsertIdFunction};";
+            }
+            else
+            {
+                sql = $@"
+                    UPDATE Users 
+                    SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
+                        Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
+                        ProfileImagePath = @ProfileImagePath, PersonalQR = @PersonalQR,
+                        UpdatedAt = {DateTimeNowFunction}
+                    WHERE UserId = @UserId;
+                    SELECT @UserId;";
+            }
 
             return await connection.ExecuteScalarAsync<int>(sql, user);
         }
@@ -450,12 +529,12 @@ namespace Firetrack.Services
         public async Task<int> UpdateUserAsync(UserModel user)
         {
             using var connection = CreateConnection();
-            string sql = @"
+            string sql = $@"
                 UPDATE Users 
                 SET RoleId = @RoleId, FirstName = @FirstName, LastName = @LastName, 
                     Email = @Email, PasswordHash = @PasswordHash, Status = @Status,
                     ProfileImagePath = @ProfileImagePath, PersonalQR = @PersonalQR,
-                    UpdatedAt = CURRENT_TIMESTAMP
+                    UpdatedAt = {DateTimeNowFunction}
                 WHERE UserId = @UserId";
             return await connection.ExecuteAsync(sql, user);
         }
@@ -469,22 +548,24 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
+        // ============================================================
+        // NOTIFICATION METHODS
+        // ============================================================
         public async Task<int> SaveNotificationAsync(NotificationModel notification)
         {
             using var connection = CreateConnection();
             var user = await GetUserByUsernameAsync(notification.Username);
             if (user == null) return 0;
 
-            string sql = @"INSERT INTO Notifications (UserId, Title, Message, IsRead, CreatedAt)
-                            VALUES (@UserId, @Title, @Message, @IsRead, @Timestamp);
-                            SELECT last_insert_rowid();";
+            string sql = $@"INSERT INTO Notifications (UserId, Title, Message, IsRead, CreatedAt)
+                            VALUES (@UserId, @Title, @Message, @IsRead, {DateTimeNowFunction});
+                            SELECT {LastInsertIdFunction};";
             return await connection.ExecuteScalarAsync<int>(sql, new
             {
                 UserId = user.UserId,
                 notification.Title,
                 notification.Message,
-                notification.IsRead,
-                Timestamp = DateTime.Now
+                notification.IsRead
             });
         }
 
@@ -540,6 +621,9 @@ namespace Firetrack.Services
             });
         }
 
+        // ============================================================
+        // EQUIPMENT METHODS
+        // ============================================================
         public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
             using var connection = CreateConnection();
@@ -565,17 +649,27 @@ namespace Firetrack.Services
         public async Task<int> SaveEquipmentAsync(EquipmentModel equipment)
         {
             using var connection = CreateConnection();
-            string sql = @"
-                INSERT OR REPLACE INTO Equipment (
-                    EquipmentId, PropertyNumber, ItemName, Category, Description,
-                    SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus,
-                    UpdatedAt
-                ) VALUES (
-                    @EquipmentId, @PropertyNumber, @ItemName, @Category, @Description,
-                    @SerialNumber, @AcquisitionDate, @AcquisitionCost, @ConditionStatus,
-                    CURRENT_TIMESTAMP
-                );
-                SELECT last_insert_rowid();";
+
+            string sql;
+            if (equipment.EquipmentId == 0)
+            {
+                sql = $@"
+                    INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus, UpdatedAt)
+                    VALUES (@PropertyNumber, @ItemName, @Category, @Description, @SerialNumber, @AcquisitionDate, @AcquisitionCost, @ConditionStatus, {DateTimeNowFunction});
+                    SELECT {LastInsertIdFunction};";
+            }
+            else
+            {
+                sql = $@"
+                    UPDATE Equipment 
+                    SET PropertyNumber = @PropertyNumber, ItemName = @ItemName, Category = @Category, 
+                        Description = @Description, SerialNumber = @SerialNumber, 
+                        AcquisitionDate = @AcquisitionDate, AcquisitionCost = @AcquisitionCost, 
+                        ConditionStatus = @ConditionStatus, UpdatedAt = {DateTimeNowFunction}
+                    WHERE EquipmentId = @EquipmentId;
+                    SELECT @EquipmentId;";
+            }
+
             return await connection.ExecuteScalarAsync<int>(sql, equipment);
         }
 
@@ -598,8 +692,9 @@ namespace Firetrack.Services
             return await GetEquipmentByQRAsync(propertyNumber);
         }
 
-        // ✅ FIX: Removed the JOIN with the empty Requests table.
-        // Since Personnel updates the Equipment table directly, we just query that.
+        // ============================================================
+        // REQUEST METHODS
+        // ============================================================
         public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
         {
             using var connection = CreateConnection();
@@ -680,6 +775,9 @@ namespace Firetrack.Services
             return 1;
         }
 
+        // ============================================================
+        // TRANSACTION METHODS
+        // ============================================================
         public async Task<int> SaveTransactionAsync(TransactionModel transaction)
         {
             using var connection = CreateConnection();
@@ -724,8 +822,9 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ✅ FIX: Default status is "Pending Review", and we join with Users to get the requester's email.
-        // We also alias the columns so Dapper maps them to the EquipmentModel properties.
+        // ============================================================
+        // DISPOSAL METHODS
+        // ============================================================
         public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = "Pending Review")
         {
             using var connection = CreateConnection();
@@ -811,13 +910,16 @@ namespace Firetrack.Services
             return true;
         }
 
+        // ============================================================
+        // HANDSHAKE METHODS
+        // ============================================================
         public async Task<int> CreateHandshakeAsync(int equipmentId, int fromUserId, int toUserId, string notes = "")
         {
             using var connection = CreateConnection();
-            string sql = @"
+            string sql = $@"
                 INSERT INTO Handshakes (EquipmentId, FromUserId, ToUserId, TransferDate, Status, Notes)
-                VALUES (@EquipmentId, @FromUserId, @ToUserId, CURRENT_TIMESTAMP, 'Pending', @Notes);
-                SELECT last_insert_rowid();";
+                VALUES (@EquipmentId, @FromUserId, @ToUserId, {DateTimeNowFunction}, 'Pending', @Notes);
+                SELECT {LastInsertIdFunction};";
             return await connection.ExecuteScalarAsync<int>(sql, new
             {
                 EquipmentId = equipmentId,
@@ -845,12 +947,15 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
+        // ============================================================
+        // DAMAGE REPORTS
+        // ============================================================
         public async Task<int> SaveDamageReportAsync(DamageReportModel report)
         {
             using var connection = CreateConnection();
-            string sql = @"INSERT INTO DamageReports (EquipmentId, ReportedBy, IncidentDate, DamageDescription, ReportStatus, CreatedAt)
-                           VALUES (@EquipmentId, @ReportedBy, @IncidentDate, @DamageDescription, @ReportStatus, @CreatedAt);
-                           SELECT last_insert_rowid();";
+            string sql = $@"INSERT INTO DamageReports (EquipmentId, ReportedBy, IncidentDate, DamageDescription, ReportStatus, CreatedAt)
+                           VALUES (@EquipmentId, @ReportedBy, @IncidentDate, @DamageDescription, @ReportStatus, {DateTimeNowFunction});
+                           SELECT {LastInsertIdFunction};";
             return await connection.ExecuteScalarAsync<int>(sql, report);
         }
 
@@ -879,12 +984,15 @@ namespace Firetrack.Services
                 new { Status = status, ReportId = reportId });
         }
 
+        // ============================================================
+        // ICS DOCUMENTS
+        // ============================================================
         public async Task<int> SaveIcsDocumentAsync(IcsDocumentModel ics)
         {
             using var connection = CreateConnection();
-            string sql = @"INSERT INTO IcsDocuments (EquipmentId, IssuedTo, IcsNumber, DateIssued, DocumentPath, CreatedAt)
-                           VALUES (@EquipmentId, @IssuedTo, @IcsNumber, @DateIssued, @DocumentPath, @CreatedAt);
-                           SELECT last_insert_rowid();";
+            string sql = $@"INSERT INTO IcsDocuments (EquipmentId, IssuedTo, IcsNumber, DateIssued, DocumentPath, CreatedAt)
+                           VALUES (@EquipmentId, @IssuedTo, @IcsNumber, @DateIssued, @DocumentPath, {DateTimeNowFunction});
+                           SELECT {LastInsertIdFunction};";
             return await connection.ExecuteScalarAsync<int>(sql, ics);
         }
 
@@ -912,11 +1020,6 @@ namespace Firetrack.Services
                 "SELECT * FROM IcsDocuments WHERE IssuedTo = @UserId ORDER BY CreatedAt DESC",
                 new { UserId = userId });
             return result.ToList();
-        }
-
-        private IDbConnection CreateConnection()
-        {
-            return new SqliteConnection(_connectionString);
         }
     }
 }

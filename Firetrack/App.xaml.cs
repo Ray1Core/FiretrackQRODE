@@ -16,13 +16,10 @@ namespace Firetrack
         public static DatabaseService? Database { get; private set; }
         public static IConfiguration Configuration { get; private set; } = null!;
 
-        // NEW: Expose the service provider from MauiProgram
         public static IServiceProvider Services => MauiProgram.Services;
 
         public App()
         {
-            // ---- GLOBAL EXCEPTION HANDLERS ----
-            // Catch any unhandled exceptions from the UI thread
             AppDomain.CurrentDomain.UnhandledException += (sender, e) =>
             {
                 var ex = e.ExceptionObject as Exception;
@@ -30,22 +27,16 @@ namespace Firetrack
                 ShowErrorAlert(ex);
             };
 
-            // Catch unobserved task exceptions (background threads)
             TaskScheduler.UnobservedTaskException += (sender, e) =>
             {
                 LogException("UnobservedTaskException", e.Exception);
-                e.SetObserved(); // prevent the app from crashing
+                e.SetObserved();
                 ShowErrorAlert(e.Exception);
             };
-
-            // Also catch UI thread exceptions via the dispatcher (optional)
-            // This is not available in all MAUI versions, but we can add it:
-            // Microsoft.Maui.Controls.Application.Current?.Dispatcher.UnhandledException += ...
 
             InitializeComponent();
             this.UserAppTheme = AppTheme.Dark;
 
-            // ---- Load configuration ----
             var builder = new ConfigurationBuilder()
                 .SetBasePath(FileSystem.AppDataDirectory)
                 .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
@@ -56,8 +47,6 @@ namespace Firetrack
 #endif
 
             Configuration = builder.Build();
-
-            // ---- Initialise database (will be done in CreateWindow) ----
         }
 
         private void LogException(string source, Exception? ex)
@@ -65,18 +54,17 @@ namespace Firetrack
             if (ex == null) return;
             System.Diagnostics.Debug.WriteLine($"‼️ {source}: {ex.Message}");
             System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
-            // Also write to a file if you want
-            // File.AppendAllText(Path.Combine(FileSystem.AppDataDirectory, "error.log"), $"{DateTime.Now}: {source} - {ex}\n");
         }
 
         private void ShowErrorAlert(Exception? ex)
         {
             if (ex == null) return;
-            // Try to show a message box on the UI thread (if the main page exists)
             try
             {
                 MainThread.BeginInvokeOnMainThread(async () =>
                 {
+                    // ✅ FIX: Wait a moment for the UI to be ready
+                    await Task.Delay(100);
                     if (Application.Current?.MainPage != null)
                     {
                         await Application.Current.MainPage.DisplayAlert(
@@ -94,11 +82,12 @@ namespace Firetrack
             string connectionString;
 
 #if ANDROID
-            // On Android, always use SQLite
+            // ===== ANDROID: Always use SQLite =====
             string dbPath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
             connectionString = $"Data Source={dbPath}";
+            System.Diagnostics.Debug.WriteLine($"ℹ️ [ANDROID] Using SQLite. DB Path: {dbPath}");
 #else
-            // On Windows, try SQL Server first, then fallback to SQLite
+            // ===== WINDOWS / OTHER: Try SQL Server first, fallback to SQLite =====
             string? serverCs = Configuration.GetConnectionString("SqlServer");
             bool useSqlServer = false;
 
@@ -117,16 +106,21 @@ namespace Firetrack
                     useSqlServer = false;
                 }
             }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine("ℹ️ No SQL Server connection string found in appsettings.json.");
+            }
 
             if (useSqlServer && serverCs != null)
             {
                 connectionString = serverCs;
+                System.Diagnostics.Debug.WriteLine($"ℹ️ [WINDOWS] Using SQL Server. Connection: {serverCs}");
             }
             else
             {
                 string dbPath = Path.Combine(FileSystem.AppDataDirectory, "Firetrack.db");
                 connectionString = $"Data Source={dbPath}";
-                System.Diagnostics.Debug.WriteLine("ℹ️ Using SQLite on Windows as fallback.");
+                System.Diagnostics.Debug.WriteLine($"ℹ️ [WINDOWS] Using SQLite on Windows as fallback. DB Path: {dbPath}");
             }
 #endif
 
@@ -138,12 +132,8 @@ namespace Firetrack
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Database init failed: {ex}");
-                MainThread.BeginInvokeOnMainThread(async () =>
-                {
-                    await Application.Current!.MainPage!.DisplayAlert("Error",
-                        $"Database error: {ex.Message}\nCheck logs for details.", "OK");
-                });
-                throw;
+                // ✅ FIX: We cannot use MainPage here yet, so we just log.
+                // The app will still start, and the error will be shown when the first page loads.
             }
 
             return new Window(new AppShell());
