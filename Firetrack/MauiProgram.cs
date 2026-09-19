@@ -31,36 +31,49 @@ public static class MauiProgram
         // ------------------------------------------------------------
         // Embedding the config file makes it available on ALL platforms
         // (Windows + Android) synchronously via Assembly reflection.
-        // This replaces the old AddJsonFile + SetBasePath approach which
-        // triggered warning XA0101 on Android and left the file missing
-        // from the APK.
         //
-        // Expected resource name: <AssemblyName>.appsettings.json
-        // Since the file lives at the project root, this resolves to
-        // "Firetrack.appsettings.json".
+        // IMPORTANT: AddJsonStream() reads the stream LAZILY — it does
+        // NOT consume it at call time. The stream must remain readable
+        // until configBuilder.Build() is called. We therefore:
+        //   1) Copy the embedded resource into a MemoryStream
+        //   2) Pass the MemoryStream to AddJsonStream()
+        //   3) Call Build() while the MemoryStream is still alive
+        //   4) Dispose the MemoryStream afterwards
         // ============================================================
         var assembly = typeof(MauiProgram).Assembly;
         string resourceName = $"{assembly.GetName().Name}.appsettings.json";
 
         var configBuilder = new ConfigurationBuilder();
+        MemoryStream? configStream = null;
 
-        using (var stream = assembly.GetManifestResourceStream(resourceName))
+        var resourceStream = assembly.GetManifestResourceStream(resourceName);
+        if (resourceStream != null)
         {
-            if (stream != null)
-            {
-                configBuilder.AddJsonStream(stream);
-                System.Diagnostics.Debug.WriteLine($"✅ Loaded embedded config: {resourceName}");
-            }
-            else
-            {
-                System.Diagnostics.Debug.WriteLine($"⚠️ Embedded resource '{resourceName}' not found. Falling back to defaults.");
-                System.Diagnostics.Debug.WriteLine("   Available embedded resources:");
-                foreach (var name in assembly.GetManifestResourceNames())
-                    System.Diagnostics.Debug.WriteLine($"     {name}");
-            }
+            // Copy embedded resource into a MemoryStream so it stays readable
+            configStream = new MemoryStream();
+            resourceStream.CopyTo(configStream);
+            resourceStream.Dispose();
+
+            // Rewind so AddJsonStream can read from the beginning
+            configStream.Position = 0;
+            configBuilder.AddJsonStream(configStream);
+
+            System.Diagnostics.Debug.WriteLine($"✅ Loaded embedded config: {resourceName}");
+        }
+        else
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"⚠️ Embedded resource '{resourceName}' not found. Falling back to defaults.");
+            System.Diagnostics.Debug.WriteLine("   Available embedded resources:");
+            foreach (var name in assembly.GetManifestResourceNames())
+                System.Diagnostics.Debug.WriteLine($"     {name}");
         }
 
+        // Build() reads the stream now — it must still be alive at this point
         Configuration = configBuilder.Build();
+
+        // Safe to release now; the configuration has been fully materialized
+        configStream?.Dispose();
 
         // ============================================================
         // BUILD MauiApp
@@ -91,12 +104,6 @@ public static class MauiProgram
 
         // ============================================================
         // PDF FONT RESOLVER — must run after MauiApp is built
-        // ------------------------------------------------------------
-        // AppFontResolver loads OpenSans-Regular.ttf / OpenSans-Semibold.ttf
-        // from the assembly as EmbeddedResource (see Firetrack.csproj).
-        // This works on Android because MauiFont files are NOT accessible
-        // via FileSystem.OpenAppPackageFileAsync — they are compiled into
-        // native font resources, which is why we use embedded resources.
         // ============================================================
         GlobalFontSettings.FontResolver = new AppFontResolver();
 

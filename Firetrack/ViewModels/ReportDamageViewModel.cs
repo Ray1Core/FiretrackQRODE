@@ -1,11 +1,12 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
-using Firetrack.Helpers;                // <-- Added
+using Firetrack.Helpers;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
-using System.IO;
-using System.Threading.Tasks;
 
 namespace Firetrack.ViewModels
 {
@@ -127,11 +128,13 @@ namespace Firetrack.ViewModels
 
             try
             {
+                // ---- 1. Update equipment ----
                 Equipment.Status = "Damaged";
                 Equipment.PhotoPath = PhotoPath;
                 Equipment.Remarks = Remarks;
                 Equipment.LastUpdated = DateTime.Now;
 
+                // ---- 2. Log the damage report as a transaction ----
                 var transaction = new TransactionModel
                 {
                     EquipmentQR = Equipment.QRCode,
@@ -145,7 +148,7 @@ namespace Firetrack.ViewModels
                 await _db.SaveEquipmentAsync(Equipment);
                 await _db.SaveTransactionAsync(transaction);
 
-                // ✅ Log the action
+                // ---- 3. Audit log ----
                 if (App.CurrentUser != null)
                 {
                     await _db.LogActionAsync(
@@ -154,16 +157,50 @@ namespace Firetrack.ViewModels
                         $"Reported damage on '{Equipment.Name}' ({Equipment.QRCode})");
                 }
 
+                // ---- 4. Notify Admin ----
                 await _db.SendNotificationAsync(
                     "admin@firetrack.gov",
                     "⚠️ Damage Report",
                     $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'.");
 
-                await Shell.Current.DisplayAlert("Success", "Damage report submitted successfully!", "OK");
+                // ============================================================
+                // ✅ NEW: Auto-create the disposal request so Admin sees it
+                // immediately in the Disposal Requests queue.
+                //
+                // This merges what were previously two separate steps
+                // (Report Damage + Request Disposal) into a single user
+                // action — which matches the natural BFP workflow where a
+                // damaged item automatically enters the disposal pipeline.
+                //
+                // The Admin still has to approve/reject before the item is
+                // actually disposed, so the approval gate is preserved.
+                // ============================================================
+                bool disposalRequested = false;
+                if (App.CurrentUser != null)
+                {
+                    disposalRequested = await _db.RequestDisposalAsync(
+                        Equipment.QRCode,
+                        App.CurrentUser.Username,
+                        string.IsNullOrWhiteSpace(Remarks)
+                            ? "Damaged equipment reported by personnel"
+                            : Remarks);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"🗑️ Auto-created disposal request: {disposalRequested}");
+                }
+
+                // ---- 5. Confirmation ----
+                string message = disposalRequested
+                    ? "Damage report submitted successfully.\n\nThe Admin has been notified and a disposal request is now pending approval."
+                    : "Damage report submitted successfully.\n\nThe Admin has been notified.";
+
+                await Shell.Current.DisplayAlert("Success", message, "OK");
+
                 await Shell.Current.GoToAsync(Routes.GetDashboardRoute());
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ Damage report failed: {ex}");
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
             finally
