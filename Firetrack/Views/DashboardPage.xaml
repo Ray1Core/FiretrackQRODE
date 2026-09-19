@@ -33,7 +33,8 @@
                             BackgroundColor="{StaticResource Surface}"
                             HorizontalOptions="Center"
                             VerticalOptions="Center">
-                        <Image Source="profile.jpg"
+                        <!-- ✅ FIX: Changed profile.jpg to profiledefaultpicture.png -->
+                        <Image Source="profiledefaultpicture.png"
                                Aspect="AspectFill"
                                WidthRequest="60"
                                HeightRequest="60"
@@ -68,8 +69,6 @@
                              Command="{Binding GoToNotificationsCommand}"
                              HorizontalOptions="Center"
                              VerticalOptions="Center" />
-
-                <!-- ❌ Logout removed from here – now in Shell.TitleView -->
             </Grid>
 
             <!-- ========== METRICS CARDS (Admin only) ========== -->
@@ -169,7 +168,7 @@
                                         </Label.GestureRecognizers>
                                     </Label>
                                     <Button Grid.Column="2"
-                                            Text="↩️ Return"
+                                            Text="â†©ï¸ Return"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReturnEquipmentCommand}"
                                             CommandParameter="{Binding .}"
                                             BackgroundColor="{StaticResource WarningColor}"
@@ -225,7 +224,7 @@
                            FontSize="12"
                            TextColor="{StaticResource Gray300}"
                            HorizontalOptions="Center" />
-                    <Button Text="📂 Download QR"
+                    <Button Text="ðŸ“‚ Download QR"
                             Style="{StaticResource PrimaryButton}"
                             Command="{Binding DownloadPersonnelQRCommand}"
                             HeightRequest="40"

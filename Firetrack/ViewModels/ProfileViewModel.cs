@@ -50,9 +50,10 @@ namespace Firetrack.ViewModels
         // ===== LOAD PROFILE IMAGE =====
         private void LoadProfileImage()
         {
+            // ✅ FIX: Changed "defaultprofile.png" to "profiledefaultpicture.png"
             if (_currentUser == null)
             {
-                ProfileImageSource = ImageSource.FromFile("defaultprofile.png");
+                ProfileImageSource = ImageSource.FromFile("profiledefaultpicture.png");
                 return;
             }
 
@@ -74,7 +75,8 @@ namespace Firetrack.ViewModels
             }
 
             // Default image (must exist in Resources/Images)
-            ProfileImageSource = ImageSource.FromFile("defaultprofile.png");
+            // ✅ FIX: Changed "defaultprofile.png" to "profiledefaultpicture.png"
+            ProfileImageSource = ImageSource.FromFile("profiledefaultpicture.png");
         }
 
         // ===== CHANGE PROFILE PICTURE =====
@@ -131,7 +133,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ===== CHANGE PASSWORD (unchanged) =====
+        // ===== CHANGE PASSWORD =====
         private async void OnChangePassword()
         {
             if (_currentUser == null)
@@ -181,7 +183,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // ===== LOGOUT (unchanged) =====
+        // ===== LOGOUT =====
         private async void OnLogout()
         {
             if (_currentUser != null)

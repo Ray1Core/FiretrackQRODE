@@ -45,9 +45,6 @@ namespace Firetrack.Services
             SeedData(connection);
         }
 
-        // ============================================================
-        // MIGRATION: Remove CHECK constraint on Equipment
-        // ============================================================
         private void MigrateEquipmentTableIfNeeded(IDbConnection connection)
         {
             var createSql = connection.QueryFirstOrDefault<string>(
@@ -92,12 +89,8 @@ namespace Firetrack.Services
             }
         }
 
-        // ============================================================
-        // CREATE TABLES (ALL 12 TABLES – MATCHES YOUR ERD)
-        // ============================================================
         private void CreateTables(IDbConnection connection)
         {
-            // ---- AuditLogs ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS AuditLogs (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -107,7 +100,6 @@ namespace Firetrack.Services
                     Timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- PasswordResetOtps ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS PasswordResetOtps (
                     Id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -117,7 +109,6 @@ namespace Firetrack.Services
                     IsUsed INTEGER NOT NULL DEFAULT 0
                 )");
 
-            // ---- Roles ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Roles (
                     RoleId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -126,7 +117,6 @@ namespace Firetrack.Services
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- Users (with PersonalQR) ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Users (
                     UserId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -137,13 +127,12 @@ namespace Firetrack.Services
                     PasswordHash TEXT NOT NULL,
                     Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
                     ProfileImagePath TEXT NULL,
-                    PersonalQR TEXT NULL,                           -- ← NEW COLUMN
+                    PersonalQR TEXT NULL,
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
-            // ---- Equipment ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Equipment (
                     EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -159,7 +148,6 @@ namespace Firetrack.Services
                     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
 
-            // ---- Requests ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Requests (
                     RequestId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -173,7 +161,6 @@ namespace Firetrack.Services
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId)
                 )");
 
-            // ---- Assignments ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Assignments (
                     AssignmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -188,7 +175,6 @@ namespace Firetrack.Services
                     FOREIGN KEY (UserId) REFERENCES Users(UserId)
                 )");
 
-            // ---- Handshakes ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Handshakes (
                     HandshakeId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -203,7 +189,6 @@ namespace Firetrack.Services
                     FOREIGN KEY (ToUserId) REFERENCES Users(UserId)
                 )");
 
-            // ---- DamageReports ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS DamageReports (
                     ReportId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -217,7 +202,6 @@ namespace Firetrack.Services
                     FOREIGN KEY (ReportedBy) REFERENCES Users(UserId)
                 )");
 
-            // ---- DisposalRequests ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS DisposalRequests (
                     DisposalId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -230,7 +214,6 @@ namespace Firetrack.Services
                     FOREIGN KEY (RequestedBy) REFERENCES Users(UserId)
                 )");
 
-            // ---- Notifications ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Notifications (
                     NotificationId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -242,7 +225,6 @@ namespace Firetrack.Services
                     FOREIGN KEY (UserId) REFERENCES Users(UserId)
                 )");
 
-            // ---- IcsDocuments ----
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS IcsDocuments (
                     IcsId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -257,12 +239,8 @@ namespace Firetrack.Services
                 )");
         }
 
-        // ============================================================
-        // SEED DATA (with PersonalQR)
-        // ============================================================
         private void SeedData(IDbConnection connection)
         {
-            // ---- Roles ----
             int roleCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Roles");
             if (roleCount == 0)
             {
@@ -272,7 +250,6 @@ namespace Firetrack.Services
                     ('Personnel', 'Firefighter / regular user')");
             }
 
-            // ---- Users (with PersonalQR) ----
             int userCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Users");
             if (userCount == 0)
             {
@@ -286,7 +263,6 @@ namespace Firetrack.Services
                     new { AdminRole = adminRoleId, PersonnelRole = personnelRoleId });
             }
 
-            // ---- Equipment ----
             int eqCount = connection.ExecuteScalar<int>("SELECT COUNT(*) FROM Equipment");
             if (eqCount == 0)
             {
@@ -304,7 +280,6 @@ namespace Firetrack.Services
                     ('TOOL005', 'Search & Rescue Rope', 'Rescue Tool', 'Rope for search and rescue', NULL, '2023-06-01', 50.00, 'Available')");
             }
 
-            // ---- Assignments (sample) ----
             var adminUser = connection.QueryFirstOrDefault<UserModel>("SELECT * FROM Users WHERE Email = 'admin@firetrack.gov'");
             var johnUser = connection.QueryFirstOrDefault<UserModel>("SELECT * FROM Users WHERE Email = 'john@firetrack.gov'");
             var hose1 = connection.QueryFirstOrDefault<EquipmentModel>("SELECT * FROM Equipment WHERE PropertyNumber = 'HOSE001'");
@@ -333,9 +308,6 @@ namespace Firetrack.Services
             }
         }
 
-        // ============================================================
-        // AUDIT LOG METHODS
-        // ============================================================
         public async Task LogActionAsync(string username, string action, string? details = null)
         {
             using var connection = CreateConnection();
@@ -358,9 +330,6 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ============================================================
-        // OTP METHODS
-        // ============================================================
         public async Task<string> GenerateOtpAsync(string username)
         {
             using var connection = CreateConnection();
@@ -398,9 +367,6 @@ namespace Firetrack.Services
                 new { Username = username, OtpCode = otpCode });
         }
 
-        // ============================================================
-        // USER METHODS (with PersonalQR handling)
-        // ============================================================
         public async Task<UserModel?> GetUserByUsernameAsync(string username)
         {
             using var connection = CreateConnection();
@@ -442,19 +408,16 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
 
-            // ---- Assign RoleId if only RoleName is provided ----
             if (user.RoleId == 0 && !string.IsNullOrEmpty(user.Role))
             {
                 var roleId = await connection.ExecuteScalarAsync<int>(
                     "SELECT RoleId FROM Roles WHERE RoleName = @RoleName",
                     new { RoleName = user.Role });
-                user.RoleId = roleId > 0 ? roleId : 2; // default to Personnel
+                user.RoleId = roleId > 0 ? roleId : 2;
             }
 
-            // ---- Generate PersonalQR for new users if not set ----
             if (user.UserId == 0 && string.IsNullOrEmpty(user.PersonalQR))
             {
-                // Generate a unique QR code based on role and a random suffix
                 var role = user.Role ?? "PERSON";
                 var suffix = Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
                 user.PersonalQR = $"{role.ToUpper()}-{suffix}";
@@ -506,9 +469,6 @@ namespace Firetrack.Services
             return rows > 0;
         }
 
-        // ============================================================
-        // NOTIFICATION METHODS
-        // ============================================================
         public async Task<int> SaveNotificationAsync(NotificationModel notification)
         {
             using var connection = CreateConnection();
@@ -580,9 +540,6 @@ namespace Firetrack.Services
             });
         }
 
-        // ============================================================
-        // EQUIPMENT METHODS
-        // ============================================================
         public async Task<List<EquipmentModel>> GetEquipmentsAsync()
         {
             using var connection = CreateConnection();
@@ -641,17 +598,15 @@ namespace Firetrack.Services
             return await GetEquipmentByQRAsync(propertyNumber);
         }
 
-        // ============================================================
-        // REQUEST METHODS
-        // ============================================================
+        // ✅ FIX: Removed the JOIN with the empty Requests table.
+        // Since Personnel updates the Equipment table directly, we just query that.
         public async Task<List<EquipmentModel>> GetPendingRequestsAsync()
         {
             using var connection = CreateConnection();
             var sql = @"
-                SELECT e.* 
-                FROM Equipment e
-                JOIN Requests r ON e.EquipmentId = r.EquipmentId
-                WHERE r.RequestStatus = 'Pending'";
+                SELECT * 
+                FROM Equipment 
+                WHERE RequestStatus = 'Pending'";
             var result = await connection.QueryAsync<EquipmentModel>(sql);
             return result.ToList();
         }
@@ -663,7 +618,7 @@ namespace Firetrack.Services
             if (equipment == null) return 0;
 
             return await connection.ExecuteAsync(
-                @"UPDATE Requests SET RequestStatus = @Status 
+                @"UPDATE Equipment SET RequestStatus = @Status 
                   WHERE EquipmentId = @EquipmentId AND RequestStatus = 'Pending'",
                 new { Status = status, EquipmentId = equipment.EquipmentId });
         }
@@ -679,7 +634,7 @@ namespace Firetrack.Services
             using var connection = CreateConnection();
 
             await connection.ExecuteAsync(
-                @"UPDATE Requests SET RequestStatus = 'Approved' 
+                @"UPDATE Equipment SET RequestStatus = 'Approved' 
                   WHERE EquipmentId = @EquipmentId",
                 new { EquipmentId = equipment.EquipmentId });
 
@@ -707,7 +662,7 @@ namespace Firetrack.Services
             using var connection = CreateConnection();
 
             await connection.ExecuteAsync(
-                @"UPDATE Requests SET RequestStatus = 'Rejected' 
+                @"UPDATE Equipment SET RequestStatus = 'Rejected' 
                   WHERE EquipmentId = @EquipmentId",
                 new { EquipmentId = equipment.EquipmentId });
 
@@ -725,9 +680,6 @@ namespace Firetrack.Services
             return 1;
         }
 
-        // ============================================================
-        // TRANSACTION METHODS
-        // ============================================================
         public async Task<int> SaveTransactionAsync(TransactionModel transaction)
         {
             using var connection = CreateConnection();
@@ -772,19 +724,24 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ============================================================
-        // DISPOSAL METHODS
-        // ============================================================
-        public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = null)
+        // ✅ FIX: Default status is "Pending Review", and we join with Users to get the requester's email.
+        // We also alias the columns so Dapper maps them to the EquipmentModel properties.
+        public async Task<List<EquipmentModel>> GetDisposalRequestsAsync(string? status = "Pending Review")
         {
             using var connection = CreateConnection();
             var sql = @"
-                SELECT e.*, dr.* 
+                SELECT 
+                    e.*,
+                    dr.Reason AS DisposalReason,
+                    dr.DisposalStatus AS DisposalStatus,
+                    u.Email AS DisposalRequestedBy,
+                    dr.CreatedAt AS DisposalRequestDate
                 FROM Equipment e
                 JOIN DisposalRequests dr ON e.EquipmentId = dr.EquipmentId
-                WHERE dr.DisposalStatus = @Status OR @Status IS NULL
+                JOIN Users u ON dr.RequestedBy = u.UserId
+                WHERE dr.DisposalStatus = @Status
                 ORDER BY dr.CreatedAt DESC";
-            var result = await connection.QueryAsync<EquipmentModel>(sql, new { Status = status ?? "Pending Review" });
+            var result = await connection.QueryAsync<EquipmentModel>(sql, new { Status = status });
             return result.ToList();
         }
 
@@ -854,9 +811,6 @@ namespace Firetrack.Services
             return true;
         }
 
-        // ============================================================
-        // HAND SHAKE METHODS
-        // ============================================================
         public async Task<int> CreateHandshakeAsync(int equipmentId, int fromUserId, int toUserId, string notes = "")
         {
             using var connection = CreateConnection();
@@ -891,9 +845,6 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ============================================================
-        // DAMAGE REPORTS
-        // ============================================================
         public async Task<int> SaveDamageReportAsync(DamageReportModel report)
         {
             using var connection = CreateConnection();
@@ -928,9 +879,6 @@ namespace Firetrack.Services
                 new { Status = status, ReportId = reportId });
         }
 
-        // ============================================================
-        // ICS DOCUMENTS
-        // ============================================================
         public async Task<int> SaveIcsDocumentAsync(IcsDocumentModel ics)
         {
             using var connection = CreateConnection();
@@ -966,9 +914,6 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ============================================================
-        // HELPER – returns a SQLite connection always
-        // ============================================================
         private IDbConnection CreateConnection()
         {
             return new SqliteConnection(_connectionString);

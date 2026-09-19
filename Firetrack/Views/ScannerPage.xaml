@@ -8,18 +8,32 @@
              BackgroundColor="{StaticResource Background}">
 
     <Grid>
-        <!-- Camera preview – removed IsScanning binding -->
+        <!-- ✅ FIX: Camera is hidden initially. It will be shown only after permission is granted. -->
         <zxing:CameraBarcodeReaderView x:Name="cameraBarcodeReaderView"
                                        BarcodesDetected="OnBarcodesDetected"
                                        IsTorchOn="False"
+                                       IsVisible="{Binding IsCameraReady}"
                                        CameraLocation="Rear" />
+
+        <!-- ✅ FIX: Placeholder is bound to the ViewModel. No x:Name needed. -->
+        <VerticalStackLayout IsVisible="{Binding IsPlaceholderVisible}"
+                             VerticalOptions="Center"
+                             HorizontalOptions="Center"
+                             Spacing="10">
+            <ActivityIndicator IsRunning="True" Color="{StaticResource PrimaryColor}" />
+            <Label Text="Initializing camera..."
+                   TextColor="White"
+                   FontSize="16"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
 
         <!-- Overlay UI -->
         <VerticalStackLayout VerticalOptions="End"
                              HorizontalOptions="Fill"
                              Padding="20"
                              Spacing="10"
-                             BackgroundColor="#80000000">
+                             BackgroundColor="#80000000"
+                             IsVisible="{Binding IsScanning}">
             <Label Text="Point camera at QR code"
                    TextColor="White"
                    FontSize="18"

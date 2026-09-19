@@ -62,10 +62,12 @@ namespace Firetrack.ViewModels
             IsBusy = true;
             try
             {
-                var requests = await _db.GetDisposalRequestsAsync("Pending");
+                // ✅ FIX: Changed "Pending" to "Pending Review" to match the database insertion string.
+                var requests = await _db.GetDisposalRequestsAsync("Pending Review");
                 PendingRequests.Clear();
                 foreach (var req in requests)
                     PendingRequests.Add(req);
+
                 StatusMessage = requests.Any() ? $"{requests.Count} pending disposal request(s)." : "No pending disposal requests.";
             }
             catch (Exception ex)
@@ -215,7 +217,6 @@ namespace Firetrack.ViewModels
                 var pdfService = new PdfGenerationService();
                 var pdfBytes = pdfService.GenerateDisposalCertificate(equipment, admin, equipment.DisposalRemarks ?? "");
 
-                // ✅ Null check for PDF bytes
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
                     StatusMessage = "❌ PDF generation returned empty data.";
@@ -228,7 +229,6 @@ namespace Firetrack.ViewModels
                 var filePath = Path.Combine(downloadsPath, fileName);
                 await File.WriteAllBytesAsync(filePath, pdfBytes);
 
-                // Open with fallback
                 try
                 {
                     await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
@@ -243,8 +243,6 @@ namespace Firetrack.ViewModels
                 }
 
                 StatusMessage = $"📄 Disposal certificate generated for '{equipment.Name}'.";
-
-                // ✅ Refresh the pending requests list
                 OnLoadRequests();
             }
             catch (Exception ex)

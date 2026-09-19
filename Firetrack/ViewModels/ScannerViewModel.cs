@@ -20,6 +20,10 @@ namespace Firetrack.ViewModels
         private string _returnToPage = string.Empty;
         private string _scanMode = "equipment";
 
+        // ✅ NEW: Properties to control camera and placeholder visibility safely via MVVM
+        private bool _isCameraReady = false;
+        private bool _isPlaceholderVisible = true;
+
         public bool IsScanning
         {
             get => _isScanning;
@@ -54,6 +58,20 @@ namespace Firetrack.ViewModels
         {
             get => _scanMode;
             set { _scanMode = value; OnPropertyChanged(); }
+        }
+
+        // ✅ NEW: Binds to the CameraBarcodeReaderView IsVisible property
+        public bool IsCameraReady
+        {
+            get => _isCameraReady;
+            set { _isCameraReady = value; OnPropertyChanged(); }
+        }
+
+        // ✅ NEW: Binds to the Placeholder VerticalStackLayout IsVisible property
+        public bool IsPlaceholderVisible
+        {
+            get => _isPlaceholderVisible;
+            set { _isPlaceholderVisible = value; OnPropertyChanged(); }
         }
 
         public ICommand CancelCommand { get; }

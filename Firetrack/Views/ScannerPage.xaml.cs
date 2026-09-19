@@ -31,10 +31,18 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
     {
         base.OnAppearing();
 
+        // 1. Reset the UI state to show the placeholder
+        _viewModel.IsPlaceholderVisible = true;
+        _viewModel.IsCameraReady = false;
+
+        // 2. Request Camera Permission
         var status = await Permissions.RequestAsync<Permissions.Camera>();
+
         if (status != PermissionStatus.Granted)
         {
             await DisplayAlert("Permission Denied", "Camera permission is required to scan QR codes.", "OK");
+
+            // Navigate back safely
             if (!string.IsNullOrEmpty(_viewModel.ReturnToPage))
                 await Shell.Current.GoToAsync($"//{_viewModel.ReturnToPage}");
             else
@@ -42,21 +50,37 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
             return;
         }
 
-        // Reset camera options
+        // 3. Permission Granted - Initialize Camera
+        // ✅ FIX for Realme C100 4G black screen: 
+        // A short delay allows the Android camera HAL to fully release/re-acquire 
+        // when navigating back to this page, preventing a black screen.
+        await Task.Delay(200);
+
+        // 4. Show Camera and Hide Placeholder via ViewModel
+        _viewModel.IsPlaceholderVisible = false;
+        _viewModel.IsCameraReady = true;
+
+        // 5. Configure ZXing Options
         cameraBarcodeReaderView.Options = new BarcodeReaderOptions
         {
             Formats = BarcodeFormats.TwoDimensional
         };
 
-        // Enable scanning (view model flag only)
+        // 6. Resume scanning
         _viewModel.IsScanning = true;
     }
 
     protected override void OnDisappearing()
     {
         base.OnDisappearing();
+
+        // ✅ FIX: Hide the camera view BEFORE disconnecting the handler.
+        // This ensures the native Android view is fully detached before the page is destroyed.
+        _viewModel.IsCameraReady = false;
+        _viewModel.IsPlaceholderVisible = true;
         _viewModel.IsScanning = false;
-        // Release the camera
+
+        // Release the camera hardware
         cameraBarcodeReaderView.Handler?.DisconnectHandler();
     }
 
@@ -66,12 +90,14 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
         if (result == null || string.IsNullOrEmpty(result.Value))
             return;
 
-        // Prevent processing if already scanning or busy
+        // Prevent processing if already busy or not scanning
         if (!_viewModel.IsScanning)
             return;
 
         // Pause further detections
         _viewModel.IsScanning = false;
+
+        // Process the scanned QR
         await _viewModel.ProcessScannedQR(result.Value);
     }
 }
