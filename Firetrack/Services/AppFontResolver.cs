@@ -1,58 +1,67 @@
 ﻿using PdfSharpCore.Fonts;
-using Microsoft.Maui.Storage;
+using System;
 using System.IO;
+using System.Reflection;
 
 namespace Firetrack.Services
 {
     public class AppFontResolver : IFontResolver
     {
-        // ---- Required by IFontResolver ----
+        // Required by IFontResolver
         public string DefaultFontName => "OpenSans-Regular.ttf";
 
         public byte[]? GetFont(string faceName)
         {
-            // Only handle our known fonts
             if (string.IsNullOrEmpty(faceName))
                 return null;
 
-            if (!faceName.Contains("OpenSans") &&
-                faceName != "Arial" &&
-                faceName != "Helvetica" &&
-                faceName != "sans-serif")
-                return null;
+            // Normalize to lower case for comparison
+            string lowerFace = faceName.ToLowerInvariant();
+
+            // Decide which embedded resource to load
+            string resourceName;
+            if (lowerFace.Contains("semibold") || lowerFace.Contains("bold"))
+                resourceName = "Firetrack.Resources.Fonts.OpenSans-Semibold.ttf";
+            else
+                resourceName = "Firetrack.Resources.Fonts.OpenSans-Regular.ttf";
 
             try
             {
-                // Open the font from the app package (it's copied via MauiFont)
-                using var stream = FileSystem.OpenAppPackageFileAsync("OpenSans-Regular.ttf").GetAwaiter().GetResult();
-                if (stream != null)
+                var assembly = Assembly.GetExecutingAssembly();
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+
+                if (stream == null)
                 {
-                    using var ms = new MemoryStream();
-                    stream.CopyTo(ms);
-                    return ms.ToArray();
+                    System.Diagnostics.Debug.WriteLine($"❌ Font resource not found: {resourceName}");
+                    // Fallback: try to list all resources for debugging
+                    foreach (var name in assembly.GetManifestResourceNames())
+                        System.Diagnostics.Debug.WriteLine($"   Available resource: {name}");
+                    return null;
                 }
+
+                using var ms = new MemoryStream();
+                stream.CopyTo(ms);
+                return ms.ToArray();
             }
-            catch
+            catch (Exception ex)
             {
-                // fallback to null
+                System.Diagnostics.Debug.WriteLine($"❌ Error loading font {faceName}: {ex.Message}");
+                return null;
             }
-            return null;
         }
 
         public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic)
         {
-            // Map common font families to our embedded OpenSans
             if (string.IsNullOrEmpty(familyName))
                 return null;
 
-            if (familyName == "OpenSans" ||
-                familyName == "Arial" ||
-                familyName == "Helvetica" ||
-                familyName == "sans-serif")
-            {
-                return new FontResolverInfo("OpenSans-Regular.ttf");
-            }
-            return null;
+            // Map any known family to OpenSans.
+            // We ignore italic for now — PdfSharpCore will simulate it if needed.
+            string faceName = bold
+                ? "OpenSans-Semibold.ttf"
+                : "OpenSans-Regular.ttf";
+
+            return new FontResolverInfo(faceName);
         }
     }
 }

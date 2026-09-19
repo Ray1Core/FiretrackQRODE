@@ -21,6 +21,7 @@ public static class MauiProgram
 
     public static MauiApp CreateMauiApp()
     {
+        // ---- SQLite native provider init ----
         Batteries_V2.Init();
         SQLitePCL.raw.SetProvider(new SQLitePCL.SQLite3Provider_e_sqlite3());
 
@@ -35,7 +36,7 @@ public static class MauiProgram
             });
 
         // ============================================================
-        // FIX: Build IConfiguration here and register it for DI
+        // Build IConfiguration here and register it for DI
         // ============================================================
         var configBuilder = new ConfigurationBuilder()
             .SetBasePath(FileSystem.AppDataDirectory)
@@ -51,7 +52,7 @@ public static class MauiProgram
         // Register the configuration so EmailService receives it via DI
         builder.Services.AddSingleton<IConfiguration>(Configuration);
 
-        // Register Services
+        // ---- Register Services ----
         builder.Services.AddSingleton<PdfGenerationService>();
         builder.Services.AddSingleton<EmailService>();
         builder.Services.AddSingleton<SyncService>();
@@ -62,7 +63,15 @@ public static class MauiProgram
 
         MauiApp = builder.Build();
 
-        // ---- Set custom font resolver for PdfSharpCore ----
+        // ============================================================
+        // PDF FONT RESOLVER — MUST run after MauiApp is built
+        // ------------------------------------------------------------
+        // AppFontResolver loads OpenSans-Regular.ttf / OpenSans-Semibold.ttf
+        // from the assembly as EmbeddedResource (see Firetrack.csproj).
+        // This works on Android because MauiFont files are NOT accessible
+        // via FileSystem.OpenAppPackageFileAsync — they are compiled into
+        // native font resources, which is why we use embedded resources.
+        // ============================================================
         GlobalFontSettings.FontResolver = new AppFontResolver();
 
         return MauiApp;

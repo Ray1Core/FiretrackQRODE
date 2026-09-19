@@ -6,7 +6,7 @@
 		<CheckEolTargetFramework>false</CheckEolTargetFramework>
 		<NoWarn>$(NoWarn);CA1416;NETSDK1202;JAVAC</NoWarn>
 
-		<!-- ===== Java version 11 (removes source/target 8 warnings) ===== -->
+		<!-- Java version 11 (removes source/target 8 warnings) -->
 		<AndroidJavaSourceVersion>11</AndroidJavaSourceVersion>
 		<AndroidJavaTargetVersion>11</AndroidJavaTargetVersion>
 		<AndroidJavaCompileOptions>-- -Xlint:-options</AndroidJavaCompileOptions>
@@ -51,14 +51,29 @@
 		<MauiImage Include="Resources\Images\*" />
 		<MauiImage Update="Resources\Images\dotnet_bot.png" Resize="True" BaseSize="300,185" />
 
-		<!-- Custom Fonts -->
+		<!-- Custom Fonts (used by MAUI XAML / UI) -->
 		<MauiFont Include="Resources\Fonts\*" />
 
 		<!-- Raw Assets -->
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
-	<!-- ===== appsettings.json: copied to output for runtime config ===== -->
+	<!-- PDF FONT EMBEDDING
+	     These fonts are loaded by AppFontResolver via
+	     Assembly.GetManifestResourceStream(). This works on Android
+	     because MauiFont entries are compiled into native font
+	     resources and are NOT accessible through
+	     FileSystem.OpenAppPackageFileAsync.
+
+	     Expected manifest resource names (RootNamespace + folder):
+	       Firetrack.Resources.Fonts.OpenSans-Regular.ttf
+	       Firetrack.Resources.Fonts.OpenSans-Semibold.ttf -->
+	<ItemGroup>
+		<EmbeddedResource Include="Resources\Fonts\OpenSans-Regular.ttf" />
+		<EmbeddedResource Include="Resources\Fonts\OpenSans-Semibold.ttf" />
+	</ItemGroup>
+
+	<!-- appsettings.json: copied to output for runtime config -->
 	<ItemGroup>
 		<Content Include="appsettings.json">
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
