@@ -80,16 +80,79 @@ namespace Firetrack.ViewModels
             LogoutCommand = new Command(OnLogout);
             DownloadPersonnelQRCommand = new Command(OnDownloadPersonnelQR);
 
-            GoToScannerCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.GetScannerRoute()); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToTransferCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.Transfer); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToAddUserCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.UserManagement); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToClearanceCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.Clearance); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToInventoryCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToRequestEquipmentCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToProfileCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.Profile); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToUserManagementCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.UserManagement); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToPendingRequestsCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.PendingRequests); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
-            GoToNotificationsCommand = new Command(async () => { try { await Shell.Current.GoToAsync(Routes.Notifications); } catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); } });
+            // ============================================================
+            // QUICK-ACTION NAVIGATION COMMANDS
+            // ------------------------------------------------------------
+            // These now target the PUSHED route variants so that the
+            // destination pages show a back arrow (returns to Dashboard).
+            // The flyout still uses the absolute routes, which show a
+            // hamburger — both navigation paths work side-by-side.
+            // ============================================================
+
+            GoToScannerCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.GetScannerPushedRoute()); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            GoToTransferCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.TransferPushed); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            GoToAddUserCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.UserManagementPushed); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            GoToClearanceCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.ClearancePushed); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            // Inventory is a ROOT page (category grid) — reached via the
+            // role-aware absolute route. It stays a hamburger root because
+            // it's the primary browsing surface.
+            GoToInventoryCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            // Request Equipment also routes to the category grid
+            GoToRequestEquipmentCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            GoToProfileCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.ProfilePushed); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            GoToUserManagementCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.UserManagementPushed); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            GoToPendingRequestsCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.PendingRequestsPushed); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            // Notifications is already a pushed detail page (registered in AppShell)
+            GoToNotificationsCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.Notifications); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
 
             ReturnEquipmentCommand = new Command<EquipmentModel>(OnReturnEquipment);
             ReportDamageCommand = new Command<EquipmentModel>(OnReportDamage);

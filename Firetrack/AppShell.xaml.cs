@@ -39,9 +39,9 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         {
             InitializeComponent();
 
-            // ===== CRITICAL FIX: Register detail pages as global routes =====
-            // This allows them to be pushed onto the navigation stack (shows back button)
-            // and prevents the "Relative routing to shell elements" crash.
+            // ============================================================
+            // DETAIL PAGES — pushed onto the navigation stack (back button)
+            // ============================================================
             Routing.RegisterRoute(nameof(CategoryItemsPage), typeof(CategoryItemsPage));
             Routing.RegisterRoute(nameof(EquipmentDetailPage), typeof(EquipmentDetailPage));
             Routing.RegisterRoute(nameof(EquipmentRequestDetailPage), typeof(EquipmentRequestDetailPage));
@@ -50,6 +50,26 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             Routing.RegisterRoute(nameof(TransactionHistoryPage), typeof(TransactionHistoryPage));
             Routing.RegisterRoute(nameof(AddEquipmentPage), typeof(AddEquipmentPage));
             Routing.RegisterRoute(nameof(NotificationsPage), typeof(NotificationsPage));
+
+            // ============================================================
+            // PUSHED ROUTES for flyout pages
+            // ------------------------------------------------------------
+            // These use the SAME page types as the <ShellContent> entries
+            // in AppShell.xaml, but under different route names. When a
+            // Dashboard quick action navigates to them, they're pushed onto
+            // the stack and Shell displays a back arrow.
+            //
+            // The flyout still uses the original absolute routes, so both
+            // navigation paths work side-by-side without conflict.
+            // ============================================================
+            Routing.RegisterRoute(Routes.TransferPushed, typeof(TransferPage));
+            Routing.RegisterRoute(Routes.ClearancePushed, typeof(ClearancePage));
+            Routing.RegisterRoute(Routes.UserManagementPushed, typeof(UserManagementPage));
+            Routing.RegisterRoute(Routes.PendingRequestsPushed, typeof(PendingRequestsPage));
+            Routing.RegisterRoute(Routes.DisposalRequestsPushed, typeof(DisposalRequestsPage));
+            Routing.RegisterRoute(Routes.AuditLogPushed, typeof(AuditLogPage));
+            Routing.RegisterRoute(Routes.ProfilePushed, typeof(ProfilePage));
+            Routing.RegisterRoute(Routes.ScannerPushed, typeof(ScannerPage));
 
             // Set BindingContext so FlyoutItem IsVisible bindings work
             BindingContext = this;
@@ -79,7 +99,9 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         await GoToAsync(Routes.Login);
     }
 
-    // ===== ROLE VISIBILITY =====
+    // ============================================================
+    // ROLE VISIBILITY
+    // ============================================================
     public void UpdateUserRoleVisibility()
     {
         var user = App.CurrentUser;
@@ -103,13 +125,16 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         OnPropertyChanged(nameof(IsAdmin));
         OnPropertyChanged(nameof(IsPersonnel));
 
-        System.Diagnostics.Debug.WriteLine($"🔍 UpdateUserRoleVisibility: IsAdmin={IsAdmin}, IsPersonnel={IsPersonnel}, User={user?.Email}");
+        System.Diagnostics.Debug.WriteLine(
+            $"🔍 UpdateUserRoleVisibility: IsAdmin={IsAdmin}, IsPersonnel={IsPersonnel}, User={user?.Email}");
     }
 
-    // ===== ROUTE VALIDATION =====
+    // ============================================================
+    // ROUTE VALIDATION
+    // ============================================================
     private readonly HashSet<string> _validRoutes = new()
     {
-        // Root pages (absolute routes)
+        // ---- Root pages (absolute routes) ----
         "LoginPage", "ForgotPasswordPage",
         "AdminDashboard", "PersonnelDashboard",
         "AdminEquipmentCategory", "PersonnelEquipmentCategory",
@@ -118,7 +143,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "AuditLogPage", "ProfilePage",
         "AdminScanner", "PersonnelScanner",
 
-        // Detail pages (relative routes, pushed onto stack)
+        // ---- Detail pages (relative routes, pushed onto stack) ----
         "CategoryItemsPage",
         "EquipmentDetailPage",
         "EquipmentRequestDetailPage",
@@ -126,7 +151,18 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "IcsPage",
         "TransactionHistoryPage",
         "AddEquipmentPage",
-        "NotificationsPage"
+        "NotificationsPage",
+
+        // ---- Pushed routes for flyout pages (back button when
+        //      launched from Dashboard quick actions) ----
+        "TransferPagePushed",
+        "ClearancePagePushed",
+        "UserManagementPagePushed",
+        "PendingRequestsPagePushed",
+        "DisposalRequestsPagePushed",
+        "AuditLogPagePushed",
+        "ProfilePagePushed",
+        "ScannerPushed"
     };
 
     private bool IsValidRoute(string route)
@@ -154,7 +190,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         if (isAdmin)
             return true;
 
-        // Personnel allowed routes
+        // ---- Personnel allowed routes ----
         var allowedForPersonnel = new HashSet<string>
         {
             "PersonnelDashboard",
@@ -166,7 +202,11 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             "IcsPage",
             "EquipmentRequestDetailPage",
             "PersonnelEquipmentCategory",
-            "CategoryItemsPage"
+            "CategoryItemsPage",
+
+            // Pushed-route variants available to Personnel
+            "ProfilePagePushed",
+            "ScannerPushed"
         };
 
         return allowedForPersonnel.Contains(route);

@@ -6,18 +6,13 @@
 		<CheckEolTargetFramework>false</CheckEolTargetFramework>
 		<NoWarn>$(NoWarn);CA1416;NETSDK1202;JAVAC</NoWarn>
 
-		<!-- ===== ADDED: Java version 11 (removes source/target 8 warnings) ===== -->
+		<!-- ===== Java version 11 (removes source/target 8 warnings) ===== -->
 		<AndroidJavaSourceVersion>11</AndroidJavaSourceVersion>
 		<AndroidJavaTargetVersion>11</AndroidJavaTargetVersion>
-
-		<!-- Optional – can keep or remove -->
 		<AndroidJavaCompileOptions>-- -Xlint:-options</AndroidJavaCompileOptions>
 
 		<!-- Uncomment to also build the tizen app... -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
-
-		<!-- Note for MacCatalyst... -->
-		<!-- ... -->
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>Firetrack</RootNamespace>
@@ -49,7 +44,7 @@
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
 
-		<!-- Splash Screen – only for Android (Windows doesn't support SVG splash) -->
+		<!-- Splash Screen -->
 		<MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#512BD4" BaseSize="128,128" />
 
 		<!-- Images -->
@@ -63,21 +58,43 @@
 		<MauiAsset Include="Resources\Raw\**" LogicalName="%(RecursiveDir)%(Filename)%(Extension)" />
 	</ItemGroup>
 
+	<!-- ===== appsettings.json: copied to output for runtime config ===== -->
 	<ItemGroup>
+		<Content Include="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Database / ORM -->
 		<PackageReference Include="Dapper" Version="2.1.79" />
+		<PackageReference Include="Mailjet.Api" Version="3.0.0" />
 		<PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
 		<PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.10" />
-		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
-		<PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
-		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="8.0.100" />
-		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
-		<PackageReference Include="PdfSharp.Maui" Version="1.0.5" />
-		<PackageReference Include="PdfSharpCore" Version="1.3.67" />
-		<PackageReference Include="QRCoder" Version="1.4.1" />
 		<PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.8" />
 		<PackageReference Include="SQLitePCLRaw.provider.e_sqlite3" Version="2.1.8" />
+
+		<!-- Configuration -->
+		<PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.11" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
+
+		<!-- MAUI -->
+		<PackageReference Include="Microsoft.Maui.Controls" Version="8.0.100" />
+		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="8.0.100" />
+
+		<!-- Barcode / QR Scanning -->
 		<PackageReference Include="ZXing.Net.Maui" Version="0.4.0" />
 		<PackageReference Include="ZXing.Net.Maui.Controls" Version="0.4.0" />
+
+		<!-- QR Code Generation -->
+		<PackageReference Include="QRCoder" Version="1.4.1" />
+
+		<!-- PDF Generation -->
+		<PackageReference Include="PdfSharp.Maui" Version="1.0.5" />
+		<PackageReference Include="PdfSharpCore" Version="1.3.67" />
+
+		<!-- Email / Mailjet (downgraded to 3.0.0 to match EmailService.cs) -->
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>
 
 	<ItemGroup>

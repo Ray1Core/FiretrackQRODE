@@ -82,21 +82,51 @@ namespace Firetrack.ViewModels
                 string otp = await App.Database.GenerateOtpAsync(Username);
                 _otpSent = true;
 
-                // Send OTP via email
-                await _emailService.SendOtpEmailAsync(user.Email, otp);
+                // ============================================================
+                // Try to send OTP via email first.
+                // If SMTP is not configured (or internet is down), fall back
+                // to displaying the OTP directly in an alert dialog.
+                // ============================================================
+                bool emailSent = false;
+                try
+                {
+                    await _emailService.SendOtpEmailAsync(user.Email, otp);
+                    emailSent = true;
+                }
+                catch (Exception emailEx)
+                {
+                    // Log the SMTP failure but don't break the flow
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ OTP email delivery failed: {emailEx.Message}");
+                }
 
-                // Only show a success message, not the OTP itself
-                await Shell.Current.DisplayAlert("OTP Sent",
-                    $"An OTP has been sent to your registered email address ({user.Email}).\nIt expires in 10 minutes.",
-                    "OK");
+                if (emailSent)
+                {
+                    // Success path — real email was delivered
+                    await Shell.Current.DisplayAlert(
+                        "OTP Sent",
+                        $"An OTP has been sent to your registered email address " +
+                        $"({user.Email}).\n\nIt expires in 10 minutes.",
+                        "OK");
 
-                StatusMessage = "OTP sent to your email.";
+                    StatusMessage = "OTP sent to your email.";
+                }
+                else
+                {
+                    // Fallback path — SMTP unavailable, show OTP on screen
+                    await Shell.Current.DisplayAlert(
+                        "OTP (Demo Mode)",
+                        $"Email delivery is not configured or failed.\n\n" +
+                        $"Your OTP is:\n\n{otp}\n\n" +
+                        $"It expires in 10 minutes.",
+                        "OK");
+
+                    StatusMessage = "OTP displayed on screen (demo mode).";
+                }
             }
             catch (Exception ex)
             {
                 StatusMessage = $"Error: {ex.Message}";
-                // Optionally, fallback to showing OTP in alert if email fails
-                // await Shell.Current.DisplayAlert("OTP (Fallback)", $"Your OTP is: {otp}", "OK");
             }
             finally
             {
@@ -141,7 +171,11 @@ namespace Firetrack.ViewModels
                 if (success)
                 {
                     await App.Database.MarkOtpUsedAsync(Username, OtpCode);
-                    await Shell.Current.DisplayAlert("Success", "Password reset successfully. Please login.", "OK");
+                    await Shell.Current.DisplayAlert(
+                        "Success",
+                        "Password reset successfully. Please login.",
+                        "OK");
+
                     await Shell.Current.GoToAsync(Routes.Login);
                 }
                 else

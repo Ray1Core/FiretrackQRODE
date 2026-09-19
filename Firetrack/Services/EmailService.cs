@@ -1,8 +1,9 @@
 ﻿using System;
-using System.Net;
-using System.Net.Mail;
 using System.Threading.Tasks;
+using Mailjet.Client;
+using Mailjet.Client.Resources;
 using Microsoft.Extensions.Configuration;
+using Newtonsoft.Json.Linq; // Ensure you have the Newtonsoft.Json package
 
 namespace Firetrack.Services
 {
@@ -16,54 +17,62 @@ namespace Firetrack.Services
         }
 
         /// <summary>
-        /// Sends an OTP email to the user.
+        /// Sends an OTP email to the user using Mailjet.
         /// </summary>
         public async Task SendOtpEmailAsync(string recipientEmail, string otpCode)
         {
-            var smtpServer = _config["Email:SmtpServer"] ?? "smtp.gmail.com";
-            var smtpPort = int.Parse(_config["Email:SmtpPort"] ?? "587");
-            var senderEmail = _config["Email:SenderEmail"] ?? "your-email@gmail.com";
-            var senderPassword = _config["Email:SenderPassword"] ?? "your-app-password";
+            var apiKey = _config["Email:MailjetApiKey"];
+            var secretKey = _config["Email:MailjetSecretKey"];
+            var senderEmail = _config["Email:SenderEmail"] ?? "noreply@firetrack.gov";
 
-            using var client = new SmtpClient(smtpServer, smtpPort)
+            if (string.IsNullOrEmpty(apiKey) || string.IsNullOrEmpty(secretKey) || apiKey == "YOUR_API_KEY_HERE")
             {
-                Credentials = new NetworkCredential(senderEmail, senderPassword),
-                EnableSsl = true
-            };
-
-            var mailMessage = new MailMessage
-            {
-                From = new MailAddress(senderEmail, "Fire Track System"),
-                Subject = "Your OTP Code for Password Reset",
-                Body = $@"
-                    <html>
-                    <body style='font-family: Arial, sans-serif;'>
-                        <h2>Password Reset Request</h2>
-                        <p>Hello,</p>
-                        <p>You requested to reset your password. Use the following One-Time Password (OTP) to proceed:</p>
-                        <h1 style='background: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; letter-spacing: 4px;'>
-                            {otpCode}
-                        </h1>
-                        <p><strong>This OTP is valid for 10 minutes.</strong></p>
-                        <p>If you did not request this, please ignore this email.</p>
-                        <hr />
-                        <p style='color: gray; font-size: 12px;'>Fire Track – BFP Cebu City Station</p>
-                    </body>
-                    </html>",
-                IsBodyHtml = true
-            };
-
-            mailMessage.To.Add(recipientEmail);
-
-            try
-            {
-                await client.SendMailAsync(mailMessage);
-                System.Diagnostics.Debug.WriteLine($"✅ OTP email sent to {recipientEmail}");
+                throw new InvalidOperationException("Mailjet API keys are not configured in appsettings.json.");
             }
-            catch (Exception ex)
+
+            // The official client class is MailjetClient from the Mailjet.Api package
+            MailjetClient client = new MailjetClient(apiKey, secretKey);
+
+            MailjetRequest request = new MailjetRequest
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Failed to send OTP email: {ex.Message}");
-                throw; // rethrow so the ViewModel can handle it
+                Resource = Send.Resource,
+            }
+            .Property(Send.FromEmail, senderEmail)
+            .Property(Send.FromName, "Fire Track System")
+            .Property(Send.Subject, "Your OTP Code for Password Reset")
+            .Property(Send.HtmlPart, $@"
+                <html>
+                <body style='font-family: Arial, sans-serif;'>
+                    <h2>Password Reset Request</h2>
+                    <p>Hello,</p>
+                    <p>You requested to reset your password. Use the following One-Time Password (OTP) to proceed:</p>
+                    <h1 style='background: #f4f4f4; padding: 15px; text-align: center; font-size: 28px; letter-spacing: 4px;'>
+                        {otpCode}
+                    </h1>
+                    <p><strong>This OTP is valid for 10 minutes.</strong></p>
+                    <p>If you did not request this, please ignore this email.</p>
+                    <hr />
+                    <p style='color: gray; font-size: 12px;'>Fire Track – BFP Cebu City Station</p>
+                </body>
+                </html>")
+            .Property(Send.TextPart, $"Your OTP code is: {otpCode}")
+            .Property(Send.Recipients, new JArray {
+                new JObject {
+                    { "Email", recipientEmail }
+                }
+            });
+
+            MailjetResponse response = await client.PostAsync(request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                System.Diagnostics.Debug.WriteLine($"✅ OTP email sent to {recipientEmail} via Mailjet");
+            }
+            else
+            {
+                var errorMessage = $"❌ Failed to send OTP email via Mailjet: {response.StatusCode} - {response.GetData()}";
+                System.Diagnostics.Debug.WriteLine(errorMessage);
+                throw new Exception(errorMessage);
             }
         }
     }

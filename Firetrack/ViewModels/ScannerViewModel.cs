@@ -87,21 +87,26 @@ namespace Firetrack.ViewModels
         {
             try
             {
-                if (!string.IsNullOrEmpty(ReturnToPage))
+                // If we were pushed onto a stack, pop back naturally.
+                // (Handles Dashboard quick-action and Transfer-launched cases.)
+                if (Shell.Current.Navigation.NavigationStack.Count > 1)
                 {
-                    await Shell.Current.GoToAsync($"//{ReturnToPage}");
+                    await Shell.Current.GoToAsync("..");
+                    return;
                 }
-                else
-                {
-                    var user = App.CurrentUser;
-                    string dashboardRoute = user?.Role == "Admin" ? "//AdminDashboard" : "//PersonnelDashboard";
-                    await Shell.Current.GoToAsync(dashboardRoute);
-                }
+
+                // We're a root page (opened from flyout) — no stack to pop.
+                // Go to the role-appropriate dashboard explicitly.
+                var user = App.CurrentUser;
+                string dashboardRoute = user?.Role == "Admin"
+                    ? "//AdminDashboard"
+                    : "//PersonnelDashboard";
+                await Shell.Current.GoToAsync(dashboardRoute);
             }
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Scanner cancel navigation failed: {ex.Message}");
-                await Shell.Current.GoToAsync("..");
+                try { await Shell.Current.GoToAsync(".."); } catch { /* last resort */ }
             }
         }
 
