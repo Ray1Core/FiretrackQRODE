@@ -1,0 +1,1 @@
+﻿Stop-Process -Name Firetrack -Force -ErrorAction SilentlyContinue; Start-Sleep -Milliseconds 500; Remove-Item "$env:LOCALAPPDATA\Packages\com.companyname.firetrack_9zz4h110yvjzm\LocalState\*" -Recurse -Force -ErrorAction SilentlyContinue; Write-Host "Firetrack LocalState wiped."

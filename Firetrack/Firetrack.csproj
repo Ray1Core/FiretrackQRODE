@@ -6,13 +6,9 @@
 		<CheckEolTargetFramework>false</CheckEolTargetFramework>
 		<NoWarn>$(NoWarn);CA1416;NETSDK1202;JAVAC</NoWarn>
 
-		<!-- Java version 11 (removes source/target 8 warnings) -->
 		<AndroidJavaSourceVersion>11</AndroidJavaSourceVersion>
 		<AndroidJavaTargetVersion>11</AndroidJavaTargetVersion>
 		<AndroidJavaCompileOptions>-- -Xlint:-options</AndroidJavaCompileOptions>
-
-		<!-- Uncomment to also build the tizen app... -->
-		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
 
 		<OutputType>Exe</OutputType>
 		<RootNamespace>Firetrack</RootNamespace>
@@ -21,13 +17,9 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
-		<!-- Display name -->
 		<ApplicationTitle>Firetrack</ApplicationTitle>
-
-		<!-- App Identifier -->
 		<ApplicationId>com.companyname.firetrack</ApplicationId>
 
-		<!-- Versions -->
 		<ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
 		<ApplicationVersion>1</ApplicationVersion>
 
@@ -73,11 +65,19 @@
 		<EmbeddedResource Include="Resources\Fonts\OpenSans-Semibold.ttf" />
 	</ItemGroup>
 
-	<!-- appsettings.json: copied to output for runtime config -->
+	<!-- appsettings.json EMBEDDED RESOURCE
+	     Embedding this file makes it available on ALL platforms
+	     (Windows and Android) synchronously, loaded via
+	     Assembly.GetManifestResourceStream("Firetrack.appsettings.json").
+
+	     This replaces the old <Content Include="appsettings.json">
+	     entry which caused warning XA0101 on Android (@(Content)
+	     build action is not supported) and left the config file
+	     missing from the APK.
+
+	     Resource name = <AssemblyName>.<FileName> = Firetrack.appsettings.json -->
 	<ItemGroup>
-		<Content Include="appsettings.json">
-			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-		</Content>
+		<EmbeddedResource Include="appsettings.json" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -108,7 +108,7 @@
 		<PackageReference Include="PdfSharp.Maui" Version="1.0.5" />
 		<PackageReference Include="PdfSharpCore" Version="1.3.67" />
 
-		<!-- Email / Mailjet (downgraded to 3.0.0 to match EmailService.cs) -->
+		<!-- Email / Mailjet -->
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	</ItemGroup>
 

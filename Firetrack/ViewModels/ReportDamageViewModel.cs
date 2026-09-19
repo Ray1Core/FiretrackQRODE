@@ -155,7 +155,7 @@ namespace Firetrack.ViewModels
                 }
 
                 await _db.SendNotificationAsync(
-                    "admin",
+                    "admin@firetrack.gov",
                     "⚠️ Damage Report",
                     $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'.");
 

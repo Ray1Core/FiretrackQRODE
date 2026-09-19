@@ -660,16 +660,25 @@ namespace Firetrack.Services
             var equipment = await GetEquipmentByQRAsync(qrCode);
             if (equipment == null) return false;
 
+            // Guard: damaged/in-repair items must go through disposal workflow, not simple return
+            if (equipment.ConditionStatus == "Damaged" || equipment.ConditionStatus == "InRepair")
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ ReturnEquipmentAsync blocked for '{equipment.ItemName}' — status is {equipment.ConditionStatus}");
+                return false;
+            }
+
             using var connection = CreateConnection();
             var user = await GetUserByUsernameAsync(username);
             if (user != null)
             {
                 await connection.ExecuteAsync(@"
-                    UPDATE Assignments SET AssignmentStatus = 'Returned', ReturnedDate = @Date
-                    WHERE EquipmentId = @EquipmentId AND UserId = @UserId AND AssignmentStatus = 'Assigned'",
+            UPDATE Assignments SET AssignmentStatus = 'Returned', ReturnedDate = @Date
+            WHERE EquipmentId = @EquipmentId AND UserId = @UserId AND AssignmentStatus = 'Assigned'",
                     new { EquipmentId = equipment.EquipmentId, UserId = user.UserId, Date = DateTime.Now.Date });
             }
 
+            // Only downgrade to Available if the item is not damaged/in-repair
             equipment.ConditionStatus = "Available";
             equipment.AssignedToUsername = null;
             equipment.LastUpdated = DateTime.Now;

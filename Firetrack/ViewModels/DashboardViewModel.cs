@@ -1,14 +1,16 @@
-﻿using System.Linq;
-using Firetrack.Models;
-using Firetrack.Services;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Linq;
 using System.Windows.Input;
-using Microsoft.Maui.Controls;
 using Firetrack.Converters;
 using Firetrack.Helpers;
-using QRCoder;
-using System.IO;
+using Firetrack.Models;
+using Firetrack.Services;
+using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
+using QRCoder;
 
 namespace Firetrack.ViewModels
 {
@@ -21,40 +23,137 @@ namespace Firetrack.ViewModels
         private string _personnelQR = string.Empty;
         private ImageSource? _personnelQRImage;
 
-        public string FullName { get => _fullName; set { _fullName = value; OnPropertyChanged(); } }
-        public string UserRole => App.CurrentUser?.Role ?? "Guest";
-        public ObservableCollection<EquipmentModel> MyEquipment { get => _myEquipment; set { _myEquipment = value; OnPropertyChanged(); } }
-        public ObservableCollection<UserModel> PersonnelList { get => _personnelList; set { _personnelList = value; OnPropertyChanged(); } }
-        public bool IsAdmin { get => _isAdmin; set { _isAdmin = value; OnPropertyChanged(); } }
-        public string PersonnelQR { get => _personnelQR; set { _personnelQR = value; OnPropertyChanged(); } }
-        public ImageSource? PersonnelQRImage { get => _personnelQRImage; set { _personnelQRImage = value; OnPropertyChanged(); } }
+        private int _totalEquipment;
+        private int _availableCount;
+        private int _issuedCount;
+        private int _damagedCount;
+        private int _inRepairCount;
+        private int _pendingRequests;
+        private int _rejectedRequests;
+        private int _disposedCount;
 
-        private int _totalEquipment, _availableCount, _issuedCount, _damagedCount, _inRepairCount,
-                    _pendingRequests, _rejectedRequests, _disposedCount;
         private ChartDrawable _chartDrawable = new();
-
-        public int TotalEquipment { get => _totalEquipment; set { _totalEquipment = value; OnPropertyChanged(); } }
-        public int AvailableCount { get => _availableCount; set { _availableCount = value; OnPropertyChanged(); } }
-        public int IssuedCount { get => _issuedCount; set { _issuedCount = value; OnPropertyChanged(); } }
-        public int DamagedCount { get => _damagedCount; set { _damagedCount = value; OnPropertyChanged(); } }
-        public int InRepairCount { get => _inRepairCount; set { _inRepairCount = value; OnPropertyChanged(); } }
-        public int PendingRequests { get => _pendingRequests; set { _pendingRequests = value; OnPropertyChanged(); } }
-        public int RejectedRequests { get => _rejectedRequests; set { _rejectedRequests = value; OnPropertyChanged(); } }
-        public int DisposedCount { get => _disposedCount; set { _disposedCount = value; OnPropertyChanged(); } }
-        public ChartDrawable ChartDrawable { get => _chartDrawable; set { _chartDrawable = value; OnPropertyChanged(); } }
-
         private string _selectedTimeRange = "Last 7 Days";
+        private string _chartTitle = "📈 Issued Trend (Last 7 Days)";
+
+        public string FullName
+        {
+            get => _fullName;
+            set { _fullName = value; OnPropertyChanged(); }
+        }
+
+        public string UserRole => App.CurrentUser?.Role ?? "Guest";
+
+        public ObservableCollection<EquipmentModel> MyEquipment
+        {
+            get => _myEquipment;
+            set { _myEquipment = value; OnPropertyChanged(); }
+        }
+
+        public ObservableCollection<UserModel> PersonnelList
+        {
+            get => _personnelList;
+            set { _personnelList = value; OnPropertyChanged(); }
+        }
+
+        public bool IsAdmin
+        {
+            get => _isAdmin;
+            set { _isAdmin = value; OnPropertyChanged(); }
+        }
+
+        public string PersonnelQR
+        {
+            get => _personnelQR;
+            set { _personnelQR = value; OnPropertyChanged(); }
+        }
+
+        public ImageSource? PersonnelQRImage
+        {
+            get => _personnelQRImage;
+            set { _personnelQRImage = value; OnPropertyChanged(); }
+        }
+
+        public int TotalEquipment
+        {
+            get => _totalEquipment;
+            set { _totalEquipment = value; OnPropertyChanged(); }
+        }
+
+        public int AvailableCount
+        {
+            get => _availableCount;
+            set { _availableCount = value; OnPropertyChanged(); }
+        }
+
+        public int IssuedCount
+        {
+            get => _issuedCount;
+            set { _issuedCount = value; OnPropertyChanged(); }
+        }
+
+        public int DamagedCount
+        {
+            get => _damagedCount;
+            set { _damagedCount = value; OnPropertyChanged(); }
+        }
+
+        public int InRepairCount
+        {
+            get => _inRepairCount;
+            set { _inRepairCount = value; OnPropertyChanged(); }
+        }
+
+        public int PendingRequests
+        {
+            get => _pendingRequests;
+            set { _pendingRequests = value; OnPropertyChanged(); }
+        }
+
+        public int RejectedRequests
+        {
+            get => _rejectedRequests;
+            set { _rejectedRequests = value; OnPropertyChanged(); }
+        }
+
+        public int DisposedCount
+        {
+            get => _disposedCount;
+            set { _disposedCount = value; OnPropertyChanged(); }
+        }
+
+        public ChartDrawable ChartDrawable
+        {
+            get => _chartDrawable;
+            set { _chartDrawable = value; OnPropertyChanged(); }
+        }
+
         public string SelectedTimeRange
         {
             get => _selectedTimeRange;
-            set { if (_selectedTimeRange != value) { _selectedTimeRange = value; OnPropertyChanged(); LoadMetrics(); } }
+            set
+            {
+                if (_selectedTimeRange != value)
+                {
+                    _selectedTimeRange = value;
+                    OnPropertyChanged();
+                    LoadMetrics();
+                }
+            }
         }
 
-        public ObservableCollection<string> TimeRangeOptions { get; } = new() { "Last 7 Days", "Last 30 Days", "Last 90 Days", "Last Year" };
+        public ObservableCollection<string> TimeRangeOptions { get; } = new()
+        {
+            "Last 7 Days", "Last 30 Days", "Last 90 Days", "Last Year"
+        };
 
-        private string _chartTitle = "📈 Issued Trend (Last 7 Days)";
-        public string ChartTitle { get => _chartTitle; set { _chartTitle = value; OnPropertyChanged(); } }
+        public string ChartTitle
+        {
+            get => _chartTitle;
+            set { _chartTitle = value; OnPropertyChanged(); }
+        }
 
+        // ---- Commands ----
         public ICommand GoToScannerCommand { get; }
         public ICommand GoToTransferCommand { get; }
         public ICommand GoToAddUserCommand { get; }
@@ -66,8 +165,8 @@ namespace Firetrack.ViewModels
         public ICommand GoToPendingRequestsCommand { get; }
         public ICommand GoToNotificationsCommand { get; }
         public ICommand LogoutCommand { get; }
-        public ICommand ReturnEquipmentCommand { get; }
         public ICommand ReportDamageCommand { get; }
+        public ICommand RequestDisposalCommand { get; }
         public ICommand ShowEquipmentDetailsCommand { get; }
         public ICommand DownloadPersonnelQRCommand { get; }
 
@@ -79,15 +178,6 @@ namespace Firetrack.ViewModels
 
             LogoutCommand = new Command(OnLogout);
             DownloadPersonnelQRCommand = new Command(OnDownloadPersonnelQR);
-
-            // ============================================================
-            // QUICK-ACTION NAVIGATION COMMANDS
-            // ------------------------------------------------------------
-            // These now target the PUSHED route variants so that the
-            // destination pages show a back arrow (returns to Dashboard).
-            // The flyout still uses the absolute routes, which show a
-            // hamburger — both navigation paths work side-by-side.
-            // ============================================================
 
             GoToScannerCommand = new Command(async () =>
             {
@@ -113,16 +203,12 @@ namespace Firetrack.ViewModels
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
             });
 
-            // Inventory is a ROOT page (category grid) — reached via the
-            // role-aware absolute route. It stays a hamburger root because
-            // it's the primary browsing surface.
             GoToInventoryCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
             });
 
-            // Request Equipment also routes to the category grid
             GoToRequestEquipmentCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync(Routes.GetEquipmentCategoryRoute()); }
@@ -147,15 +233,14 @@ namespace Firetrack.ViewModels
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
             });
 
-            // Notifications is already a pushed detail page (registered in AppShell)
             GoToNotificationsCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync(Routes.Notifications); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
             });
 
-            ReturnEquipmentCommand = new Command<EquipmentModel>(OnReturnEquipment);
             ReportDamageCommand = new Command<EquipmentModel>(OnReportDamage);
+            RequestDisposalCommand = new Command<EquipmentModel>(OnRequestDisposal);
             ShowEquipmentDetailsCommand = new Command<EquipmentModel>(OnShowEquipmentDetails);
 
             LoadData();
@@ -189,7 +274,10 @@ namespace Firetrack.ViewModels
                 var pngBytes = qrCode.GetGraphic(20);
                 PersonnelQRImage = ImageSource.FromStream(() => new MemoryStream(pngBytes));
             }
-            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"❌ QR error: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ QR error: {ex.Message}");
+            }
         }
 
         private async void OnDownloadPersonnelQR()
@@ -215,7 +303,10 @@ namespace Firetrack.ViewModels
                 await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
                 await Shell.Current.DisplayAlert("Success", $"QR saved to:\n{filePath}", "OK");
             }
-            catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
         }
 
         private async void LoadData()
@@ -314,47 +405,7 @@ namespace Firetrack.ViewModels
             }
         }
 
-        private async void OnReturnEquipment(EquipmentModel? equipment)
-        {
-            if (equipment == null) return;
-            var db = App.Database;
-            if (db == null) return;
-            if (App.CurrentUser == null) return;
-
-            bool confirm = await Shell.Current.DisplayAlert("Confirm Return", $"Return '{equipment.Name}'?", "Yes", "Cancel");
-            if (!confirm) return;
-
-            try
-            {
-                bool ok = await db.ReturnEquipmentAsync(equipment.QRCode, App.CurrentUser.Username);
-                if (ok)
-                {
-                    var transaction = new TransactionModel
-                    {
-                        EquipmentQR = equipment.QRCode,
-                        FromUser = App.CurrentUser.Username,
-                        ToUser = "System",
-                        Timestamp = DateTime.Now,
-                        Action = "Return",
-                        Remarks = $"Returned by {App.CurrentUser.FullName}"
-                    };
-                    await db.SaveTransactionAsync(transaction);
-                    await db.SendNotificationAsync("admin@firetrack.gov", "↩️ Equipment Returned",
-                        $"{App.CurrentUser.FullName} returned '{equipment.Name}'.");
-
-                    await Shell.Current.DisplayAlert("Success", $"'{equipment.Name}' returned successfully.", "OK");
-                    LoadData();
-                    LoadMetrics();
-                }
-                else
-                {
-                    await Shell.Current.DisplayAlert("Error", "Failed to return equipment.", "OK");
-                }
-            }
-            catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
-        }
-
-        private async void OnReportDamage(EquipmentModel equipment)
+        private async void OnReportDamage(EquipmentModel? equipment)
         {
             if (equipment == null) return;
             try
@@ -362,7 +413,64 @@ namespace Firetrack.ViewModels
                 var navParams = new Dictionary<string, object> { { "equipment", equipment } };
                 await Shell.Current.GoToAsync(Routes.ReportDamage, navParams);
             }
-            catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
+        }
+
+        private async void OnRequestDisposal(EquipmentModel? equipment)
+        {
+            if (equipment == null) return;
+            var db = App.Database;
+            if (db == null) return;
+            if (App.CurrentUser == null) return;
+
+            if (equipment.Status != "Damaged")
+            {
+                await Shell.Current.DisplayAlert("Info",
+                    "Only damaged equipment can be requested for disposal.", "OK");
+                return;
+            }
+
+            bool confirm = await Shell.Current.DisplayAlert(
+                "Request Disposal",
+                $"Request disposal of '{equipment.Name}'?\n\nThis will send a formal request to the Admin for approval.",
+                "Yes", "Cancel");
+            if (!confirm) return;
+
+            string reason = await Shell.Current.DisplayPromptAsync(
+                "Reason for Disposal",
+                "Please provide a reason (e.g., damaged beyond repair):",
+                "Submit", "Cancel",
+                placeholder: "Reason...");
+
+            if (reason == null) return;
+
+            try
+            {
+                bool success = await db.RequestDisposalAsync(
+                    equipment.QRCode,
+                    App.CurrentUser.Username,
+                    string.IsNullOrWhiteSpace(reason) ? "Damaged equipment" : reason);
+
+                if (success)
+                {
+                    await Shell.Current.DisplayAlert("Success",
+                        $"Disposal request for '{equipment.Name}' submitted to Admin.", "OK");
+                    LoadData();
+                    LoadMetrics();
+                }
+                else
+                {
+                    await Shell.Current.DisplayAlert("Error",
+                        "Failed to submit disposal request.", "OK");
+                }
+            }
+            catch (Exception ex)
+            {
+                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+            }
         }
 
         private async void OnShowEquipmentDetails(EquipmentModel? equipment)

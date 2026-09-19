@@ -128,8 +128,22 @@ namespace Firetrack.ViewModels
                     Remarks = $"Returned by {SelectedEquipment.AssignedToUsername} during clearance."
                 };
 
+                // ✅ FIX: don't downgrade Damaged/InRepair items to Available.
+                // Only clear the assignment so the item stays in the disposal pipeline.
+                string originalStatus = SelectedEquipment.Status;
                 SelectedEquipment.AssignedToUsername = null;
-                SelectedEquipment.Status = "Available";
+
+                if (originalStatus == "Damaged" || originalStatus == "InRepair")
+                {
+                    // Keep the damaged/in-repair status — admin will handle disposal separately
+                    StatusMessage = $"⚠️ '{SelectedEquipment.Name}' is {originalStatus}. Assignment cleared; please process disposal separately.";
+                }
+                else
+                {
+                    SelectedEquipment.Status = "Available";
+                    StatusMessage = $"✅ {SelectedEquipment.Name} marked as returned.";
+                }
+
                 SelectedEquipment.LastUpdated = DateTime.Now;
 
                 await _db.SaveTransactionAsync(transaction);
@@ -140,10 +154,9 @@ namespace Firetrack.ViewModels
                     await _db.LogActionAsync(
                         App.CurrentUser.Username,
                         "Clearance Return",
-                        $"Marked '{SelectedEquipment.Name}' as returned.");
+                        $"Marked '{SelectedEquipment.Name}' as returned (previous status: {originalStatus}).");
                 }
 
-                StatusMessage = $"✅ {SelectedEquipment.Name} marked as returned.";
                 LoadAssignedEquipment();
                 SelectedEquipment = null;
             }
@@ -173,7 +186,7 @@ namespace Firetrack.ViewModels
 
             bool confirm = await Shell.Current.DisplayAlert(
                 "Confirm All Returns",
-                $"Mark all {AssignedEquipment.Count} items as returned?",
+                $"Mark all {AssignedEquipment.Count} items as returned?\n\nDamaged items will only have their assignment cleared — they will stay in the disposal pipeline.",
                 "Yes",
                 "Cancel");
             if (!confirm) return;
@@ -183,26 +196,43 @@ namespace Firetrack.ViewModels
 
             try
             {
+                int returnedCount = 0;
+                int damagedSkipped = 0;
+
                 foreach (var eq in AssignedEquipment.ToList())
                 {
-                    if (eq.Status == "Issued" && !string.IsNullOrEmpty(eq.AssignedToUsername))
-                    {
-                        eq.AssignedToUsername = null;
-                        eq.Status = "Available";
-                        eq.LastUpdated = DateTime.Now;
-                        await _db.SaveEquipmentAsync(eq);
+                    if (string.IsNullOrEmpty(eq.AssignedToUsername)) continue;
 
-                        var transaction = new TransactionModel
-                        {
-                            EquipmentQR = eq.QRCode,
-                            FromUser = SelectedOfficer.Username,
-                            ToUser = App.CurrentUser?.Username ?? "admin",
-                            Timestamp = DateTime.Now,
-                            Action = "Return",
-                            Remarks = "Marked all returned during clearance."
-                        };
-                        await _db.SaveTransactionAsync(transaction);
+                    string originalStatus = eq.Status;
+                    eq.AssignedToUsername = null;
+                    eq.LastUpdated = DateTime.Now;
+
+                    // ✅ FIX: only downgrade non-damaged items to Available
+                    if (originalStatus == "Damaged" || originalStatus == "InRepair")
+                    {
+                        damagedSkipped++;
+                        // Status stays as Damaged/InRepair
                     }
+                    else
+                    {
+                        eq.Status = "Available";
+                        returnedCount++;
+                    }
+
+                    await _db.SaveEquipmentAsync(eq);
+
+                    var transaction = new TransactionModel
+                    {
+                        EquipmentQR = eq.QRCode,
+                        FromUser = SelectedOfficer.Username,
+                        ToUser = App.CurrentUser?.Username ?? "admin",
+                        Timestamp = DateTime.Now,
+                        Action = "Return",
+                        Remarks = originalStatus == "Damaged" || originalStatus == "InRepair"
+                            ? $"Assignment cleared during clearance (status: {originalStatus}). Disposal pending."
+                            : "Marked all returned during clearance."
+                    };
+                    await _db.SaveTransactionAsync(transaction);
                 }
 
                 if (App.CurrentUser != null)
@@ -210,10 +240,18 @@ namespace Firetrack.ViewModels
                     await _db.LogActionAsync(
                         App.CurrentUser.Username,
                         "Clearance All Returned",
-                        $"Marked all {AssignedEquipment.Count} items as returned for {SelectedOfficer.FullName}");
+                        $"Marked {returnedCount} item(s) as returned; {damagedSkipped} damaged item(s) kept in pipeline for {SelectedOfficer.FullName}");
                 }
 
-                StatusMessage = $"✅ All {AssignedEquipment.Count} items marked as returned.";
+                if (damagedSkipped > 0)
+                {
+                    StatusMessage = $"✅ {returnedCount} returned; {damagedSkipped} damaged item(s) kept for disposal.";
+                }
+                else
+                {
+                    StatusMessage = $"✅ All {returnedCount} items marked as returned.";
+                }
+
                 LoadAssignedEquipment();
             }
             catch (Exception ex)
@@ -234,48 +272,19 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            // Check for outstanding items
-            var issuedItems = AssignedEquipment.Where(e => e.Status == "Issued").ToList();
-            if (issuedItems.Any())
+            var outstanding = AssignedEquipment.Where(e => !string.IsNullOrEmpty(e.AssignedToUsername)).ToList();
+            if (outstanding.Any())
             {
                 bool confirm = await Shell.Current.DisplayAlert(
                     "Outstanding Equipment",
-                    $"{issuedItems.Count} item(s) are still issued. Mark them as returned now?",
+                    $"{outstanding.Count} item(s) still have assignments. Mark them as returned now?",
                     "Yes, Mark All",
                     "Cancel");
                 if (confirm)
                 {
-                    IsBusy = true;
-                    try
-                    {
-                        foreach (var eq in issuedItems)
-                        {
-                            eq.AssignedToUsername = null;
-                            eq.Status = "Available";
-                            eq.LastUpdated = DateTime.Now;
-                            await _db.SaveEquipmentAsync(eq);
-
-                            var transaction = new TransactionModel
-                            {
-                                EquipmentQR = eq.QRCode,
-                                FromUser = SelectedOfficer.Username,
-                                ToUser = App.CurrentUser?.Username ?? "admin",
-                                Timestamp = DateTime.Now,
-                                Action = "Return",
-                                Remarks = "Auto-returned before clearance certificate."
-                            };
-                            await _db.SaveTransactionAsync(transaction);
-                        }
-                        LoadAssignedEquipment();
-                        StatusMessage = $"✅ {issuedItems.Count} item(s) marked as returned.";
-                    }
-                    catch (Exception ex)
-                    {
-                        StatusMessage = $"❌ Error returning items: {ex.Message}";
-                        IsBusy = false;
-                        return;
-                    }
-                    IsBusy = false;
+                    OnMarkAllReturned();
+                    // Give async work a moment, then return — admin can re-tap Generate
+                    return;
                 }
                 else
                 {
@@ -283,7 +292,6 @@ namespace Firetrack.ViewModels
                 }
             }
 
-            // Generate certificate
             IsBusy = true;
             StatusMessage = string.Empty;
 
@@ -293,7 +301,6 @@ namespace Firetrack.ViewModels
                 var allItems = AssignedEquipment.ToList();
                 var pdfBytes = pdfService.GenerateClearanceCertificate(SelectedOfficer, allItems);
 
-                // ✅ Null check for PDF bytes
                 if (pdfBytes == null || pdfBytes.Length == 0)
                 {
                     StatusMessage = "❌ PDF generation returned empty data.";
@@ -307,7 +314,6 @@ namespace Firetrack.ViewModels
                 var filePath = Path.Combine(downloadsPath, fileName);
                 await File.WriteAllBytesAsync(filePath, pdfBytes);
 
-                // Open with fallback
                 try
                 {
                     await Launcher.Default.OpenAsync(new OpenFileRequest { File = new ReadOnlyFile(filePath) });
@@ -323,7 +329,6 @@ namespace Firetrack.ViewModels
 
                 StatusMessage = $"✅ Clearance certificate generated for {SelectedOfficer.FullName}";
 
-                // ✅ Refresh UI
                 LoadAssignedEquipment();
                 SelectedEquipment = null;
             }
