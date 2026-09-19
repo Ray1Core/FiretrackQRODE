@@ -37,16 +37,10 @@ namespace Firetrack
             InitializeComponent();
             this.UserAppTheme = AppTheme.Dark;
 
-            var builder = new ConfigurationBuilder()
-                .SetBasePath(FileSystem.AppDataDirectory)
-                .AddJsonFile("appsettings.json", optional: true, reloadOnChange: false);
-
-#if WINDOWS
-            var exeDir = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location)!;
-            builder.SetBasePath(exeDir);
-#endif
-
-            Configuration = builder.Build();
+            // ============================================================
+            // FIX: Use the configuration already built in MauiProgram
+            // ============================================================
+            Configuration = MauiProgram.Configuration;
         }
 
         private void LogException(string source, Exception? ex)
