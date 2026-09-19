@@ -89,6 +89,28 @@ namespace Firetrack.Services
             Add("DisposalApprovalDate", "DATETIME NULL", "DATETIME NULL");
             Add("DisposalRemarks", "TEXT NULL", "NVARCHAR(MAX) NULL");
             Add("PhotoPath", "TEXT NULL", "NVARCHAR(500) NULL");
+
+            // ✅ NEW: Clean up stale assignment records left over from the old Return flow.
+            // Any assignment still marked 'Assigned' for an item that is Available or Disposed
+            // is a leftover and should be closed out.
+            try
+            {
+                int cleaned = connection.Execute(@"
+            UPDATE Assignments 
+            SET AssignmentStatus = 'Returned', ReturnedDate = @Date
+            WHERE AssignmentStatus = 'Assigned' 
+              AND EquipmentId IN (
+                  SELECT EquipmentId FROM Equipment 
+                  WHERE ConditionStatus = 'Available' OR ConditionStatus = 'Disposed'
+              )", new { Date = DateTime.Now.Date });
+
+                if (cleaned > 0)
+                    System.Diagnostics.Debug.WriteLine($"✅ Cleaned up {cleaned} stale assignment record(s)");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"⚠️ Stale assignment cleanup skipped: {ex.Message}");
+            }
         }
 
         // ============================================================
@@ -499,9 +521,14 @@ namespace Firetrack.Services
             var user = await GetUserByUsernameAsync(username);
             if (user == null) return new List<EquipmentModel>();
 
+            // ✅ FIX: Only return items that are actively in the user's custody.
+            // Assignment must be 'Assigned' AND the item must still be held
+            // (Issued, Damaged, or InRepair). Available/Disposed items are excluded.
             var sql = @"SELECT e.* FROM Equipment e
-                        JOIN Assignments a ON e.EquipmentId = a.EquipmentId
-                        WHERE a.UserId = @UserId AND a.AssignmentStatus = 'Assigned'";
+                JOIN Assignments a ON e.EquipmentId = a.EquipmentId
+                WHERE a.UserId = @UserId 
+                  AND a.AssignmentStatus = 'Assigned'
+                  AND e.ConditionStatus IN ('Issued', 'Damaged', 'InRepair')";
             var result = (await connection.QueryAsync<EquipmentModel>(sql, new { UserId = user.UserId })).ToList();
 
             foreach (var eq in result)
