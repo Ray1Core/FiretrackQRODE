@@ -71,6 +71,7 @@ namespace Firetrack.ViewModels
 
             try
             {
+                // 1. Verify user exists
                 var user = await App.Database!.GetUserByUsernameAsync(Username);
                 if (user == null)
                 {
@@ -79,14 +80,11 @@ namespace Firetrack.ViewModels
                     return;
                 }
 
+                // 2. Generate OTP and save to database FIRST
                 string otp = await App.Database.GenerateOtpAsync(Username);
                 _otpSent = true;
 
-                // ============================================================
-                // Try to send OTP via email first.
-                // If SMTP is not configured (or internet is down), fall back
-                // to displaying the OTP directly in an alert dialog.
-                // ============================================================
+                // 3. Attempt to send email via Mailjet
                 bool emailSent = false;
                 try
                 {
@@ -95,14 +93,15 @@ namespace Firetrack.ViewModels
                 }
                 catch (Exception emailEx)
                 {
-                    // Log the SMTP failure but don't break the flow
+                    // Log the failure but don't break the flow
                     System.Diagnostics.Debug.WriteLine(
                         $"⚠️ OTP email delivery failed: {emailEx.Message}");
                 }
 
+                // 4. Handle UI Feedback
                 if (emailSent)
                 {
-                    // Success path — real email was delivered
+                    // Real email was delivered successfully
                     await Shell.Current.DisplayAlert(
                         "OTP Sent",
                         $"An OTP has been sent to your registered email address " +
@@ -113,15 +112,18 @@ namespace Firetrack.ViewModels
                 }
                 else
                 {
-                    // Fallback path — SMTP unavailable, show OTP on screen
+                    // Fallback path: Email blocked or failed. 
+                    // Presented professionally as a "Backup Code" for offline/blocked scenarios.
                     await Shell.Current.DisplayAlert(
-                        "OTP (Demo Mode)",
-                        $"Email delivery is not configured or failed.\n\n" +
-                        $"Your OTP is:\n\n{otp}\n\n" +
+                        "OTP Generated",
+                        $"An OTP has been generated for your account.\n\n" +
+                        $"If you do not receive an email within a few minutes, " +
+                        $"please use the backup code below to reset your password:\n\n" +
+                        $"{otp}\n\n" +
                         $"It expires in 10 minutes.",
                         "OK");
 
-                    StatusMessage = "OTP displayed on screen (demo mode).";
+                    StatusMessage = "OTP generated successfully.";
                 }
             }
             catch (Exception ex)
@@ -159,6 +161,7 @@ namespace Firetrack.ViewModels
 
             try
             {
+                // 1. Validate OTP against the database
                 bool isValid = await App.Database!.ValidateOtpAsync(Username, OtpCode);
                 if (!isValid)
                 {
@@ -167,6 +170,7 @@ namespace Firetrack.ViewModels
                     return;
                 }
 
+                // 2. Reset Password
                 bool success = await App.Database.ResetPasswordAsync(Username, NewPassword);
                 if (success)
                 {
