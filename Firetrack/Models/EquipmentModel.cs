@@ -1,27 +1,24 @@
 ﻿using System;
 
-using System;
-
 namespace Firetrack.Models
 {
     public class EquipmentModel
     {
         // ---- New schema columns ----
         public int EquipmentId { get; set; }
-        public string PropertyNumber { get; set; } = string.Empty;   // was QRCode
-        public string ItemName { get; set; } = string.Empty;         // was Name
-        public string Category { get; set; } = string.Empty;         // was Type
-        public string? Description { get; set; }                     // was Remarks
+        public string PropertyNumber { get; set; } = string.Empty;
+        public string ItemName { get; set; } = string.Empty;
+        public string Category { get; set; } = string.Empty;
+        public string? Description { get; set; }
         public string? SerialNumber { get; set; }
         public DateTime? AcquisitionDate { get; set; }
         public decimal? AcquisitionCost { get; set; }
-        public string ConditionStatus { get; set; } = "Serviceable"; // was Status
+        public string ConditionStatus { get; set; } = "Serviceable";
         public DateTime CreatedAt { get; set; }
         public DateTime UpdatedAt { get; set; }
 
         // ---- Legacy / backward compatibility properties ----
-        // These are not stored in Equipment table directly, 
-        // but will be populated via joins or used for temporary storage.
+        // These ARE now persisted in the Equipment table (added in DatabaseService).
         public string? AssignedToUsername { get; set; }
         public string? RequestedByUsername { get; set; }
         public string? RequestStatus { get; set; }
@@ -33,10 +30,16 @@ namespace Firetrack.Models
         public string? DisposalApprovedBy { get; set; }
         public DateTime? DisposalApprovalDate { get; set; }
         public string? DisposalRemarks { get; set; }
-        public DateTime? LastUpdated { get; set; }  // map to UpdatedAt
         public string? PhotoPath { get; set; }
 
-        // ---- Aliases for old property names (for XAML bindings and code) ----
+        // ✅ FIX: LastUpdated is now an alias for UpdatedAt so both stay in sync
+        public DateTime? LastUpdated
+        {
+            get => UpdatedAt == default ? null : UpdatedAt;
+            set { if (value.HasValue) UpdatedAt = value.Value; }
+        }
+
+        // ---- Aliases for old property names (used in XAML and code) ----
         public string QRCode
         {
             get => PropertyNumber;

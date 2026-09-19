@@ -18,8 +18,6 @@ namespace Firetrack.Services
         public DatabaseService(string connectionString)
         {
             _connectionString = connectionString;
-
-            // Detect SQL Server vs SQLite
             _useSqlServer = connectionString.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
                             (connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase) &&
                              !connectionString.Contains(".db", StringComparison.OrdinalIgnoreCase));
@@ -68,63 +66,58 @@ namespace Firetrack.Services
             if (_useSqlServer)
                 CreateTablesSqlServer(connection);
             else
-            {
                 CreateTablesSqlite(connection);
-                MigrateEquipmentTableIfNeeded(connection);
-            }
+
+            // ✅ Safety net: add missing columns to existing Equipment tables
+            MigrateEquipmentAddMissingColumns(connection);
 
             SeedData(connection);
         }
 
         // ============================================================
-        // MIGRATION (SQLite only)
+        // MIGRATION: Add missing columns to Equipment table
         // ============================================================
-        private void MigrateEquipmentTableIfNeeded(IDbConnection connection)
+        private void MigrateEquipmentAddMissingColumns(IDbConnection connection)
         {
-            var createSql = connection.QueryFirstOrDefault<string>(
-                "SELECT sql FROM sqlite_master WHERE type='table' AND name='Equipment'");
-            if (string.IsNullOrEmpty(createSql))
-                return;
+            List<string> existingColumns;
 
-            if (createSql.Contains("CHECK (ConditionStatus IN ('Serviceable','Unserviceable','Under Repair','Disposed'))"))
+            if (_useSqlServer)
             {
-                System.Diagnostics.Debug.WriteLine("⚠️ Migrating Equipment table – removing CHECK constraint...");
-
-                connection.Execute(@"
-                    CREATE TABLE Equipment_new (
-                        EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
-                        PropertyNumber TEXT NOT NULL UNIQUE,
-                        ItemName TEXT NOT NULL,
-                        Category TEXT NOT NULL,
-                        Description TEXT,
-                        SerialNumber TEXT,
-                        AcquisitionDate DATE,
-                        AcquisitionCost DECIMAL(12,2),
-                        ConditionStatus TEXT DEFAULT 'Available',
-                        CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )");
-
-                connection.Execute(@"
-                    INSERT INTO Equipment_new (
-                        EquipmentId, PropertyNumber, ItemName, Category, Description,
-                        SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus,
-                        CreatedAt, UpdatedAt
-                    )
-                    SELECT
-                        EquipmentId, PropertyNumber, ItemName, Category, Description,
-                        SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus,
-                        CreatedAt, UpdatedAt
-                    FROM Equipment");
-
-                connection.Execute("DROP TABLE Equipment");
-                connection.Execute("ALTER TABLE Equipment_new RENAME TO Equipment");
-                System.Diagnostics.Debug.WriteLine("✅ Equipment table migrated successfully.");
+                existingColumns = connection.Query<string>(
+                    "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME='Equipment'").ToList();
             }
+            else
+            {
+                existingColumns = connection.Query<string>(
+                    "SELECT name FROM pragma_table_info('Equipment')").ToList();
+            }
+
+            void AddColumnIfMissing(string columnName, string sqliteType, string sqlServerType)
+            {
+                if (!existingColumns.Contains(columnName))
+                {
+                    var type = _useSqlServer ? sqlServerType : sqliteType;
+                    connection.Execute($"ALTER TABLE Equipment ADD COLUMN {columnName} {type}");
+                    System.Diagnostics.Debug.WriteLine($"✅ Added column '{columnName}' to Equipment table");
+                }
+            }
+
+            AddColumnIfMissing("AssignedToUsername", "TEXT NULL", "NVARCHAR(255) NULL");
+            AddColumnIfMissing("RequestedByUsername", "TEXT NULL", "NVARCHAR(255) NULL");
+            AddColumnIfMissing("RequestStatus", "TEXT NULL", "NVARCHAR(30) NULL");
+            AddColumnIfMissing("IsDisposalRequested", "INTEGER DEFAULT 0", "BIT DEFAULT 0");
+            AddColumnIfMissing("DisposalStatus", "TEXT NULL", "NVARCHAR(30) NULL");
+            AddColumnIfMissing("DisposalReason", "TEXT NULL", "NVARCHAR(MAX) NULL");
+            AddColumnIfMissing("DisposalRequestedBy", "TEXT NULL", "NVARCHAR(255) NULL");
+            AddColumnIfMissing("DisposalRequestDate", "DATETIME NULL", "DATETIME NULL");
+            AddColumnIfMissing("DisposalApprovedBy", "TEXT NULL", "NVARCHAR(255) NULL");
+            AddColumnIfMissing("DisposalApprovalDate", "DATETIME NULL", "DATETIME NULL");
+            AddColumnIfMissing("DisposalRemarks", "TEXT NULL", "NVARCHAR(MAX) NULL");
+            AddColumnIfMissing("PhotoPath", "TEXT NULL", "NVARCHAR(500) NULL");
         }
 
         // ============================================================
-        // CREATE TABLES — SQLITE SYNTAX
+        // CREATE TABLES — SQLITE
         // ============================================================
         private void CreateTablesSqlite(IDbConnection connection)
         {
@@ -162,7 +155,7 @@ namespace Firetrack.Services
                     LastName TEXT NOT NULL,
                     Email TEXT NOT NULL UNIQUE,
                     PasswordHash TEXT NOT NULL,
-                    Status TEXT CHECK(Status IN ('Active', 'Inactive', 'Suspended')) DEFAULT 'Active',
+                    Status TEXT DEFAULT 'Active',
                     ProfileImagePath TEXT NULL,
                     PersonalQR TEXT NULL,
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -170,6 +163,7 @@ namespace Firetrack.Services
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
+            // ✅ FIX: Added all workflow columns to the Equipment table
             connection.Execute(@"
                 CREATE TABLE IF NOT EXISTS Equipment (
                     EquipmentId INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -181,6 +175,18 @@ namespace Firetrack.Services
                     AcquisitionDate DATE,
                     AcquisitionCost DECIMAL(12,2),
                     ConditionStatus TEXT DEFAULT 'Available',
+                    AssignedToUsername TEXT NULL,
+                    RequestedByUsername TEXT NULL,
+                    RequestStatus TEXT NULL,
+                    IsDisposalRequested INTEGER DEFAULT 0,
+                    DisposalStatus TEXT NULL,
+                    DisposalReason TEXT NULL,
+                    DisposalRequestedBy TEXT NULL,
+                    DisposalRequestDate DATETIME NULL,
+                    DisposalApprovedBy TEXT NULL,
+                    DisposalApprovalDate DATETIME NULL,
+                    DisposalRemarks TEXT NULL,
+                    PhotoPath TEXT NULL,
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     UpdatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )");
@@ -192,7 +198,7 @@ namespace Firetrack.Services
                     EquipmentId INTEGER NOT NULL,
                     Quantity INTEGER NOT NULL DEFAULT 1,
                     Purpose TEXT NOT NULL,
-                    RequestStatus TEXT CHECK(RequestStatus IN ('Pending', 'Approved', 'Rejected')) DEFAULT 'Pending',
+                    RequestStatus TEXT DEFAULT 'Pending',
                     RequestedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (UserId) REFERENCES Users(UserId),
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId)
@@ -205,7 +211,7 @@ namespace Firetrack.Services
                     UserId INTEGER NOT NULL,
                     AssignedDate DATE NOT NULL,
                     ReturnedDate DATE NULL,
-                    AssignmentStatus TEXT CHECK(AssignmentStatus IN ('Assigned', 'Returned', 'Transferred')) DEFAULT 'Assigned',
+                    AssignmentStatus TEXT DEFAULT 'Assigned',
                     Remarks TEXT,
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
@@ -219,7 +225,7 @@ namespace Firetrack.Services
                     FromUserId INTEGER NOT NULL,
                     ToUserId INTEGER NOT NULL,
                     TransferDate TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    Status TEXT CHECK(Status IN ('Pending', 'Accepted', 'Rejected')) DEFAULT 'Pending',
+                    Status TEXT DEFAULT 'Pending',
                     Notes TEXT,
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (FromUserId) REFERENCES Users(UserId),
@@ -233,7 +239,7 @@ namespace Firetrack.Services
                     ReportedBy INTEGER NOT NULL,
                     IncidentDate DATE NOT NULL,
                     DamageDescription TEXT NOT NULL,
-                    ReportStatus TEXT CHECK(ReportStatus IN ('Reported', 'Under Inspection', 'Resolved', 'For Disposal')) DEFAULT 'Reported',
+                    ReportStatus TEXT DEFAULT 'Reported',
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (ReportedBy) REFERENCES Users(UserId)
@@ -245,7 +251,7 @@ namespace Firetrack.Services
                     EquipmentId INTEGER NOT NULL,
                     RequestedBy INTEGER NOT NULL,
                     Reason TEXT NOT NULL,
-                    DisposalStatus TEXT CHECK(DisposalStatus IN ('Pending Review', 'Approved', 'Completed', 'Rejected')) DEFAULT 'Pending Review',
+                    DisposalStatus TEXT DEFAULT 'Pending Review',
                     CreatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (EquipmentId) REFERENCES Equipment(EquipmentId),
                     FOREIGN KEY (RequestedBy) REFERENCES Users(UserId)
@@ -279,7 +285,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // CREATE TABLES — SQL SERVER SYNTAX
+        // CREATE TABLES — SQL SERVER
         // ============================================================
         private void CreateTablesSqlServer(IDbConnection connection)
         {
@@ -329,6 +335,7 @@ namespace Firetrack.Services
                     FOREIGN KEY (RoleId) REFERENCES Roles(RoleId)
                 )");
 
+            // ✅ FIX: Added all workflow columns
             connection.Execute(@"
                 IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='Equipment' AND xtype='U')
                 CREATE TABLE Equipment (
@@ -341,6 +348,18 @@ namespace Firetrack.Services
                     AcquisitionDate DATE,
                     AcquisitionCost DECIMAL(12,2),
                     ConditionStatus NVARCHAR(50) DEFAULT 'Available',
+                    AssignedToUsername NVARCHAR(255) NULL,
+                    RequestedByUsername NVARCHAR(255) NULL,
+                    RequestStatus NVARCHAR(30) NULL,
+                    IsDisposalRequested BIT DEFAULT 0,
+                    DisposalStatus NVARCHAR(30) NULL,
+                    DisposalReason NVARCHAR(MAX) NULL,
+                    DisposalRequestedBy NVARCHAR(255) NULL,
+                    DisposalRequestDate DATETIME NULL,
+                    DisposalApprovedBy NVARCHAR(255) NULL,
+                    DisposalApprovalDate DATETIME NULL,
+                    DisposalRemarks NVARCHAR(MAX) NULL,
+                    PhotoPath NVARCHAR(500) NULL,
                     CreatedAt DATETIME DEFAULT GETDATE(),
                     UpdatedAt DATETIME DEFAULT GETDATE()
                 )");
@@ -446,7 +465,7 @@ namespace Firetrack.Services
         }
 
         // ============================================================
-        // SEED DATA (works for both dialects)
+        // SEED DATA
         // ============================================================
         private void SeedData(IDbConnection connection)
         {
@@ -755,25 +774,63 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
+        // ✅ FIX: Now persists ALL workflow columns (RequestStatus, DisposalStatus, etc.)
         public async Task<int> SaveEquipmentAsync(EquipmentModel equipment)
         {
             using var connection = CreateConnection();
+
             string sql;
             if (equipment.EquipmentId == 0)
             {
-                sql = $@"INSERT INTO Equipment (PropertyNumber, ItemName, Category, Description, SerialNumber, AcquisitionDate, AcquisitionCost, ConditionStatus, UpdatedAt)
-                         VALUES (@PropertyNumber, @ItemName, @Category, @Description, @SerialNumber, @AcquisitionDate, @AcquisitionCost, @ConditionStatus, {DateTimeNowFunction});
-                         SELECT {LastInsertIdFunction};";
+                sql = $@"
+                    INSERT INTO Equipment (
+                        PropertyNumber, ItemName, Category, Description, SerialNumber,
+                        AcquisitionDate, AcquisitionCost, ConditionStatus,
+                        AssignedToUsername, RequestedByUsername, RequestStatus,
+                        IsDisposalRequested, DisposalStatus, DisposalReason,
+                        DisposalRequestedBy, DisposalRequestDate, DisposalApprovedBy,
+                        DisposalApprovalDate, DisposalRemarks, PhotoPath,
+                        UpdatedAt
+                    ) VALUES (
+                        @PropertyNumber, @ItemName, @Category, @Description, @SerialNumber,
+                        @AcquisitionDate, @AcquisitionCost, @ConditionStatus,
+                        @AssignedToUsername, @RequestedByUsername, @RequestStatus,
+                        @IsDisposalRequested, @DisposalStatus, @DisposalReason,
+                        @DisposalRequestedBy, @DisposalRequestDate, @DisposalApprovedBy,
+                        @DisposalApprovalDate, @DisposalRemarks, @PhotoPath,
+                        {DateTimeNowFunction}
+                    );
+                    SELECT {LastInsertIdFunction};";
             }
             else
             {
-                sql = $@"UPDATE Equipment SET PropertyNumber = @PropertyNumber, ItemName = @ItemName, Category = @Category,
-                            Description = @Description, SerialNumber = @SerialNumber,
-                            AcquisitionDate = @AcquisitionDate, AcquisitionCost = @AcquisitionCost,
-                            ConditionStatus = @ConditionStatus, UpdatedAt = {DateTimeNowFunction}
-                         WHERE EquipmentId = @EquipmentId;
-                         SELECT @EquipmentId;";
+                sql = $@"
+                    UPDATE Equipment SET
+                        PropertyNumber = @PropertyNumber,
+                        ItemName = @ItemName,
+                        Category = @Category,
+                        Description = @Description,
+                        SerialNumber = @SerialNumber,
+                        AcquisitionDate = @AcquisitionDate,
+                        AcquisitionCost = @AcquisitionCost,
+                        ConditionStatus = @ConditionStatus,
+                        AssignedToUsername = @AssignedToUsername,
+                        RequestedByUsername = @RequestedByUsername,
+                        RequestStatus = @RequestStatus,
+                        IsDisposalRequested = @IsDisposalRequested,
+                        DisposalStatus = @DisposalStatus,
+                        DisposalReason = @DisposalReason,
+                        DisposalRequestedBy = @DisposalRequestedBy,
+                        DisposalRequestDate = @DisposalRequestDate,
+                        DisposalApprovedBy = @DisposalApprovedBy,
+                        DisposalApprovalDate = @DisposalApprovalDate,
+                        DisposalRemarks = @DisposalRemarks,
+                        PhotoPath = @PhotoPath,
+                        UpdatedAt = {DateTimeNowFunction}
+                    WHERE EquipmentId = @EquipmentId;
+                    SELECT @EquipmentId;";
             }
+
             return await connection.ExecuteScalarAsync<int>(sql, equipment);
         }
 
@@ -825,11 +882,6 @@ namespace Firetrack.Services
             if (user == null) return 0;
 
             using var connection = CreateConnection();
-
-            await connection.ExecuteAsync(
-                "UPDATE Equipment SET RequestStatus = 'Approved' WHERE EquipmentId = @EquipmentId",
-                new { EquipmentId = equipment.EquipmentId });
-
             await connection.ExecuteAsync(
                 @"INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus)
                   VALUES (@EquipmentId, @UserId, @Date, 'Assigned')",
@@ -850,11 +902,6 @@ namespace Firetrack.Services
         {
             var equipment = await GetEquipmentByQRAsync(qrCode);
             if (equipment == null) return 0;
-
-            using var connection = CreateConnection();
-            await connection.ExecuteAsync(
-                "UPDATE Equipment SET RequestStatus = 'Rejected' WHERE EquipmentId = @EquipmentId",
-                new { EquipmentId = equipment.EquipmentId });
 
             var user = await GetUserByUsernameAsync(equipment.RequestedByUsername!);
             if (user != null)
@@ -949,6 +996,10 @@ namespace Firetrack.Services
                 new { EquipmentId = equipment.EquipmentId });
 
             equipment.ConditionStatus = "Disposed";
+            equipment.DisposalStatus = "Approved";
+            equipment.DisposalApprovedBy = approvedBy;
+            equipment.DisposalApprovalDate = DateTime.Now;
+            equipment.DisposalRemarks = remarks;
             equipment.LastUpdated = DateTime.Now;
             await SaveEquipmentAsync(equipment);
 
@@ -969,6 +1020,12 @@ namespace Firetrack.Services
             await connection.ExecuteAsync(
                 "UPDATE DisposalRequests SET DisposalStatus = 'Rejected' WHERE EquipmentId = @EquipmentId AND DisposalStatus = 'Pending Review'",
                 new { EquipmentId = equipment.EquipmentId });
+
+            equipment.DisposalStatus = "Rejected";
+            equipment.IsDisposalRequested = false;
+            equipment.DisposalRemarks = remarks;
+            equipment.LastUpdated = DateTime.Now;
+            await SaveEquipmentAsync(equipment);
 
             if (!string.IsNullOrEmpty(equipment.DisposalRequestedBy))
             {
