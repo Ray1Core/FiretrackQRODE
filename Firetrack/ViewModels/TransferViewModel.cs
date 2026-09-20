@@ -210,7 +210,6 @@ namespace Firetrack.ViewModels
         {
             _db = App.Database!;
 
-            // ---- UPDATED: all scan commands now use Routes.GetScannerRoute() ----
             ScanEquipmentCommand = new Command(OnScanEquipment);
             ScanCurrentCustodianCommand = new Command(OnScanCurrentCustodian);
             ScanNewCustodianCommand = new Command(OnScanNewCustodian);
@@ -226,6 +225,13 @@ namespace Firetrack.ViewModels
 
         // =========================================================
         // STEP 1 - SCAN EQUIPMENT
+        // ---------------------------------------------------------
+        // ✅ FIX: Use Routes.GetScannerPushedRoute() so the Scanner
+        // lands on TOP of TransferPage in the navigation stack.
+        // Using the absolute route ("//AdminScanner") replaces the
+        // whole stack, so GoToAsync("..") had nothing to pop back
+        // to — that's why the user ended up on Dashboard instead of
+        // returning to TransferPage with the scanned QR.
         // =========================================================
 
         private async void OnScanEquipment()
@@ -235,8 +241,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "equipment" }
             };
-            // Use role-aware scanner route
-            await Shell.Current.GoToAsync(Routes.GetScannerRoute(), parameters);
+            System.Diagnostics.Debug.WriteLine("🔍 Transfer: navigating to ScannerPushed (mode=equipment)");
+            await Shell.Current.GoToAsync(Routes.GetScannerPushedRoute(), parameters);
         }
 
         // =========================================================
@@ -250,8 +256,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "currentCustodian" }
             };
-            // Use role-aware scanner route
-            await Shell.Current.GoToAsync(Routes.GetScannerRoute(), parameters);
+            System.Diagnostics.Debug.WriteLine("🔍 Transfer: navigating to ScannerPushed (mode=currentCustodian)");
+            await Shell.Current.GoToAsync(Routes.GetScannerPushedRoute(), parameters);
         }
 
         // =========================================================
@@ -265,8 +271,8 @@ namespace Firetrack.ViewModels
                 { "returnTo", "TransferPage" },
                 { "mode", "newCustodian" }
             };
-            // Use role-aware scanner route
-            await Shell.Current.GoToAsync(Routes.GetScannerRoute(), parameters);
+            System.Diagnostics.Debug.WriteLine("🔍 Transfer: navigating to ScannerPushed (mode=newCustodian)");
+            await Shell.Current.GoToAsync(Routes.GetScannerPushedRoute(), parameters);
         }
 
         // =========================================================
@@ -275,8 +281,14 @@ namespace Firetrack.ViewModels
 
         public async Task ProcessScannedQR(string qrCode, string mode)
         {
+            System.Diagnostics.Debug.WriteLine(
+                $"🔍 TransferViewModel.ProcessScannedQR: qr={qrCode} mode={mode}");
+
             if (string.IsNullOrWhiteSpace(qrCode))
+            {
+                System.Diagnostics.Debug.WriteLine("⚠️ Empty QR code — aborting");
                 return;
+            }
 
             IsBusy = true;
 
@@ -289,6 +301,9 @@ namespace Firetrack.ViewModels
                 if (mode == "equipment")
                 {
                     var equipment = await _db.GetEquipmentByQRAsync(qrCode);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"🔍 Equipment lookup: qr={qrCode} found={(equipment != null ? equipment.Name : "<null>")}");
 
                     if (equipment == null)
                     {
