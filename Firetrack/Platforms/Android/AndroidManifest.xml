@@ -6,21 +6,68 @@
 		android:icon="@mipmap/appicon"
 		android:roundIcon="@mipmap/appicon_round"
 		android:supportsRtl="true"
-		android:requestLegacyExternalStorage="true" />
+		android:requestLegacyExternalStorage="true"
+		android:enableOnBackInvokedCallback="true"
+		android:hardwareAccelerated="true" />
 
-	<!-- Network (already present) -->
+	<!-- ============================================================ -->
+	<!-- NETWORK                                                       -->
+	<!-- ============================================================ -->
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.INTERNET" />
 
-	<!-- ===== CAMERA & STORAGE (NEW) ===== -->
+	<!-- ============================================================ -->
+	<!-- CAMERA (QR scanning via ZXing)                                -->
+	<!-- ============================================================ -->
 	<uses-permission android:name="android.permission.CAMERA" />
-	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+	<uses-feature android:name="android.hardware.camera" android:required="false" />
+	<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 
-	<!-- Android 13+ media permission (required for picking photos) -->
+	<!-- ============================================================ -->
+	<!-- STORAGE                                                       -->
+	<!-- ============================================================ -->
+	<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+					 android:maxSdkVersion="32" />
+	<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+					 android:maxSdkVersion="29" />
 	<uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+	<uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
-	<!-- Optional – helps with Binder transactions on some devices (OPPO) -->
+	<!-- ============================================================ -->
+	<!-- NOTIFICATIONS (Android 13+)                                   -->
+	<!-- ============================================================ -->
+	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+	<!-- ============================================================ -->
+	<!-- ANDROID 11+ PACKAGE VISIBILITY                                -->
+	<!-- Required for Launcher / Share intents to find PDF & image apps-->
+	<!-- ============================================================ -->
+	<queries>
+		<intent>
+			<action android:name="android.intent.action.VIEW" />
+			<data android:mimeType="application/pdf" />
+		</intent>
+		<intent>
+			<action android:name="android.intent.action.VIEW" />
+			<data android:mimeType="image/*" />
+		</intent>
+		<intent>
+			<action android:name="android.intent.action.SEND" />
+			<data android:mimeType="*/*" />
+		</intent>
+		<intent>
+			<action android:name="android.intent.action.SEND_MULTIPLE" />
+			<data android:mimeType="*/*" />
+		</intent>
+		<intent>
+			<action android:name="android.intent.action.GET_CONTENT" />
+			<data android:mimeType="*/*" />
+		</intent>
+	</queries>
+
+	<!-- ============================================================ -->
+	<!-- OPPO / OnePlus Binder workaround (harmless elsewhere)         -->
+	<!-- ============================================================ -->
 	<uses-permission android:name="android.permission.BIND_APPWIDGET" />
 	<uses-permission android:name="android.permission.INTERACT_ACROSS_USERS" />
 

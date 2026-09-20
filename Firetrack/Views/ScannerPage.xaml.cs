@@ -10,6 +10,7 @@ namespace Firetrack.Views;
 public partial class ScannerPage : ContentPage, IQueryAttributable
 {
     private ScannerViewModel _viewModel;
+    private bool _cameraConfigured = false;
 
     public ScannerPage()
     {
@@ -31,18 +32,17 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
     {
         base.OnAppearing();
 
-        // 1. Reset the UI state to show the placeholder
         _viewModel.IsPlaceholderVisible = true;
         _viewModel.IsCameraReady = false;
+        _viewModel.IsScanning = false;
+        _cameraConfigured = false;
 
-        // 2. Request Camera Permission
         var status = await Permissions.RequestAsync<Permissions.Camera>();
-
         if (status != PermissionStatus.Granted)
         {
-            await DisplayAlert("Permission Denied", "Camera permission is required to scan QR codes.", "OK");
+            await DisplayAlert("Permission Denied",
+                "Camera permission is required to scan QR codes.", "OK");
 
-            // Navigate back safely
             if (!string.IsNullOrEmpty(_viewModel.ReturnToPage))
                 await Shell.Current.GoToAsync($"//{_viewModel.ReturnToPage}");
             else
@@ -50,23 +50,26 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
             return;
         }
 
-        // 3. Permission Granted - Initialize Camera
-        // ✅ FIX for Realme C100 4G black screen: 
-        // A short delay allows the Android camera HAL to fully release/re-acquire 
-        // when navigating back to this page, preventing a black screen.
-        await Task.Delay(200);
+        // MediaTek workaround: 700ms allows camera HAL to re-acquire
+        await Task.Delay(700);
 
-        // 4. Show Camera and Hide Placeholder via ViewModel
+        if (!_cameraConfigured)
+        {
+            cameraBarcodeReaderView.Options = new BarcodeReaderOptions
+            {
+                Formats = BarcodeFormats.TwoDimensional,
+                AutoRotate = true,
+                Multiple = false,
+                TryHarder = true
+            };
+            _cameraConfigured = true;
+        }
+
         _viewModel.IsPlaceholderVisible = false;
         _viewModel.IsCameraReady = true;
 
-        // 5. Configure ZXing Options
-        cameraBarcodeReaderView.Options = new BarcodeReaderOptions
-        {
-            Formats = BarcodeFormats.TwoDimensional
-        };
-
-        // 6. Resume scanning
+        // Let autofocus settle before accepting scans
+        await Task.Delay(500);
         _viewModel.IsScanning = true;
     }
 
@@ -74,14 +77,11 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
     {
         base.OnDisappearing();
 
-        // ✅ FIX: Hide the camera view BEFORE disconnecting the handler.
-        // This ensures the native Android view is fully detached before the page is destroyed.
         _viewModel.IsCameraReady = false;
         _viewModel.IsPlaceholderVisible = true;
         _viewModel.IsScanning = false;
 
-        // Release the camera hardware
-        cameraBarcodeReaderView.Handler?.DisconnectHandler();
+        // DO NOT call DisconnectHandler() — breaks MediaTek camera HAL
     }
 
     private async void OnBarcodesDetected(object sender, BarcodeDetectionEventArgs e)
@@ -90,14 +90,10 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
         if (result == null || string.IsNullOrEmpty(result.Value))
             return;
 
-        // Prevent processing if already busy or not scanning
         if (!_viewModel.IsScanning)
             return;
 
-        // Pause further detections
         _viewModel.IsScanning = false;
-
-        // Process the scanned QR
         await _viewModel.ProcessScannedQR(result.Value);
     }
 }
