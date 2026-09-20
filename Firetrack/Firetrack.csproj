@@ -152,6 +152,9 @@
 		<MauiXaml Update="Views\NotificationsPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>
+		<MauiXaml Update="Views\PdfArchivePage.xaml">
+		  <Generator>MSBuild:Compile</Generator>
+		</MauiXaml>
 		<MauiXaml Update="Views\PendingRequestsPage.xaml">
 			<Generator>MSBuild:Compile</Generator>
 		</MauiXaml>

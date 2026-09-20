@@ -50,6 +50,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             Routing.RegisterRoute(nameof(TransactionHistoryPage), typeof(TransactionHistoryPage));
             Routing.RegisterRoute(nameof(AddEquipmentPage), typeof(AddEquipmentPage));
             Routing.RegisterRoute(nameof(NotificationsPage), typeof(NotificationsPage));
+            Routing.RegisterRoute(nameof(PdfArchivePage), typeof(PdfArchivePage));
 
             // ============================================================
             // PUSHED ROUTES for flyout pages
@@ -70,6 +71,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
             Routing.RegisterRoute(Routes.AuditLogPushed, typeof(AuditLogPage));
             Routing.RegisterRoute(Routes.ProfilePushed, typeof(ProfilePage));
             Routing.RegisterRoute(Routes.ScannerPushed, typeof(ScannerPage));
+            Routing.RegisterRoute(Routes.PdfArchivePushed, typeof(PdfArchivePage));
 
             // Set BindingContext so FlyoutItem IsVisible bindings work
             BindingContext = this;
@@ -152,6 +154,7 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "TransactionHistoryPage",
         "AddEquipmentPage",
         "NotificationsPage",
+        "PdfArchivePage",
 
         // ---- Pushed routes for flyout pages (back button when
         //      launched from Dashboard quick actions) ----
@@ -162,7 +165,8 @@ public partial class AppShell : Shell, INotifyPropertyChanged
         "DisposalRequestsPagePushed",
         "AuditLogPagePushed",
         "ProfilePagePushed",
-        "ScannerPushed"
+        "ScannerPushed",
+        "PdfArchivePagePushed"
     };
 
     private bool IsValidRoute(string route)

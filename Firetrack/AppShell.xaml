@@ -31,7 +31,7 @@
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
 
-    <!-- ===== GLOBAL TITLE VIEW (Logout button text updated) ===== -->
+    <!-- ===== GLOBAL TITLE VIEW (Logout button) ===== -->
     <Shell.TitleView>
         <Grid x:Name="TitleViewGrid"
               ColumnDefinitions="*, Auto"
@@ -42,7 +42,6 @@
                    Text=""
                    VerticalOptions="Center"
                    HorizontalOptions="Center" />
-            <!-- Changed from emoji to normal text -->
             <Button Grid.Column="1"
                     Text="Logout"
                     Clicked="OnLogoutClicked"
@@ -73,6 +72,7 @@
         <ShellContent Title="Disposal Requests" ContentTemplate="{DataTemplate views:DisposalRequestsPage}" Route="DisposalRequestsPage" />
         <ShellContent Title="Scanner" ContentTemplate="{DataTemplate views:ScannerPage}" Route="AdminScanner" />
         <ShellContent Title="Audit Log" ContentTemplate="{DataTemplate views:AuditLogPage}" Route="AuditLogPage" />
+        <ShellContent Title="PDF Archive" ContentTemplate="{DataTemplate views:PdfArchivePage}" Route="PdfArchivePage" />
     </FlyoutItem>
 
     <!-- ===== PERSONNEL FLYOUT ===== -->

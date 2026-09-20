@@ -16,17 +16,49 @@
                        FontAttributes="Bold"
                        TextColor="{StaticResource OnBackground}"
                        HorizontalOptions="Center" />
-                <Label Text="Enter name &amp; type, then save – QR code is auto‑generated."
+                <Label Text="Enter name and, type then save — a unique QR code is generated automatically."
                        FontSize="14"
                        TextColor="{StaticResource Gray300}"
                        HorizontalOptions="Center" />
             </VerticalStackLayout>
 
+            <!-- QR PREVIEW (appears after save) -->
+            <Border IsVisible="{Binding HasQrPreview}"
+                    Style="{StaticResource CardStyle}"
+                    Padding="15">
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="✅ QR Code Generated"
+                           FontAttributes="Bold"
+                           FontSize="16"
+                           TextColor="{StaticResource SuccessColor}"
+                           HorizontalOptions="Center" />
+                    <Label Text="Print this and stick it on the physical equipment."
+                           FontSize="13"
+                           TextColor="{StaticResource Gray300}"
+                           HorizontalOptions="Center" />
+                    <Border BackgroundColor="White"
+                            Padding="10"
+                            StrokeThickness="0"
+                            HorizontalOptions="Center"
+                            StrokeShape="RoundRectangle 8">
+                        <Image Source="{Binding QrImage}"
+                               WidthRequest="200"
+                               HeightRequest="200"
+                               Aspect="AspectFit" />
+                    </Border>
+                    <Label Text="{Binding SavedQrValue}"
+                           FontSize="12"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource OnBackground}"
+                           HorizontalOptions="Center"
+                           LineBreakMode="WordWrap" />
+                </VerticalStackLayout>
+            </Border>
+
             <!-- Form Card -->
             <Border Style="{StaticResource CardStyle}">
                 <VerticalStackLayout Spacing="16">
 
-                    <!-- Equipment Name -->
                     <Entry Style="{StaticResource EntryStyle}"
                            Placeholder="Equipment Name"
                            Text="{Binding Name}"
@@ -34,7 +66,6 @@
                            PlaceholderColor="{StaticResource Gray300}"
                            BackgroundColor="{StaticResource Surface}" />
 
-                    <!-- Type Picker -->
                     <Picker Title="Select Type"
                             ItemsSource="{Binding Types}"
                             SelectedItem="{Binding Type}"
@@ -42,7 +73,6 @@
                             TitleColor="{StaticResource Gray300}"
                             BackgroundColor="{StaticResource Surface}" />
 
-                    <!-- Status Picker -->
                     <Picker Title="Select Status"
                             ItemsSource="{Binding Statuses}"
                             SelectedItem="{Binding Status}"
@@ -50,7 +80,6 @@
                             TitleColor="{StaticResource Gray300}"
                             BackgroundColor="{StaticResource Surface}" />
 
-                    <!-- Save Button -->
                     <Button Text="Save Equipment"
                             Style="{StaticResource SuccessButton}"
                             Command="{Binding SaveCommand}" />

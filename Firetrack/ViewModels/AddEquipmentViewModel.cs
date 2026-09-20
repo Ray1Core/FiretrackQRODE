@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
@@ -13,33 +14,30 @@ namespace Firetrack.ViewModels
         private string _type = string.Empty;
         private string _status = "Available";
         private bool _isBusy;
+        private ImageSource? _qrImage;
+        private string _savedQrValue = string.Empty;
 
         public ObservableCollection<string> Types { get; } = new() { "Hose", "Nozzle", "Rescue Tool" };
         public ObservableCollection<string> Statuses { get; } = new() { "Available", "Issued", "Damaged", "InRepair", "Disposed" };
 
-        public string Name
+        public string Name { get => _name; set { _name = value; OnPropertyChanged(); } }
+        public string Type { get => _type; set { _type = value; OnPropertyChanged(); } }
+        public string Status { get => _status; set { _status = value; OnPropertyChanged(); } }
+        public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
+
+        public ImageSource? QrImage
         {
-            get => _name;
-            set { _name = value; OnPropertyChanged(); }
+            get => _qrImage;
+            set { _qrImage = value; OnPropertyChanged(); OnPropertyChanged(nameof(HasQrPreview)); }
         }
 
-        public string Type
+        public string SavedQrValue
         {
-            get => _type;
-            set { _type = value; OnPropertyChanged(); }
+            get => _savedQrValue;
+            set { _savedQrValue = value; OnPropertyChanged(); }
         }
 
-        public string Status
-        {
-            get => _status;
-            set { _status = value; OnPropertyChanged(); }
-        }
-
-        public bool IsBusy
-        {
-            get => _isBusy;
-            set { _isBusy = value; OnPropertyChanged(); }
-        }
+        public bool HasQrPreview => QrImage != null;
 
         public ICommand SaveCommand { get; }
 
@@ -61,9 +59,8 @@ namespace Firetrack.ViewModels
 
             try
             {
-                // Generate unique QR: NAME_YYYYMMDDHHMMSS_GUID(8)
                 string uniqueSuffix = Guid.NewGuid().ToString().Substring(0, 8).ToUpper();
-                string qrValue = $"{Name.Trim().ToUpper()}_{DateTime.Now:yyyyMMddHHmmss}_{uniqueSuffix}";
+                string qrValue = $"{Name.Trim().ToUpper().Replace(" ", "_")}_{DateTime.Now:yyyyMMddHHmmss}_{uniqueSuffix}";
 
                 var existing = await _db.GetEquipmentByQRAsync(qrValue);
                 if (existing != null)
@@ -94,14 +91,18 @@ namespace Firetrack.ViewModels
                         $"Added '{newEquipment.Name}' ({newEquipment.QRCode})");
                 }
 
-                await Shell.Current.DisplayAlert("Success", $"Equipment '{newEquipment.Name}' added successfully!\nQR: {newEquipment.QRCode}", "OK");
+                // Generate QR preview for printing
+                SavedQrValue = newEquipment.QRCode;
+                QrImage = QrHelper.GenerateImageSource(newEquipment.QRCode);
 
+                await Shell.Current.DisplayAlert("Success",
+                    $"Equipment '{newEquipment.Name}' added.\n\nQR code is now displayed — print and stick it on the physical item.",
+                    "OK");
+
+                // Clear form fields but keep the QR preview visible
                 Name = string.Empty;
                 Type = string.Empty;
                 Status = "Available";
-
-                // ✅ Absolute navigation
-                await Shell.Current.GoToAsync(".."); // Goes back to the previous page (Inventory)
             }
             catch (Exception ex)
             {

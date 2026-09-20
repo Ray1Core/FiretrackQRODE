@@ -34,10 +34,11 @@
         public const string Ics = "IcsPage";
         public const string CategoryItems = "CategoryItemsPage";
         public const string TransactionHistory = "TransactionHistoryPage";
+        public const string PdfArchive = "PdfArchivePage";
 
         // ============================================================
-        // PUSHED ROUTES (second route for flyout pages — gives back button
-        // when launched from Dashboard quick actions)
+        // PUSHED ROUTES (second route for flyout pages — gives back
+        // button when launched from Dashboard quick actions)
         // ============================================================
         // Same page types as the absolute routes above, but registered as
         // global routes in AppShell.xaml.cs. Tapping the flyout uses the
@@ -51,6 +52,7 @@
         public const string AuditLogPushed = "AuditLogPagePushed";
         public const string ProfilePushed = "ProfilePagePushed";
         public const string ScannerPushed = "ScannerPushed";
+        public const string PdfArchivePushed = "PdfArchivePagePushed";
 
         // ============================================================
         // ROLE-AWARE ROUTE HELPERS

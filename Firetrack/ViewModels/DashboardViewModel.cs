@@ -164,6 +164,7 @@ namespace Firetrack.ViewModels
         public ICommand GoToUserManagementCommand { get; }
         public ICommand GoToPendingRequestsCommand { get; }
         public ICommand GoToNotificationsCommand { get; }
+        public ICommand GoToPdfArchiveCommand { get; }   // NEW
         public ICommand LogoutCommand { get; }
         public ICommand ReportDamageCommand { get; }
         public ICommand RequestDisposalCommand { get; }
@@ -236,6 +237,13 @@ namespace Firetrack.ViewModels
             GoToNotificationsCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync(Routes.Notifications); }
+                catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
+            });
+
+            // NEW: PDF Archive shortcut (Admin-only via pushed route)
+            GoToPdfArchiveCommand = new Command(async () =>
+            {
+                try { await Shell.Current.GoToAsync(Routes.PdfArchivePushed); }
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
             });
 

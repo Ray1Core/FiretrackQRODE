@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="Firetrack.Views.PdfArchivePage"
+             Title="PDF Archive"
+             BackgroundColor="{StaticResource Background}"
+             Shell.TabBarIsVisible="False">
+
+    <Grid RowDefinitions="Auto, *">
+
+        <!-- HEADER -->
+        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10"
+                             BackgroundColor="{StaticResource PrimaryColor}">
+            <Label Text="📁 PDF Archive"
+                   FontSize="24"
+                   FontAttributes="Bold"
+                   TextColor="White"
+                   HorizontalOptions="Center" />
+            <Label Text="All generated certificates and forms."
+                   FontSize="14"
+                   TextColor="#E0E0E0"
+                   HorizontalOptions="Center" />
+        </VerticalStackLayout>
+
+        <!-- LIST -->
+        <RefreshView Grid.Row="1"
+                     IsRefreshing="{Binding IsBusy}"
+                     Command="{Binding LoadCommand}">
+            <VerticalStackLayout Padding="20" Spacing="15">
+
+                <Label Text="{Binding StatusMessage}"
+                       FontSize="14"
+                       TextColor="{StaticResource Gray300}"
+                       HorizontalOptions="Center" />
+
+                <CollectionView ItemsSource="{Binding Documents}"
+                                SelectionMode="None"
+                                EmptyView="No PDFs generated yet.">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardStyle}" Margin="0,5" Padding="12">
+                                <VerticalStackLayout Spacing="8">
+
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Label Text="{Binding FileName}"
+                                               FontSize="14"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource OnBackground}"
+                                               LineBreakMode="TailTruncation" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding DisplayCategory}"
+                                               FontSize="12"
+                                               Padding="6,2"
+                                               TextColor="White"
+                                               BackgroundColor="{StaticResource PrimaryColor}" />
+                                    </Grid>
+
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Label Text="{Binding GeneratedAt, StringFormat='Generated: {0:MMM dd, yyyy HH:mm}'}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource Gray300}" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding SizeDisplay}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource Gray300}" />
+                                    </Grid>
+
+                                    <!-- ACTIONS -->
+                                    <Grid ColumnDefinitions="*,*,*" ColumnSpacing="8" Margin="0,6,0,0">
+                                        <Button Text="📂 Open"
+                                                Style="{StaticResource PrimaryButton}"
+                                                HeightRequest="36"
+                                                FontSize="12"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.OpenCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        <Button Grid.Column="1"
+                                                Text="📤 Share"
+                                                Style="{StaticResource PrimaryButton}"
+                                                HeightRequest="36"
+                                                FontSize="12"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ShareCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        <Button Grid.Column="2"
+                                                Text="🗑️ Delete"
+                                                Style="{StaticResource DangerButton}"
+                                                HeightRequest="36"
+                                                FontSize="12"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.DeleteCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Grid>
+
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+
+                <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                   Color="{StaticResource PrimaryColor}"
+                                   HorizontalOptions="Center" />
+
+            </VerticalStackLayout>
+        </RefreshView>
+    </Grid>
+</ContentPage>
