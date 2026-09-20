@@ -75,12 +75,26 @@ namespace Firetrack.ViewModels
             LoadOfficers();
         }
 
+        // ============================================================
+        // PUBLIC REFRESH — safe to call from Page.OnAppearing
+        // ============================================================
+        public void RefreshAsync()
+        {
+            LoadOfficers();
+            if (SelectedOfficer != null)
+                LoadAssignedEquipment();
+        }
+
         private async void LoadOfficers()
         {
             var users = await _db.GetUsersAsync();
-            Officers.Clear();
-            foreach (var u in users.Where(u => u.Role == "Personnel"))
-                Officers.Add(u);
+
+            await MainThread.InvokeOnMainThreadAsync(() =>
+            {
+                Officers.Clear();
+                foreach (var u in users.Where(u => u.Role == "Personnel"))
+                    Officers.Add(u);
+            });
         }
 
         private async void LoadAssignedEquipment()
@@ -92,20 +106,37 @@ namespace Firetrack.ViewModels
             }
 
             IsBusy = true;
-            var equipment = await _db.GetEquipmentsAssignedToUserAsync(SelectedOfficer.Username);
-            AssignedEquipment.Clear();
-            foreach (var eq in equipment)
-                AssignedEquipment.Add(eq);
-            IsBusy = false;
+
+            try
+            {
+                var officer = SelectedOfficer;   // ✅ local for null-safety
+                var equipment = await _db.GetEquipmentsAssignedToUserAsync(officer.Username);
+
+                await MainThread.InvokeOnMainThreadAsync(() =>
+                {
+                    AssignedEquipment.Clear();
+                    foreach (var eq in equipment)
+                        AssignedEquipment.Add(eq);
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ LoadAssignedEquipment failed: {ex.Message}");
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
         // ============================================================
         // MARK SELECTED AS RETURNED
         // ------------------------------------------------------------
-        // Closes the Assignments row for the selected item BEFORE
-        // saving the Equipment row. Without this, the officer's
-        // dashboard JOIN keeps finding the stale 'Assigned' row and
-        // the item reappears / duplicates.
+        // Closes the Assignments row FIRST, then updates the Equipment
+        // row. Damaged/InRepair items keep their status so they stay
+        // in the disposal pipeline.
+        //
+        // NEW: notify the officer so their dashboard badge updates.
         // ============================================================
         private async void OnMarkReturned()
         {
@@ -115,7 +146,8 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            if (SelectedEquipment.Status == "Available" && string.IsNullOrEmpty(SelectedEquipment.AssignedToUsername))
+            if (SelectedEquipment.Status == "Available" &&
+                string.IsNullOrEmpty(SelectedEquipment.AssignedToUsername))
             {
                 StatusMessage = "This equipment is already marked as returned.";
                 return;
@@ -126,10 +158,8 @@ namespace Firetrack.ViewModels
 
             try
             {
-                // ✅ FIX: Close the Assignments row FIRST so the officer's
-                // dashboard JOIN no longer finds this equipment. Without
-                // this, saving the Equipment row alone leaves a stale
-                // 'Assigned' row that keeps resurfacing the item.
+                // ✅ FIX: close the Assignments row FIRST so the officer's
+                // dashboard JOIN no longer finds this equipment.
                 if (SelectedOfficer != null)
                 {
                     await _db.CloseActiveAssignmentsAsync(
@@ -147,20 +177,23 @@ namespace Firetrack.ViewModels
                     Remarks = $"Returned by {SelectedEquipment.AssignedToUsername} during clearance."
                 };
 
-                // ✅ Don't downgrade Damaged/InRepair items to Available.
-                // Only clear the assignment so the item stays in the disposal pipeline.
+                // Don't downgrade Damaged/InRepair items to Available
                 string originalStatus = SelectedEquipment.Status;
+                string? itemName = SelectedEquipment.Name;
+                string officerUsername = SelectedOfficer?.Username ?? "unknown";
+                string officerFullName = SelectedOfficer?.FullName ?? "unknown";
+
                 SelectedEquipment.AssignedToUsername = null;
 
                 if (originalStatus == "Damaged" || originalStatus == "InRepair")
                 {
-                    // Keep the damaged/in-repair status — admin will handle disposal separately
-                    StatusMessage = $"⚠️ '{SelectedEquipment.Name}' is {originalStatus}. Assignment cleared; please process disposal separately.";
+                    StatusMessage = $"⚠️ '{itemName}' is {originalStatus}. " +
+                                    "Assignment cleared; please process disposal separately.";
                 }
                 else
                 {
                     SelectedEquipment.Status = "Available";
-                    StatusMessage = $"✅ {SelectedEquipment.Name} marked as returned.";
+                    StatusMessage = $"✅ {itemName} marked as returned.";
                 }
 
                 SelectedEquipment.LastUpdated = DateTime.Now;
@@ -173,7 +206,22 @@ namespace Firetrack.ViewModels
                     await _db.LogActionAsync(
                         App.CurrentUser.Username,
                         "Clearance Return",
-                        $"Marked '{SelectedEquipment.Name}' as returned (previous status: {originalStatus}).");
+                        $"Marked '{itemName}' as returned (previous status: {originalStatus}).");
+                }
+
+                // ✅ NEW: notify the officer (best-effort)
+                try
+                {
+                    await _db.SendNotificationAsync(
+                        officerUsername,
+                        "✅ Equipment Cleared",
+                        $"'{itemName}' has been cleared from your accountability by " +
+                        $"{App.CurrentUser?.FullName ?? "Admin"}.");
+                }
+                catch (Exception nEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ Officer notification failed (clearance succeeded): {nEx.Message}");
                 }
 
                 LoadAssignedEquipment();
@@ -192,16 +240,14 @@ namespace Firetrack.ViewModels
         // ============================================================
         // MARK ALL RETURNED
         // ------------------------------------------------------------
-        // Closes Assignments rows for every item in the officer's
-        // list before updating Equipment. Damaged/InRepair items keep
-        // their status for the disposal pipeline.
+        // Uses local copies of SelectedOfficer / App.CurrentUser so the
+        // nullable flow analysis survives the awaits inside the loop.
+        // Damaged items keep their status for the disposal pipeline.
+        //
+        // NEW: single notification to the officer summarizing the sweep.
         // ============================================================
         private async void OnMarkAllReturned()
         {
-            // ✅ FIX: Capture into local variables so nullable flow analysis survives
-            // the awaits inside the loop. Without this, CS8602 fires on
-            // SelectedOfficer.Username / SelectedOfficer.FullName because the compiler
-            // can't prove the field wasn't reassigned by another thread during an await.
             var officer = SelectedOfficer;
             var currentUser = App.CurrentUser;
 
@@ -219,9 +265,12 @@ namespace Firetrack.ViewModels
 
             bool confirm = await Shell.Current.DisplayAlert(
                 "Confirm All Returns",
-                $"Mark all {AssignedEquipment.Count} items as returned?\n\nDamaged items will only have their assignment cleared — they will stay in the disposal pipeline.",
+                $"Mark all {AssignedEquipment.Count} items as returned?\n\n" +
+                "Damaged items will only have their assignment cleared — " +
+                "they will stay in the disposal pipeline.",
                 "Yes",
                 "Cancel");
+
             if (!confirm) return;
 
             IsBusy = true;
@@ -236,14 +285,13 @@ namespace Firetrack.ViewModels
                 {
                     if (string.IsNullOrEmpty(eq.AssignedToUsername)) continue;
 
-                    // ✅ Close the Assignments row before touching the Equipment row.
+                    // ✅ Close the Assignments row before touching Equipment
                     await _db.CloseActiveAssignmentsAsync(eq.EquipmentId, officer.Username);
 
                     string originalStatus = eq.Status;
                     eq.AssignedToUsername = null;
                     eq.LastUpdated = DateTime.Now;
 
-                    // ✅ Only downgrade non-damaged items to Available.
                     if (originalStatus == "Damaged" || originalStatus == "InRepair")
                     {
                         damagedSkipped++;
@@ -276,12 +324,31 @@ namespace Firetrack.ViewModels
                     await _db.LogActionAsync(
                         currentUser.Username,
                         "Clearance All Returned",
-                        $"Marked {returnedCount} item(s) as returned; {damagedSkipped} damaged item(s) kept in pipeline for {officer.FullName}");
+                        $"Marked {returnedCount} item(s) as returned; " +
+                        $"{damagedSkipped} damaged item(s) kept in pipeline for {officer.FullName}");
+                }
+
+                // ✅ NEW: single sweep notification to the officer
+                try
+                {
+                    await _db.SendNotificationAsync(
+                        officer.Username,
+                        "✅ Clearance Complete",
+                        $"{returnedCount} item(s) cleared from your accountability" +
+                        (damagedSkipped > 0
+                            ? $"; {damagedSkipped} damaged item(s) pending disposal."
+                            : "."));
+                }
+                catch (Exception nEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ Officer notification failed (clearance succeeded): {nEx.Message}");
                 }
 
                 if (damagedSkipped > 0)
                 {
-                    StatusMessage = $"✅ {returnedCount} returned; {damagedSkipped} damaged item(s) kept for disposal.";
+                    StatusMessage = $"✅ {returnedCount} returned; " +
+                                    $"{damagedSkipped} damaged item(s) kept for disposal.";
                 }
                 else
                 {
@@ -311,7 +378,10 @@ namespace Firetrack.ViewModels
                 return;
             }
 
-            var outstanding = AssignedEquipment.Where(e => !string.IsNullOrEmpty(e.AssignedToUsername)).ToList();
+            var outstanding = AssignedEquipment
+                .Where(e => !string.IsNullOrEmpty(e.AssignedToUsername))
+                .ToList();
+
             if (outstanding.Any())
             {
                 bool confirm = await Shell.Current.DisplayAlert(
@@ -319,10 +389,10 @@ namespace Firetrack.ViewModels
                     $"{outstanding.Count} item(s) still have assignments. Mark them as returned now?",
                     "Yes, Mark All",
                     "Cancel");
+
                 if (confirm)
                 {
                     OnMarkAllReturned();
-                    // Give async work a moment, then return — admin can re-tap Generate
                     return;
                 }
                 else
@@ -383,9 +453,7 @@ namespace Firetrack.ViewModels
 
         private void OnRefresh()
         {
-            LoadOfficers();
-            if (SelectedOfficer != null)
-                LoadAssignedEquipment();
+            RefreshAsync();
         }
     }
 }

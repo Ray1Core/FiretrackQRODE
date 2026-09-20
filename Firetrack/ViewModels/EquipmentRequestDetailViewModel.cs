@@ -1,5 +1,6 @@
 ﻿using Firetrack.Models;
 using Firetrack.Services;
+using Firetrack.Helpers;
 using System.Windows.Input;
 using Microsoft.Maui.Controls;
 
@@ -24,21 +25,42 @@ namespace Firetrack.ViewModels
         }
 
         public ICommand RequestCommand { get; }
-        public ICommand RequestDisposalCommand { get; }   // NEW
+        public ICommand RequestDisposalCommand { get; }
 
         public EquipmentRequestDetailViewModel(EquipmentModel equipment)
         {
             _db = App.Database!;
             Equipment = equipment;
             RequestCommand = new Command(OnRequest);
-            RequestDisposalCommand = new Command(OnRequestDisposal);   // NEW
+            RequestDisposalCommand = new Command(OnRequestDisposal);
         }
 
+        // ============================================================
+        // REQUEST EQUIPMENT
+        // ------------------------------------------------------------
+        // Personnel taps this to request an Available item.
+        //
+        // FIXES APPLIED:
+        //  1. Notification was sent to "admin" (invalid username) and
+        //     was silently dropped by SaveNotificationAsync.
+        //     Now uses the seeded admin email "admin@firetrack.gov".
+        //  2. Added audit-log entry so the action shows on AuditLogPage.
+        // ============================================================
         private async void OnRequest()
         {
             if (App.CurrentUser == null)
             {
                 await Shell.Current.DisplayAlert("Error", "You must be logged in.", "OK");
+                return;
+            }
+
+            // Guard against duplicate requests
+            if (!string.IsNullOrEmpty(Equipment.RequestStatus))
+            {
+                await Shell.Current.DisplayAlert(
+                    "Already Requested",
+                    $"You already have a '{Equipment.RequestStatus}' request for this item.",
+                    "OK");
                 return;
             }
 
@@ -59,12 +81,24 @@ namespace Firetrack.ViewModels
 
                 await _db.SaveEquipmentAsync(Equipment);
 
+                // ✅ FIX #1: was "admin" — that username doesn't exist.
+                // The seeded admin's Username is actually their Email.
                 await _db.SendNotificationAsync(
-                    "admin",
+                    "admin@firetrack.gov",
                     "📋 New Equipment Request",
-                    $"{App.CurrentUser.FullName} requested '{Equipment.Name}'.");
+                    $"{App.CurrentUser.FullName} requested '{Equipment.Name}' ({Equipment.QRCode}).");
 
-                await Shell.Current.DisplayAlert("Success", $"Request for '{Equipment.Name}' submitted.", "OK");
+                // ✅ FIX #2: audit log was missing entirely for this action.
+                await _db.LogActionAsync(
+                    App.CurrentUser.Username,
+                    "Request Equipment",
+                    $"Requested '{Equipment.Name}' ({Equipment.QRCode})");
+
+                await Shell.Current.DisplayAlert(
+                    "Success",
+                    $"Request for '{Equipment.Name}' submitted to Admin.",
+                    "OK");
+
                 await Shell.Current.GoToAsync("..");
             }
             catch (Exception ex)
@@ -77,7 +111,14 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // NEW: Request Disposal
+        // ============================================================
+        // REQUEST DISPOSAL
+        // ------------------------------------------------------------
+        // Only allowed when Equipment.Status == "Damaged".
+        // DatabaseService.RequestDisposalAsync already notifies the
+        // admin correctly (uses "admin@firetrack.gov"), but we add the
+        // audit-log line here so the request is traceable.
+        // ============================================================
         private async void OnRequestDisposal()
         {
             if (App.CurrentUser == null)
@@ -89,7 +130,10 @@ namespace Firetrack.ViewModels
             // Only allow if equipment is currently damaged
             if (Equipment.Status != "Damaged")
             {
-                await Shell.Current.DisplayAlert("Info", "Only damaged equipment can be marked for disposal.", "OK");
+                await Shell.Current.DisplayAlert(
+                    "Info",
+                    "Only damaged equipment can be marked for disposal.",
+                    "OK");
                 return;
             }
 
@@ -119,12 +163,25 @@ namespace Firetrack.ViewModels
 
                 if (success)
                 {
-                    await Shell.Current.DisplayAlert("Success", $"Disposal request for '{Equipment.Name}' submitted to Admin.", "OK");
+                    // ✅ Audit log the disposal request too.
+                    await _db.LogActionAsync(
+                        App.CurrentUser.Username,
+                        "Request Disposal",
+                        $"Disposal requested for '{Equipment.Name}' ({Equipment.QRCode}). Reason: {reason}");
+
+                    await Shell.Current.DisplayAlert(
+                        "Success",
+                        $"Disposal request for '{Equipment.Name}' submitted to Admin.",
+                        "OK");
+
                     await Shell.Current.GoToAsync("..");
                 }
                 else
                 {
-                    await Shell.Current.DisplayAlert("Error", "Failed to submit disposal request.", "OK");
+                    await Shell.Current.DisplayAlert(
+                        "Error",
+                        "Failed to submit disposal request.",
+                        "OK");
                 }
             }
             catch (Exception ex)

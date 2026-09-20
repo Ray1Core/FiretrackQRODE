@@ -683,67 +683,266 @@ namespace Firetrack.Services
         // ✅ Close pre-existing 'Assigned' rows before inserting the new
         // one. Otherwise repeated request→approve cycles accumulate stale
         // 'Assigned' rows → officer dashboard shows the same tool N times.
+        // ============================================================
+        // APPROVE REQUEST
+        // ------------------------------------------------------------
+        // Sets the request status to Approved, closes any stale
+        // 'Assigned' rows, inserts a fresh assignment row, updates the
+        // Equipment status, and notifies the personnel officer.
+        //
+        // Returns:
+        //   1  = request approved successfully
+        //   0  = no-op (equipment not found, user not found, or the
+        //        request was already processed)
+        //
+        // IMPORTANT (Clearance / duplicate-tool bug fix):
+        //   We MUST close pre-existing 'Assigned' rows BEFORE inserting
+        //   the new one. Otherwise repeated request→approve cycles
+        //   accumulate stale 'Assigned' rows and the officer's Dashboard
+        //   JOIN shows the same tool N times.
+        // ============================================================
         public async Task<int> ApproveRequestAsync(string qrCode, UserModel approver)
         {
+            if (string.IsNullOrWhiteSpace(qrCode))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "⚠️ ApproveRequestAsync: empty qrCode — aborting.");
+                return 0;
+            }
+
+            if (approver == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "⚠️ ApproveRequestAsync: approver is null — aborting.");
+                return 0;
+            }
+
             var equipment = await GetEquipmentByQRAsync(qrCode);
-            if (equipment == null) return 0;
+            if (equipment == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ ApproveRequestAsync: equipment '{qrCode}' not found.");
+                return 0;
+            }
 
-            var user = await GetUserByUsernameAsync(equipment.RequestedByUsername!);
-            if (user == null) return 0;
+            // Guard: don't re-process an already-approved request
+            if (equipment.RequestStatus != "Pending")
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ ApproveRequestAsync: '{qrCode}' is not Pending " +
+                    $"(current: '{equipment.RequestStatus ?? "<null>"}') — aborting.");
+                return 0;
+            }
 
-            using var connection = CreateConnection();
+            if (string.IsNullOrWhiteSpace(equipment.RequestedByUsername))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ ApproveRequestAsync: '{qrCode}' has no RequestedByUsername — aborting.");
+                return 0;
+            }
 
-            // 1. Close any pre-existing 'Assigned' rows for this equipment.
-            await connection.ExecuteAsync(@"
-                UPDATE Assignments 
-                SET AssignmentStatus = 'Returned', ReturnedDate = @Date
-                WHERE EquipmentId = @EquipmentId AND AssignmentStatus = 'Assigned'",
-                new { EquipmentId = equipment.EquipmentId, Date = DateTime.Now.Date });
+            var user = await GetUserByUsernameAsync(equipment.RequestedByUsername);
+            if (user == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ ApproveRequestAsync: requesting user " +
+                    $"'{equipment.RequestedByUsername}' not found — aborting.");
+                return 0;
+            }
 
-            // 2. Insert the fresh assignment.
-            await connection.ExecuteAsync(
-                @"INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus)
-                  VALUES (@EquipmentId, @UserId, @Date, 'Assigned')",
-                new { EquipmentId = equipment.EquipmentId, UserId = user.UserId, Date = DateTime.Now.Date });
+            try
+            {
+                using var connection = CreateConnection();
 
-            equipment.ConditionStatus = "Issued";
-            equipment.AssignedToUsername = user.Username;
-            equipment.RequestStatus = "Approved";
-            equipment.RequestedByUsername = null;
-            equipment.LastUpdated = DateTime.Now;
+                // ---------- 1. Close any pre-existing 'Assigned' rows ----------
+                int closed = await connection.ExecuteAsync(@"
+            UPDATE Assignments
+            SET AssignmentStatus = 'Returned', ReturnedDate = @Date
+            WHERE EquipmentId = @EquipmentId AND AssignmentStatus = 'Assigned'",
+                    new
+                    {
+                        EquipmentId = equipment.EquipmentId,
+                        Date = DateTime.Now.Date
+                    });
 
-            await SaveEquipmentAsync(equipment);
-            await SendNotificationAsync(user.Username, "✅ Request Approved",
-                $"Your request for '{equipment.ItemName}' has been approved.");
-            return 1;
+                System.Diagnostics.Debug.WriteLine(
+                    $"✅ ApproveRequestAsync: closed {closed} stale assignment row(s) for " +
+                    $"EquipmentId={equipment.EquipmentId}");
+
+                // ---------- 2. Insert the fresh assignment row ----------
+                await connection.ExecuteAsync(
+                    @"INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus)
+              VALUES (@EquipmentId, @UserId, @Date, 'Assigned')",
+                    new
+                    {
+                        EquipmentId = equipment.EquipmentId,
+                        UserId = user.UserId,
+                        Date = DateTime.Now.Date
+                    });
+
+                // ---------- 3. Update the Equipment row ----------
+                equipment.ConditionStatus = "Issued";
+                equipment.AssignedToUsername = user.Username;
+                equipment.RequestStatus = "Approved";
+                equipment.RequestedByUsername = null;
+                equipment.LastUpdated = DateTime.Now;
+
+                await SaveEquipmentAsync(equipment);
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"✅ ApproveRequestAsync: '{equipment.ItemName}' ({equipment.PropertyNumber}) " +
+                    $"issued to {user.Username} by {approver.Username}");
+
+                // ---------- 4. Notify the personnel officer ----------
+                try
+                {
+                    await SendNotificationAsync(
+                        user.Username,
+                        "✅ Request Approved",
+                        $"Your request for '{equipment.ItemName}' ({equipment.PropertyNumber}) " +
+                        $"has been approved by {approver.FullName}.");
+                }
+                catch (Exception nEx)
+                {
+                    // Notification failure must NOT roll back a successful approval
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ ApproveRequestAsync: notification failed " +
+                        $"(approval still succeeded): {nEx.Message}");
+                }
+
+                // ---------- 5. Audit log ----------
+                // NOTE: if your PendingRequestsViewModel already calls LogActionAsync
+                // for "Approve Request", DELETE this block to avoid duplicate rows.
+                try
+                {
+                    await LogActionAsync(
+                        approver.Username,
+                        "Approve Request",
+                        $"Approved '{equipment.ItemName}' ({equipment.PropertyNumber}) " +
+                        $"for {user.Username}");
+                }
+                catch (Exception logEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ ApproveRequestAsync: audit log failed: {logEx.Message}");
+                }
+
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"❌ ApproveRequestAsync FAILED for '{qrCode}': {ex}");
+                throw;
+            }
         }
 
+        
+
+        // ============================================================
+        // REJECT REQUEST
+        // ------------------------------------------------------------
+        // Clears the pending request on the Equipment row and notifies
+        // the requesting officer. Does NOT touch Assignments (nothing
+        // was ever created).
+        //
+        // Returns:
+        //   1  = request rejected successfully
+        //   0  = no-op (equipment not found, or the request was already
+        //        processed)
+        // ============================================================
         public async Task<int> RejectRequestAsync(string qrCode, UserModel approver)
         {
+            if (string.IsNullOrWhiteSpace(qrCode))
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "⚠️ RejectRequestAsync: empty qrCode — aborting.");
+                return 0;
+            }
+
+            if (approver == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    "⚠️ RejectRequestAsync: approver is null — aborting.");
+                return 0;
+            }
+
             var equipment = await GetEquipmentByQRAsync(qrCode);
-            if (equipment == null) return 0;
+            if (equipment == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ RejectRequestAsync: equipment '{qrCode}' not found.");
+                return 0;
+            }
+
+            // Guard: don't re-process an already-rejected or approved request
+            if (equipment.RequestStatus != "Pending")
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ RejectRequestAsync: '{qrCode}' is not Pending " +
+                    $"(current: '{equipment.RequestStatus ?? "<null>"}') — aborting.");
+                return 0;
+            }
 
             var requestedBy = equipment.RequestedByUsername;
-            equipment.RequestedByUsername = null;
-            equipment.RequestStatus = null;
-            equipment.LastUpdated = DateTime.Now;
-            await SaveEquipmentAsync(equipment);
 
-            if (!string.IsNullOrEmpty(requestedBy))
+            try
             {
-                await SendNotificationAsync(requestedBy, "❌ Request Rejected",
-                    $"Your request for '{equipment.ItemName}' has been rejected.");
-            }
-            return 1;
-        }
+                // ---------- 1. Clear the pending request ----------
+                equipment.RequestedByUsername = null;
+                equipment.RequestStatus = null;
+                equipment.LastUpdated = DateTime.Now;
 
-        public async Task<int> UpdateRequestStatusAsync(string qrCode, string status, string? approver = null)
-        {
-            var equipment = await GetEquipmentByQRAsync(qrCode);
-            if (equipment == null) return 0;
-            equipment.RequestStatus = status;
-            equipment.LastUpdated = DateTime.Now;
-            return await SaveEquipmentAsync(equipment);
+                await SaveEquipmentAsync(equipment);
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"✅ RejectRequestAsync: '{equipment.ItemName}' ({equipment.PropertyNumber}) " +
+                    $"rejected by {approver.Username} (was requested by {requestedBy ?? "<unknown>"})");
+
+                // ---------- 2. Notify the personnel officer ----------
+                if (!string.IsNullOrEmpty(requestedBy))
+                {
+                    try
+                    {
+                        await SendNotificationAsync(
+                            requestedBy,
+                            "❌ Request Rejected",
+                            $"Your request for '{equipment.ItemName}' ({equipment.PropertyNumber}) " +
+                            $"has been rejected by {approver.FullName}.");
+                    }
+                    catch (Exception nEx)
+                    {
+                        System.Diagnostics.Debug.WriteLine(
+                            $"⚠️ RejectRequestAsync: notification failed " +
+                            $"(rejection still succeeded): {nEx.Message}");
+                    }
+                }
+
+                // ---------- 3. Audit log ----------
+                // NOTE: if your PendingRequestsViewModel already calls LogActionAsync
+                // for "Reject Request", DELETE this block to avoid duplicate rows.
+                try
+                {
+                    await LogActionAsync(
+                        approver.Username,
+                        "Reject Request",
+                        $"Rejected '{equipment.ItemName}' ({equipment.PropertyNumber}) " +
+                        $"from {requestedBy ?? "<unknown>"}");
+                }
+                catch (Exception logEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ RejectRequestAsync: audit log failed: {logEx.Message}");
+                }
+
+                return 1;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"❌ RejectRequestAsync FAILED for '{qrCode}': {ex}");
+                throw;
+            }
         }
 
         // ============================================================

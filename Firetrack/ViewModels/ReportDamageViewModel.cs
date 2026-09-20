@@ -18,6 +18,7 @@ namespace Firetrack.ViewModels
         private string _photoPath = string.Empty;
         private ImageSource? _photoPreview;
         private bool _isBusy;
+        private bool _isSubmitting;   // ✅ prevents double-submit
 
         public EquipmentModel Equipment
         {
@@ -61,6 +62,9 @@ namespace Firetrack.ViewModels
             SubmitReportCommand = new Command(OnSubmitReport);
         }
 
+        // ============================================================
+        // PICK PHOTO (unchanged logic — just kept tidy)
+        // ============================================================
         private async void OnPickPhoto()
         {
             try
@@ -70,8 +74,7 @@ namespace Firetrack.ViewModels
                     Title = "Pick a photo of the damaged equipment"
                 });
 
-                if (photo == null)
-                    return;
+                if (photo == null) return;
 
                 IsBusy = true;
 
@@ -110,89 +113,127 @@ namespace Firetrack.ViewModels
             return fullPath;
         }
 
+        // ============================================================
+        // SUBMIT DAMAGE REPORT
+        // ------------------------------------------------------------
+        // Full end-to-end flow:
+        //   1. Validate input (photo + remarks)
+        //   2. Mark equipment as Damaged, save
+        //   3. Write a TransactionModel row (shows on TransactionHistory)
+        //   4. Audit-log the damage report
+        //   5. Notify admin@firetrack.gov
+        //   6. ✅ Auto-create a DisposalRequest so the item enters the
+        //      admin's disposal queue in the same action
+        //   7. ✅ Audit-log the auto disposal request too (NEW)
+        //   8. Navigate back to dashboard
+        //
+        // FIXES APPLIED:
+        //   • Double-submit guard (_isSubmitting)
+        //   • Rollback in-memory Status if DB write fails
+        //   • Audit-log the auto-created disposal request
+        // ============================================================
         private async void OnSubmitReport()
         {
+            // ✅ Guard: prevent double-tap during the async save
+            if (_isSubmitting) return;
+
             if (string.IsNullOrWhiteSpace(PhotoPath))
             {
-                await Shell.Current.DisplayAlert("Validation", "Please take or select a photo of the damage.", "OK");
+                await Shell.Current.DisplayAlert(
+                    "Validation",
+                    "Please take or select a photo of the damage.",
+                    "OK");
                 return;
             }
 
             if (string.IsNullOrWhiteSpace(Remarks))
             {
-                await Shell.Current.DisplayAlert("Validation", "Please add remarks describing the damage.", "OK");
+                await Shell.Current.DisplayAlert(
+                    "Validation",
+                    "Please add remarks describing the damage.",
+                    "OK");
                 return;
             }
 
+            if (App.CurrentUser == null)
+            {
+                await Shell.Current.DisplayAlert(
+                    "Error",
+                    "You must be logged in to submit a damage report.",
+                    "OK");
+                return;
+            }
+
+            _isSubmitting = true;
             IsBusy = true;
+
+            // ✅ Snapshot the previous status so we can roll back
+            //    the in-memory model if the DB write fails.
+            string previousStatus = Equipment.Status;
+            string? previousPhotoPath = Equipment.PhotoPath;
+            string? previousRemarks = Equipment.Remarks;
 
             try
             {
-                // ---- 1. Update equipment ----
+                // ---------- 1. Update the equipment row ----------
                 Equipment.Status = "Damaged";
                 Equipment.PhotoPath = PhotoPath;
                 Equipment.Remarks = Remarks;
                 Equipment.LastUpdated = DateTime.Now;
 
-                // ---- 2. Log the damage report as a transaction ----
+                await _db.SaveEquipmentAsync(Equipment);
+
+                // ---------- 2. Log as a transaction (chain of custody) ----------
                 var transaction = new TransactionModel
                 {
                     EquipmentQR = Equipment.QRCode,
-                    FromUser = App.CurrentUser?.Username ?? "unknown",
+                    FromUser = App.CurrentUser.Username,
                     ToUser = Equipment.AssignedToUsername ?? "none",
                     Timestamp = DateTime.Now,
                     Action = "ReportDamage",
                     Remarks = Remarks
                 };
-
-                await _db.SaveEquipmentAsync(Equipment);
                 await _db.SaveTransactionAsync(transaction);
 
-                // ---- 3. Audit log ----
-                if (App.CurrentUser != null)
+                // ---------- 3. Audit log the damage report ----------
+                await _db.LogActionAsync(
+                    App.CurrentUser.Username,
+                    "Report Damage",
+                    $"Reported damage on '{Equipment.Name}' ({Equipment.QRCode}). Remarks: {Remarks}");
+
+                // ---------- 4. Notify admin ----------
+                await _db.SendNotificationAsync(
+                    "admin@firetrack.gov",   // ✅ correct admin email
+                    "⚠️ Damage Report",
+                    $"{App.CurrentUser.FullName} reported damage on '{Equipment.Name}' ({Equipment.QRCode}).");
+
+                // ---------- 5. Auto-create the disposal request ----------
+                bool disposalRequested = await _db.RequestDisposalAsync(
+                    Equipment.QRCode,
+                    App.CurrentUser.Username,
+                    string.IsNullOrWhiteSpace(Remarks)
+                        ? "Damaged equipment reported by personnel"
+                        : Remarks);
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"🗑️ Auto-created disposal request: {disposalRequested}");
+
+                // ✅ NEW: Audit-log the auto disposal request so it
+                //    shows up on AuditLogPage as its own action.
+                if (disposalRequested)
                 {
                     await _db.LogActionAsync(
                         App.CurrentUser.Username,
-                        "Report Damage",
-                        $"Reported damage on '{Equipment.Name}' ({Equipment.QRCode})");
+                        "Request Disposal",
+                        $"Auto-created disposal request for '{Equipment.Name}' ({Equipment.QRCode}) via damage report.");
                 }
 
-                // ---- 4. Notify Admin ----
-                await _db.SendNotificationAsync(
-                    "admin@firetrack.gov",
-                    "⚠️ Damage Report",
-                    $"{App.CurrentUser?.FullName} reported damage on '{Equipment.Name}'.");
-
-                // ============================================================
-                // ✅ NEW: Auto-create the disposal request so Admin sees it
-                // immediately in the Disposal Requests queue.
-                //
-                // This merges what were previously two separate steps
-                // (Report Damage + Request Disposal) into a single user
-                // action — which matches the natural BFP workflow where a
-                // damaged item automatically enters the disposal pipeline.
-                //
-                // The Admin still has to approve/reject before the item is
-                // actually disposed, so the approval gate is preserved.
-                // ============================================================
-                bool disposalRequested = false;
-                if (App.CurrentUser != null)
-                {
-                    disposalRequested = await _db.RequestDisposalAsync(
-                        Equipment.QRCode,
-                        App.CurrentUser.Username,
-                        string.IsNullOrWhiteSpace(Remarks)
-                            ? "Damaged equipment reported by personnel"
-                            : Remarks);
-
-                    System.Diagnostics.Debug.WriteLine(
-                        $"🗑️ Auto-created disposal request: {disposalRequested}");
-                }
-
-                // ---- 5. Confirmation ----
+                // ---------- 6. Confirmation ----------
                 string message = disposalRequested
-                    ? "Damage report submitted successfully.\n\nThe Admin has been notified and a disposal request is now pending approval."
-                    : "Damage report submitted successfully.\n\nThe Admin has been notified.";
+                    ? "Damage report submitted successfully.\n\n" +
+                      "The Admin has been notified and a disposal request is now pending approval."
+                    : "Damage report submitted successfully.\n\n" +
+                      "The Admin has been notified.";
 
                 await Shell.Current.DisplayAlert("Success", message, "OK");
 
@@ -201,11 +242,22 @@ namespace Firetrack.ViewModels
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"❌ Damage report failed: {ex}");
-                await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
+
+                // ✅ Roll back the in-memory model so the UI doesn't
+                //    show the item as Damaged when the DB write failed.
+                Equipment.Status = previousStatus;
+                Equipment.PhotoPath = previousPhotoPath;
+                Equipment.Remarks = previousRemarks;
+
+                await Shell.Current.DisplayAlert(
+                    "Error",
+                    $"Could not submit damage report: {ex.Message}",
+                    "OK");
             }
             finally
             {
                 IsBusy = false;
+                _isSubmitting = false;
             }
         }
     }

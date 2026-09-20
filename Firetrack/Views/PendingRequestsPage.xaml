@@ -5,10 +5,16 @@
              Title="Pending Requests"
              BackgroundColor="{StaticResource Background}"
              Shell.TabBarIsVisible="False">
-    <!-- ✅ Added -->
 
     <Grid RowDefinitions="Auto, *">
-        <VerticalStackLayout Grid.Row="0" Padding="20" Spacing="10" BackgroundColor="{StaticResource PrimaryColor}">
+
+        <!-- ============================================================ -->
+        <!-- HEADER                                                       -->
+        <!-- ============================================================ -->
+        <VerticalStackLayout Grid.Row="0"
+                             Padding="20"
+                             Spacing="10"
+                             BackgroundColor="{StaticResource PrimaryColor}">
             <Label Text="📋 Pending Requests"
                    FontSize="24"
                    FontAttributes="Bold"
@@ -20,37 +26,110 @@
                    HorizontalOptions="Center" />
         </VerticalStackLayout>
 
-        <RefreshView Grid.Row="1" IsRefreshing="{Binding IsBusy}" Command="{Binding LoadRequestsCommand}">
-            <CollectionView ItemsSource="{Binding Requests}" EmptyView="No pending requests.">
-                <CollectionView.ItemTemplate>
-                    <DataTemplate>
-                        <Border Style="{StaticResource CardStyle}" Margin="10,5" Padding="10">
-                            <VerticalStackLayout Spacing="6">
-                                <Label Text="{Binding Name}" FontSize="16" FontAttributes="Bold" TextColor="{StaticResource OnBackground}" />
-                                <Label Text="{Binding QRCode, StringFormat='QR: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
-                                <Label Text="{Binding RequestedByUsername, StringFormat='Requested by: {0}'}" FontSize="13" TextColor="{StaticResource Gray300}" />
-                                <Label Text="Status: Pending" FontSize="13" TextColor="{StaticResource WarningColor}" />
+        <!-- ============================================================ -->
+        <!-- LIST + LOADING + EMPTY STATE                                 -->
+        <!-- ============================================================ -->
+        <RefreshView Grid.Row="1"
+                     IsRefreshing="{Binding IsBusy}"
+                     Command="{Binding LoadRequestsCommand}">
 
-                                <Grid ColumnDefinitions="*, *" ColumnSpacing="10" Margin="0,5,0,0">
-                                    <Button Text="✅ Approve"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ApproveCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource SuccessButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                    <Button Grid.Column="1"
-                                            Text="❌ Reject"
-                                            Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RejectCommand}"
-                                            CommandParameter="{Binding .}"
-                                            Style="{StaticResource DangerButton}"
-                                            HeightRequest="35"
-                                            FontSize="12" />
-                                </Grid>
-                            </VerticalStackLayout>
-                        </Border>
-                    </DataTemplate>
-                </CollectionView.ItemTemplate>
-            </CollectionView>
+            <Grid>
+                <!-- Loading spinner (top-center, floats above list) -->
+                <ActivityIndicator IsRunning="{Binding IsBusy}"
+                                   IsVisible="{Binding IsBusy}"
+                                   Color="{StaticResource PrimaryColor}"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Start"
+                                   Margin="0,20,0,0"
+                                   HeightRequest="40"
+                                   WidthRequest="40" />
+
+                <!-- Empty state — only shows when loading is DONE and list is empty -->
+                <VerticalStackLayout IsVisible="{Binding IsEmpty}"
+                                     VerticalOptions="Center"
+                                     HorizontalOptions="Center"
+                                     Spacing="8"
+                                     Padding="40">
+                    <Label Text="✅"
+                           FontSize="48"
+                           HorizontalOptions="Center" />
+                    <Label Text="No pending requests."
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="{StaticResource OnBackground}"
+                           HorizontalOptions="Center" />
+                    <Label Text="New equipment requests from personnel will appear here."
+                           FontSize="13"
+                           TextColor="{StaticResource Gray300}"
+                           HorizontalTextAlignment="Center"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+
+                <!-- Main list -->
+                <CollectionView ItemsSource="{Binding Requests}"
+                                SelectionMode="None">
+                    <CollectionView.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardStyle}"
+                                    Margin="10,5"
+                                    Padding="12">
+                                <VerticalStackLayout Spacing="8">
+
+                                    <!-- Item name + QR -->
+                                    <Grid ColumnDefinitions="*, Auto">
+                                        <Label Text="{Binding Name}"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="{StaticResource OnBackground}"
+                                               VerticalOptions="Center" />
+                                        <Label Grid.Column="1"
+                                               Text="{Binding QRCode}"
+                                               FontSize="12"
+                                               TextColor="{StaticResource Gray300}"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+
+                                    <!-- Type -->
+                                    <Label Text="{Binding Type, StringFormat='Type: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray300}" />
+
+                                    <!-- Requested by -->
+                                    <Label Text="{Binding RequestedByUsername, StringFormat='Requested by: {0}'}"
+                                           FontSize="13"
+                                           TextColor="{StaticResource Gray300}" />
+
+                                    <!-- Status pill -->
+                                    <Label Text="Status: Pending"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           TextColor="{StaticResource WarningColor}" />
+
+                                    <!-- Approve / Reject buttons -->
+                                    <Grid ColumnDefinitions="*, *"
+                                          ColumnSpacing="10"
+                                          Margin="0,6,0,0">
+                                        <Button Text="✅ Approve"
+                                                Style="{StaticResource SuccessButton}"
+                                                HeightRequest="40"
+                                                FontSize="13"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ApproveCommand}"
+                                                CommandParameter="{Binding .}" />
+                                        <Button Grid.Column="1"
+                                                Text="❌ Reject"
+                                                Style="{StaticResource DangerButton}"
+                                                HeightRequest="40"
+                                                FontSize="13"
+                                                Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RejectCommand}"
+                                                CommandParameter="{Binding .}" />
+                                    </Grid>
+
+                                </VerticalStackLayout>
+                            </Border>
+                        </DataTemplate>
+                    </CollectionView.ItemTemplate>
+                </CollectionView>
+            </Grid>
         </RefreshView>
     </Grid>
 </ContentPage>

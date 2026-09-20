@@ -20,7 +20,7 @@ namespace Firetrack.ViewModels
         private string _returnToPage = string.Empty;
         private string _scanMode = "equipment";
 
-        // ✅ NEW: Properties to control camera and placeholder visibility safely via MVVM
+        // Controls camera/placeholder visibility safely via MVVM
         private bool _isCameraReady = false;
         private bool _isPlaceholderVisible = true;
 
@@ -60,14 +60,12 @@ namespace Firetrack.ViewModels
             set { _scanMode = value; OnPropertyChanged(); }
         }
 
-        // ✅ NEW: Binds to the CameraBarcodeReaderView IsVisible property
         public bool IsCameraReady
         {
             get => _isCameraReady;
             set { _isCameraReady = value; OnPropertyChanged(); }
         }
 
-        // ✅ NEW: Binds to the Placeholder VerticalStackLayout IsVisible property
         public bool IsPlaceholderVisible
         {
             get => _isPlaceholderVisible;
@@ -88,7 +86,6 @@ namespace Firetrack.ViewModels
             try
             {
                 // If we were pushed onto a stack, pop back naturally.
-                // (Handles Dashboard quick-action and Transfer-launched cases.)
                 if (Shell.Current.Navigation.NavigationStack.Count > 1)
                 {
                     await Shell.Current.GoToAsync("..");
@@ -96,7 +93,6 @@ namespace Firetrack.ViewModels
                 }
 
                 // We're a root page (opened from flyout) — no stack to pop.
-                // Go to the role-appropriate dashboard explicitly.
                 var user = App.CurrentUser;
                 string dashboardRoute = user?.Role == "Admin"
                     ? "//AdminDashboard"
@@ -105,11 +101,31 @@ namespace Firetrack.ViewModels
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"❌ Scanner cancel navigation failed: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine(
+                    $"❌ Scanner cancel navigation failed: {ex.Message}");
                 try { await Shell.Current.GoToAsync(".."); } catch { /* last resort */ }
             }
         }
 
+        // ============================================================
+        // PROCESS SCANNED QR
+        // ------------------------------------------------------------
+        // Called from two places:
+        //   1. OnBarcodesDetected (hardware scan — MediaTek often fails)
+        //   2. OnTypeQrClicked  (manual entry fallback — works everywhere)
+        //
+        // Two modes of operation:
+        //   A. "Return to caller" — ReturnToPage is set (Transfer flow).
+        //      We do NOT do a DB lookup here; the caller
+        //      (TransferViewModel.ProcessScannedQR) handles the lookup
+        //      because it needs to distinguish equipment vs person QR.
+        //   B. "Standalone" — no ReturnToPage. We do the equipment lookup
+        //      and display the result inline.
+        //
+        // FIXES APPLIED:
+        //  • Audit log entry on successful equipment lookup.
+        //  • Audit log entry when handing off to a caller page.
+        // ============================================================
         public async Task ProcessScannedQR(string qrValue)
         {
             if (_db == null)
@@ -118,40 +134,76 @@ namespace Firetrack.ViewModels
                 return;
             }
 
+            if (string.IsNullOrWhiteSpace(qrValue))
+                return;
+
             IsBusy = true;
             ScanResult = $"Scanned: {qrValue}";
 
             try
             {
-                var equipmentList = await _db.GetEquipmentsAsync();
-                var found = equipmentList.FirstOrDefault(e => e.QRCode == qrValue);
-
+                // ---------- MODE A: Hand off to caller ----------
                 if (!string.IsNullOrEmpty(ReturnToPage))
                 {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"🔍 Scanner handing off to {ReturnToPage} — qr={qrValue}, mode={ScanMode}");
+
+                    // ✅ Audit log the scan event so it shows on AuditLogPage
+                    if (App.CurrentUser != null)
+                    {
+                        await _db.LogActionAsync(
+                            App.CurrentUser.Username,
+                            "Scan QR",
+                            $"Scanned '{qrValue}' (mode={ScanMode})");
+                    }
+
                     var navParams = new Dictionary<string, object>
                     {
                         { "scannedQR", qrValue },
                         { "mode", ScanMode }
                     };
-                    await Shell.Current.GoToAsync($"..", navParams);
+
+                    // Pop back to the caller (TransferPage)
+                    await Shell.Current.GoToAsync("..", navParams);
                     return;
                 }
+
+                // ---------- MODE B: Standalone lookup ----------
+                var equipmentList = await _db.GetEquipmentsAsync();
+                var found = equipmentList.FirstOrDefault(e => e.QRCode == qrValue);
 
                 if (found != null)
                 {
                     FoundEquipment = found;
+
+                    // ✅ Audit log successful scan
+                    if (App.CurrentUser != null)
+                    {
+                        await _db.LogActionAsync(
+                            App.CurrentUser.Username,
+                            "Scan QR",
+                            $"Scanned '{found.Name}' ({found.QRCode})");
+                    }
+
                     await Shell.Current.DisplayAlert(
                         "Equipment Found",
-                        $"Name: {found.Name}\nType: {found.Type}\nStatus: {found.Status}\nAssigned to: {found.AssignedToUsername ?? "None"}",
+                        $"Name: {found.Name}\n" +
+                        $"Type: {found.Type}\n" +
+                        $"Status: {found.Status}\n" +
+                        $"Assigned to: {found.AssignedToUsername ?? "None"}",
                         "OK");
                 }
                 else
                 {
-                    await Shell.Current.DisplayAlert("Not Found", "No equipment matches this QR code.", "OK");
+                    await Shell.Current.DisplayAlert(
+                        "Not Found",
+                        "No equipment matches this QR code.",
+                        "OK");
                 }
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ ProcessScannedQR error: {ex}");
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
             finally

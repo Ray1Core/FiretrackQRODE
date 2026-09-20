@@ -25,10 +25,9 @@ namespace Firetrack.ViewModels
 
         private ObservableCollection<UserModel> _personnelList = new();
 
-        // -----------------------------
+        // ------------------------------------------------------------
         // EQUIPMENT
-        // -----------------------------
-
+        // ------------------------------------------------------------
         public EquipmentModel SelectedEquipment
         {
             get => _selectedEquipment;
@@ -41,10 +40,9 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // -----------------------------
+        // ------------------------------------------------------------
         // CURRENT CUSTODIAN
-        // -----------------------------
-
+        // ------------------------------------------------------------
         public UserModel CurrentCustodian
         {
             get => _currentCustodian;
@@ -62,10 +60,9 @@ namespace Firetrack.ViewModels
             }
         }
 
-        // -----------------------------
+        // ------------------------------------------------------------
         // RECEIVING PERSONNEL
-        // -----------------------------
-
+        // ------------------------------------------------------------
         public UserModel SelectedPersonnel
         {
             get => _selectedPersonnel;
@@ -86,100 +83,33 @@ namespace Firetrack.ViewModels
         public ObservableCollection<UserModel> PersonnelList
         {
             get => _personnelList;
-            set
-            {
-                _personnelList = value;
-                OnPropertyChanged();
-            }
+            set { _personnelList = value; OnPropertyChanged(); }
         }
 
-        // -----------------------------
+        // ------------------------------------------------------------
         // STATUS TEXT
-        // -----------------------------
+        // ------------------------------------------------------------
+        public string Step1Status { get => _step1Status; set { _step1Status = value; OnPropertyChanged(); } }
+        public string Step2Status { get => _step2Status; set { _step2Status = value; OnPropertyChanged(); } }
+        public string Step3Status { get => _step3Status; set { _step3Status = value; OnPropertyChanged(); } }
+        public string Step4Status { get => _step4Status; set { _step4Status = value; OnPropertyChanged(); } }
 
-        public string Step1Status
-        {
-            get => _step1Status;
-            set
-            {
-                _step1Status = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string Step2Status
-        {
-            get => _step2Status;
-            set
-            {
-                _step2Status = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string Step3Status
-        {
-            get => _step3Status;
-            set
-            {
-                _step3Status = value;
-                OnPropertyChanged();
-            }
-        }
-
-        public string Step4Status
-        {
-            get => _step4Status;
-            set
-            {
-                _step4Status = value;
-                OnPropertyChanged();
-            }
-        }
-
-        // -----------------------------
+        // ------------------------------------------------------------
         // CONFIRMATION
-        // -----------------------------
-
+        // ------------------------------------------------------------
         public bool FromConfirmed
         {
             get => _fromConfirmed;
-            set
-            {
-                _fromConfirmed = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CanConfirmTransfer));
-            }
+            set { _fromConfirmed = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanConfirmTransfer)); }
         }
 
         public bool ToConfirmed
         {
             get => _toConfirmed;
-            set
-            {
-                _toConfirmed = value;
-                OnPropertyChanged();
-                OnPropertyChanged(nameof(CanConfirmTransfer));
-            }
+            set { _toConfirmed = value; OnPropertyChanged(); OnPropertyChanged(nameof(CanConfirmTransfer)); }
         }
 
-        // -----------------------------
-        // BUSY
-        // -----------------------------
-
-        public bool IsBusy
-        {
-            get => _isBusy;
-            set
-            {
-                _isBusy = value;
-                OnPropertyChanged();
-            }
-        }
-
-        // -----------------------------
-        // STEP COMPLETION
-        // -----------------------------
+        public bool IsBusy { get => _isBusy; set { _isBusy = value; OnPropertyChanged(); } }
 
         public bool IsStep1Complete => SelectedEquipment != null;
         public bool IsStep2Complete => CurrentCustodian != null;
@@ -192,17 +122,14 @@ namespace Firetrack.ViewModels
             FromConfirmed &&
             ToConfirmed;
 
-        // -----------------------------
+        // ------------------------------------------------------------
         // COMMANDS
-        // -----------------------------
-
+        // ------------------------------------------------------------
         public ICommand ScanEquipmentCommand { get; }
         public ICommand ScanCurrentCustodianCommand { get; }
         public ICommand ScanNewCustodianCommand { get; }
-
         public ICommand ConfirmFromCommand { get; }
         public ICommand ConfirmToCommand { get; }
-
         public ICommand CompleteTransferCommand { get; }
         public ICommand ResetCommand { get; }
 
@@ -225,13 +152,7 @@ namespace Firetrack.ViewModels
 
         // =========================================================
         // STEP 1 - SCAN EQUIPMENT
-        // ---------------------------------------------------------
-        // ✅ Use Routes.GetScannerPushedRoute() so the Scanner lands
-        // on TOP of TransferPage in the navigation stack. Using the
-        // absolute route ("//AdminScanner") replaces the whole stack,
-        // so GoToAsync("..") had nothing to pop back to.
         // =========================================================
-
         private async void OnScanEquipment()
         {
             var parameters = new Dictionary<string, object>
@@ -246,7 +167,6 @@ namespace Firetrack.ViewModels
         // =========================================================
         // STEP 2 - SCAN CURRENT CUSTODIAN
         // =========================================================
-
         private async void OnScanCurrentCustodian()
         {
             var parameters = new Dictionary<string, object>
@@ -261,7 +181,6 @@ namespace Firetrack.ViewModels
         // =========================================================
         // STEP 3 - SCAN RECEIVING PERSON
         // =========================================================
-
         private async void OnScanNewCustodian()
         {
             var parameters = new Dictionary<string, object>
@@ -274,28 +193,17 @@ namespace Firetrack.ViewModels
         }
 
         // =========================================================
-        // PROCESS QR
+        // PROCESS SCANNED QR
         // ---------------------------------------------------------
-        // The QR value may be either:
-        //   • An equipment PropertyNumber (e.g. "HOSE001", "TOOL001")
-        //   • A user PersonalQR             (e.g. "PERSON-001", "ADMIN-001")
-        //   • A user email (fallback)       (e.g. "john@firetrack.gov")
-        //
-        // ✅ FIX: Steps 2 & 3 now try GetUserByPersonalQrAsync FIRST
-        // (matches the actual QR sticker) and fall back to email
-        // lookup so both formats work.
+        // PersonalQR lookup first (PERSON-001, ADMIN-001), email
+        // fallback for typed-in values.
         // =========================================================
-
         public async Task ProcessScannedQR(string qrCode, string mode)
         {
             System.Diagnostics.Debug.WriteLine(
                 $"🔍 TransferViewModel.ProcessScannedQR: qr={qrCode} mode={mode}");
 
-            if (string.IsNullOrWhiteSpace(qrCode))
-            {
-                System.Diagnostics.Debug.WriteLine("⚠️ Empty QR code — aborting");
-                return;
-            }
+            if (string.IsNullOrWhiteSpace(qrCode)) return;
 
             IsBusy = true;
 
@@ -304,7 +212,6 @@ namespace Firetrack.ViewModels
                 // -----------------------------
                 // EQUIPMENT QR
                 // -----------------------------
-
                 if (mode == "equipment")
                 {
                     var equipment = await _db.GetEquipmentByQRAsync(qrCode);
@@ -321,7 +228,7 @@ namespace Firetrack.ViewModels
                     SelectedEquipment = equipment;
                     Step1Status = $"✅ Equipment scanned: {equipment.Name}";
 
-                    // Automatically identify current custodian
+                    // Auto-identify the current custodian if the item is already assigned
                     if (!string.IsNullOrWhiteSpace(equipment.AssignedToUsername))
                     {
                         var users = await _db.GetUsersAsync();
@@ -329,21 +236,14 @@ namespace Firetrack.ViewModels
                             u => u.Username == equipment.AssignedToUsername);
 
                         if (custodian != null)
-                        {
                             CurrentCustodian = custodian;
-                        }
                     }
                 }
-
                 // -----------------------------
                 // CURRENT CUSTODIAN QR
                 // -----------------------------
-
                 else if (mode == "currentCustodian")
                 {
-                    // ✅ FIX: try PersonalQR lookup first (matches the actual
-                    // QR sticker value like "PERSON-001"), then fall back to
-                    // email lookup so both formats work.
                     var user = await _db.GetUserByPersonalQrAsync(qrCode)
                             ?? await _db.GetUserByUsernameAsync(qrCode);
 
@@ -358,14 +258,11 @@ namespace Firetrack.ViewModels
 
                     CurrentCustodian = user;
                 }
-
                 // -----------------------------
                 // NEW CUSTODIAN QR
                 // -----------------------------
-
                 else if (mode == "newCustodian")
                 {
-                    // ✅ FIX: same PersonalQR-first lookup as currentCustodian
                     var user = await _db.GetUserByPersonalQrAsync(qrCode)
                             ?? await _db.GetUserByUsernameAsync(qrCode);
 
@@ -406,28 +303,19 @@ namespace Firetrack.ViewModels
         }
 
         // =========================================================
-        // STEP 4 - CURRENT CUSTODIAN CONFIRMATION
+        // STEP 4 - CONFIRMATIONS
         // =========================================================
-
         private async void OnConfirmFrom()
         {
-            if (CurrentCustodian == null)
-                return;
-
+            if (CurrentCustodian == null) return;
             FromConfirmed = true;
             Step4Status = $"✓ {CurrentCustodian.FullName} confirmed the handover.";
             await Task.CompletedTask;
         }
 
-        // =========================================================
-        // STEP 4 - RECEIVING PERSON CONFIRMATION
-        // =========================================================
-
         private async void OnConfirmTo()
         {
-            if (SelectedPersonnel == null)
-                return;
-
+            if (SelectedPersonnel == null) return;
             ToConfirmed = true;
             Step4Status = $"✓ {SelectedPersonnel.FullName} confirmed receiving the equipment.";
             await Task.CompletedTask;
@@ -435,12 +323,15 @@ namespace Firetrack.ViewModels
 
         // =========================================================
         // COMPLETE TRANSFER
+        // ---------------------------------------------------------
+        // NEW: notify admin + audit-log the admin-visible event.
+        // Split try/catch: DB writes are the "critical path" — if
+        // they throw we abort; notifications are "best-effort" and
+        // don't roll back the transfer if they fail.
         // =========================================================
-
         private async void OnCompleteTransfer()
         {
-            if (!CanConfirmTransfer)
-                return;
+            if (!CanConfirmTransfer) return;
 
             bool confirm = await Shell.Current.DisplayAlert(
                 "Confirm Transfer",
@@ -450,13 +341,13 @@ namespace Firetrack.ViewModels
                 "Confirm",
                 "Cancel");
 
-            if (!confirm)
-                return;
+            if (!confirm) return;
 
             IsBusy = true;
 
             try
             {
+                // ---------- 1. CRITICAL PATH: DB writes ----------
                 var transaction = new TransactionModel
                 {
                     EquipmentQR = SelectedEquipment.QRCode,
@@ -465,9 +356,8 @@ namespace Firetrack.ViewModels
                     Timestamp = DateTime.Now,
                     Action = "Transfer",
                     Remarks = $"Digital Handshake: " +
-                              $"{CurrentCustodian.FullName} " +
-                              $"transferred '{SelectedEquipment.Name}' " +
-                              $"to {SelectedPersonnel.FullName}."
+                              $"{CurrentCustodian.FullName} transferred " +
+                              $"'{SelectedEquipment.Name}' to {SelectedPersonnel.FullName}."
                 };
 
                 SelectedEquipment.AssignedToUsername = SelectedPersonnel.Username;
@@ -480,29 +370,51 @@ namespace Firetrack.ViewModels
                 await _db.LogActionAsync(
                     CurrentCustodian.Username,
                     "Digital Handshake",
-                    $"Transferred '{SelectedEquipment.Name}' " +
-                    $"to {SelectedPersonnel.FullName}");
+                    $"Transferred '{SelectedEquipment.Name}' ({SelectedEquipment.QRCode}) " +
+                    $"from {CurrentCustodian.FullName} to {SelectedPersonnel.FullName}");
 
-                await _db.SendNotificationAsync(
-                    SelectedPersonnel.Username,
-                    "🤝 Equipment Transfer Complete",
-                    $"{CurrentCustodian.FullName} " +
-                    $"transferred '{SelectedEquipment.Name}' " +
-                    $"to you.");
+                // ---------- 2. BEST-EFFORT: notifications ----------
+                // Receiver notification
+                try
+                {
+                    await _db.SendNotificationAsync(
+                        SelectedPersonnel.Username,
+                        "🤝 Equipment Transfer Complete",
+                        $"{CurrentCustodian.FullName} transferred '{SelectedEquipment.Name}' to you.");
+                }
+                catch (Exception nEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ Receiver notification failed (transfer still succeeded): {nEx.Message}");
+                }
+
+                // ✅ NEW: Admin notification (for their feed / badge)
+                try
+                {
+                    await _db.SendNotificationAsync(
+                        "admin@firetrack.gov",
+                        "🔁 Equipment Transfer",
+                        $"{CurrentCustodian.FullName} transferred '{SelectedEquipment.Name}' " +
+                        $"to {SelectedPersonnel.FullName}.");
+                }
+                catch (Exception nEx)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"⚠️ Admin notification failed (transfer still succeeded): {nEx.Message}");
+                }
 
                 Step4Status = "✅ Transfer completed successfully.";
 
                 await Shell.Current.DisplayAlert(
                     "Transfer Complete",
-                    $"'{SelectedEquipment.Name}' " +
-                    $"is now assigned to " +
-                    $"{SelectedPersonnel.FullName}.",
+                    $"'{SelectedEquipment.Name}' is now assigned to {SelectedPersonnel.FullName}.",
                     "OK");
 
                 OnReset();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ Transfer failed: {ex}");
                 await Shell.Current.DisplayAlert("Error", ex.Message, "OK");
             }
             finally
@@ -514,7 +426,6 @@ namespace Firetrack.ViewModels
         // =========================================================
         // LOAD PERSONNEL
         // =========================================================
-
         private async void LoadPersonnel()
         {
             var users = await _db.GetUsersAsync();
@@ -530,7 +441,6 @@ namespace Firetrack.ViewModels
         // =========================================================
         // RESET
         // =========================================================
-
         private void OnReset()
         {
             SelectedEquipment = null!;
