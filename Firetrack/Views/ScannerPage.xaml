@@ -8,18 +8,22 @@
              BackgroundColor="{StaticResource Background}">
 
     <Grid>
-        <!-- ✅ FIX: Camera is hidden initially. It will be shown only after permission is granted. -->
+
+        <!-- ✅ FIX: Camera view is ALWAYS visible (was bound to IsCameraReady,
+             which caused ZXing to skip detection init on MediaTek).
+             Removed IsDetecting — not a valid XAML property in ZXing 0.4.0. -->
         <zxing:CameraBarcodeReaderView x:Name="cameraBarcodeReaderView"
                                        BarcodesDetected="OnBarcodesDetected"
                                        IsTorchOn="False"
-                                       IsVisible="{Binding IsCameraReady}"
+                                       IsVisible="True"
                                        CameraLocation="Rear" />
 
-        <!-- ✅ FIX: Placeholder is bound to the ViewModel. No x:Name needed. -->
+        <!-- Placeholder overlay (shown until camera is ready) -->
         <VerticalStackLayout IsVisible="{Binding IsPlaceholderVisible}"
                              VerticalOptions="Center"
                              HorizontalOptions="Center"
-                             Spacing="10">
+                             Spacing="10"
+                             BackgroundColor="#CC000000">
             <ActivityIndicator IsRunning="True" Color="{StaticResource PrimaryColor}" />
             <Label Text="Initializing camera..."
                    TextColor="White"
