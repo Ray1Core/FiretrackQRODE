@@ -9,16 +9,13 @@
 
     <Grid>
 
-        <!-- ✅ FIX: Camera view is ALWAYS visible (was bound to IsCameraReady,
-             which caused ZXing to skip detection init on MediaTek).
-             Removed IsDetecting — not a valid XAML property in ZXing 0.4.0. -->
         <zxing:CameraBarcodeReaderView x:Name="cameraBarcodeReaderView"
                                        BarcodesDetected="OnBarcodesDetected"
                                        IsTorchOn="False"
                                        IsVisible="True"
                                        CameraLocation="Rear" />
 
-        <!-- Placeholder overlay (shown until camera is ready) -->
+        <!-- Placeholder overlay -->
         <VerticalStackLayout IsVisible="{Binding IsPlaceholderVisible}"
                              VerticalOptions="Center"
                              HorizontalOptions="Center"
@@ -47,6 +44,20 @@
                    TextColor="{StaticResource PrimaryColor}"
                    FontSize="14"
                    HorizontalOptions="Center" />
+
+            <!-- ✅ NEW: Manual QR entry fallback for MediaTek devices where
+                 ZXing ImageAnalysis fails silently (Realme C100 4G etc.) -->
+            <Button Text="⌨️ Type QR Code Manually"
+                    Clicked="OnTypeQrClicked"
+                    BackgroundColor="#CC4445B1"
+                    TextColor="White"
+                    BorderColor="White"
+                    BorderWidth="1"
+                    CornerRadius="8"
+                    HeightRequest="44"
+                    HorizontalOptions="Center"
+                    WidthRequest="240" />
+
             <Button Text="Cancel"
                     Command="{Binding CancelCommand}"
                     BackgroundColor="Transparent"

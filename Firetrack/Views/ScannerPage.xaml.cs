@@ -62,15 +62,10 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
             return;
         }
 
-        // Shorter warm-up — the camera view is always visible so detection
-        // can start immediately once permission is confirmed.
         await Task.Delay(250);
 
         if (!_cameraConfigured)
         {
-            // ✅ FIX: Only BarcodeFormats.TwoDimensional exists in ZXing.Net.Maui 0.4.0.
-            // We filter for QR codes inside OnBarcodesDetected instead of trying
-            // to use non-existent enum members.
             cameraBarcodeReaderView.Options = new BarcodeReaderOptions
             {
                 Formats = BarcodeFormats.TwoDimensional,
@@ -80,14 +75,12 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
             };
 
             _cameraConfigured = true;
-
             System.Diagnostics.Debug.WriteLine("🔍 BarcodeReader options configured");
         }
 
         _viewModel.IsPlaceholderVisible = false;
         _viewModel.IsCameraReady = true;
 
-        // Short settle for autofocus
         await Task.Delay(150);
 
         _viewModel.IsScanning = true;
@@ -111,7 +104,6 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
     {
         var result = e.Results?.FirstOrDefault();
 
-        // ✅ Diagnostic log — fires on every detection attempt
         _detectionCount++;
         System.Diagnostics.Debug.WriteLine(
             $"🔍 OnBarcodesDetected #{_detectionCount}: " +
@@ -120,11 +112,41 @@ public partial class ScannerPage : ContentPage, IQueryAttributable
         if (result == null || string.IsNullOrEmpty(result.Value))
             return;
 
-        // ✅ FIX: don't gate on IsScanning. If a barcode is detected at all,
-        // process it. The page is only shown when the user wants to scan.
         _viewModel.IsScanning = false;
         System.Diagnostics.Debug.WriteLine($"🔍 Passing to ProcessScannedQR: {result.Value}");
 
         await _viewModel.ProcessScannedQR(result.Value);
+    }
+
+    // ============================================================
+    // MANUAL QR ENTRY FALLBACK
+    // ------------------------------------------------------------
+    // MediaTek devices (Realme C100 4G, some Oppo/Vivo) fail the
+    // Camera2 session config when Preview + ImageAnalysis are
+    // combined, so ZXing never fires OnBarcodesDetected.
+    //
+    // This button lets the user type the QR code (e.g. "HOSE001")
+    // manually. Since Firetrack's QR values are deterministic
+    // property numbers, typing is functionally equivalent to
+    // scanning and unblocks the Transfer flow on those devices.
+    // ============================================================
+    private async void OnTypeQrClicked(object sender, EventArgs e)
+    {
+        string typed = await DisplayPromptAsync(
+            "Enter QR Code",
+            "Type the equipment QR code exactly as printed:\n(example: HOSE001)",
+            accept: "Submit",
+            cancel: "Cancel",
+            placeholder: "HOSE001",
+            maxLength: 100);
+
+        if (string.IsNullOrWhiteSpace(typed))
+            return;
+
+        typed = typed.Trim().ToUpperInvariant();
+        System.Diagnostics.Debug.WriteLine($"🔍 Manual QR entry: {typed}");
+
+        _viewModel.IsScanning = false;
+        await _viewModel.ProcessScannedQR(typed);
     }
 }
