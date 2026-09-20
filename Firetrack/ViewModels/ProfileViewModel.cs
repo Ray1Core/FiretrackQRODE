@@ -5,6 +5,7 @@ using System.Windows.Input;
 using Microsoft.Maui.Controls;
 using Microsoft.Maui.Storage;
 using System.IO;
+using QRCoder;
 
 namespace Firetrack.ViewModels
 {
@@ -32,6 +33,28 @@ namespace Firetrack.ViewModels
             set { _isBusy = value; OnPropertyChanged(); }
         }
 
+        // ============================================================
+        // PERSONAL QR
+        // ------------------------------------------------------------
+        // Displayed on the Profile page for BOTH Admin and Personnel.
+        // This QR value (e.g. "ADMIN-001" or "PERSON-001") is what the
+        // other officer scans in Transfer Steps 2 & 3 to identify the
+        // current custodian or the receiver.
+        // ============================================================
+        private string _personalQr = string.Empty;
+        public string PersonalQr
+        {
+            get => _personalQr;
+            set { _personalQr = value; OnPropertyChanged(); }
+        }
+
+        private ImageSource? _personalQrImage;
+        public ImageSource? PersonalQrImage
+        {
+            get => _personalQrImage;
+            set { _personalQrImage = value; OnPropertyChanged(); }
+        }
+
         public ICommand ChangePasswordCommand { get; }
         public ICommand LogoutCommand { get; }
         public ICommand ChangeProfilePictureCommand { get; }
@@ -45,12 +68,12 @@ namespace Firetrack.ViewModels
             ChangeProfilePictureCommand = new Command(OnChangeProfilePicture);
 
             LoadProfileImage();
+            LoadPersonalQr();
         }
 
         // ===== LOAD PROFILE IMAGE =====
         private void LoadProfileImage()
         {
-            // ✅ FIX: Changed "defaultprofile.png" to "profiledefaultpicture.png"
             if (_currentUser == null)
             {
                 ProfileImageSource = ImageSource.FromFile("profiledefaultpicture.png");
@@ -75,8 +98,39 @@ namespace Firetrack.ViewModels
             }
 
             // Default image (must exist in Resources/Images)
-            // ✅ FIX: Changed "defaultprofile.png" to "profiledefaultpicture.png"
             ProfileImageSource = ImageSource.FromFile("profiledefaultpicture.png");
+        }
+
+        // ===== LOAD PERSONAL QR =====
+        private void LoadPersonalQr()
+        {
+            if (_currentUser == null) return;
+
+            PersonalQr = _currentUser.PersonalQR ?? string.Empty;
+
+            if (string.IsNullOrEmpty(PersonalQr))
+            {
+                System.Diagnostics.Debug.WriteLine("⚠️ Profile: PersonalQR is empty for current user.");
+                return;
+            }
+
+            try
+            {
+                var generator = new QRCodeGenerator();
+                var data = generator.CreateQrCode(PersonalQr, QRCodeGenerator.ECCLevel.Q);
+                var qr = new PngByteQRCode(data);
+                var png = qr.GetGraphic(20);
+
+                PersonalQrImage = ImageSource.FromStream(() => new MemoryStream(png));
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"✅ Profile: PersonalQR loaded = {PersonalQr}");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"❌ Profile: QR generation failed for '{PersonalQr}': {ex.Message}");
+            }
         }
 
         // ===== CHANGE PROFILE PICTURE =====

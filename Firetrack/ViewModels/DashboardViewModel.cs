@@ -32,6 +32,22 @@ namespace Firetrack.ViewModels
         private int _rejectedRequests;
         private int _disposedCount;
 
+        // ✅ NEW: unread notification count for the bell badge
+        private int _unreadCount;
+        public int UnreadCount
+        {
+            get => _unreadCount;
+            set
+            {
+                _unreadCount = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(HasUnread));
+                OnPropertyChanged(nameof(UnreadBadgeText));
+            }
+        }
+        public bool HasUnread => UnreadCount > 0;
+        public string UnreadBadgeText => UnreadCount > 9 ? "9+" : UnreadCount.ToString();
+
         private ChartDrawable _chartDrawable = new();
         private string _selectedTimeRange = "Last 7 Days";
         private string _chartTitle = "📈 Issued Trend (Last 7 Days)";
@@ -164,7 +180,7 @@ namespace Firetrack.ViewModels
         public ICommand GoToUserManagementCommand { get; }
         public ICommand GoToPendingRequestsCommand { get; }
         public ICommand GoToNotificationsCommand { get; }
-        public ICommand GoToPdfArchiveCommand { get; }   // NEW
+        public ICommand GoToPdfArchiveCommand { get; }
         public ICommand LogoutCommand { get; }
         public ICommand ReportDamageCommand { get; }
         public ICommand RequestDisposalCommand { get; }
@@ -240,7 +256,6 @@ namespace Firetrack.ViewModels
                 catch (Exception ex) { await Shell.Current.DisplayAlert("Error", ex.Message, "OK"); }
             });
 
-            // NEW: PDF Archive shortcut (Admin-only via pushed route)
             GoToPdfArchiveCommand = new Command(async () =>
             {
                 try { await Shell.Current.GoToAsync(Routes.PdfArchivePushed); }
@@ -254,6 +269,7 @@ namespace Firetrack.ViewModels
             LoadData();
             LoadMetrics();
             LoadPersonnelQR();
+            _ = RefreshUnreadCountAsync();   // ✅ NEW
         }
 
         private async void OnLogout()
@@ -269,7 +285,7 @@ namespace Firetrack.ViewModels
         private void LoadPersonnelQR()
         {
             var user = App.CurrentUser;
-            if (user == null || user.Role == "Admin") return;
+            if (user == null) return;
 
             PersonnelQR = user.PersonalQR ?? string.Empty;
             if (string.IsNullOrEmpty(PersonnelQR)) return;
@@ -350,6 +366,21 @@ namespace Firetrack.ViewModels
             LoadData();
             LoadMetrics();
             LoadPersonnelQR();
+            _ = RefreshUnreadCountAsync();   // ✅ NEW
+        }
+
+        // ✅ NEW: reloads unread badge count
+        public async Task RefreshUnreadCountAsync()
+        {
+            try
+            {
+                if (App.CurrentUser == null || App.Database == null) return;
+                UnreadCount = await App.Database.GetUnreadNotificationCountAsync(App.CurrentUser.Username);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ RefreshUnreadCount failed: {ex.Message}");
+            }
         }
 
         private async void LoadMetrics()
@@ -403,8 +434,6 @@ namespace Firetrack.ViewModels
                     ChartTitle = $"📈 Issued Trend (Last {days} Days)";
                     OnPropertyChanged(nameof(ChartDrawable));
                     OnPropertyChanged(nameof(ChartTitle));
-
-                    System.Diagnostics.Debug.WriteLine($"📊 Metrics: Total={total}, Avail={available}, Issued={issued}, Damaged={damaged}, Pending={pending}");
                 });
             }
             catch (Exception ex)
@@ -468,6 +497,7 @@ namespace Firetrack.ViewModels
                         $"Disposal request for '{equipment.Name}' submitted to Admin.", "OK");
                     LoadData();
                     LoadMetrics();
+                    _ = RefreshUnreadCountAsync();
                 }
                 else
                 {

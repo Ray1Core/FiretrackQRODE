@@ -90,7 +90,7 @@ namespace Firetrack.Services
             Add("DisposalRemarks", "TEXT NULL", "NVARCHAR(MAX) NULL");
             Add("PhotoPath", "TEXT NULL", "NVARCHAR(500) NULL");
 
-            // ✅ NEW: Clean up stale assignment records left over from the old Return flow.
+            // ✅ Clean up stale assignment records left over from the old Return flow.
             // Any assignment still marked 'Assigned' for an item that is Available or Disposed
             // is a leftover and should be closed out.
             try
@@ -412,6 +412,36 @@ namespace Firetrack.Services
 
         public async Task<UserModel?> GetUserByEmailAsync(string email) => await GetUserByUsernameAsync(email);
 
+        // ============================================================
+        // GET USER BY PERSONAL QR
+        // ------------------------------------------------------------
+        // Looks up a user by their PersonalQR field (e.g. "PERSON-001",
+        // "ADMIN-001"). This is the value encoded into the officer's
+        // personal QR sticker — NOT their email address.
+        // Used by TransferViewModel steps 2 & 3 (custodian + receiver).
+        // ============================================================
+        public async Task<UserModel?> GetUserByPersonalQrAsync(string personalQr)
+        {
+            if (string.IsNullOrWhiteSpace(personalQr)) return null;
+
+            using var connection = CreateConnection();
+            var user = await connection.QueryFirstOrDefaultAsync<UserModel>(
+                "SELECT * FROM Users WHERE PersonalQR = @PersonalQR",
+                new { PersonalQR = personalQr.Trim() });
+
+            if (user != null)
+            {
+                var role = await connection.QueryFirstOrDefaultAsync(
+                    "SELECT RoleName FROM Roles WHERE RoleId=@RoleId",
+                    new { user.RoleId });
+                user.Role = role?.RoleName ?? "Personnel";
+            }
+
+            System.Diagnostics.Debug.WriteLine(
+                $"ℹ️ GetUserByPersonalQr('{personalQr}') → {(user != null ? user.FullName : "<not found>")}");
+            return user;
+        }
+
         public async Task<int> SaveUserAsync(UserModel user)
         {
             using var connection = CreateConnection();
@@ -467,23 +497,72 @@ namespace Firetrack.Services
         {
             using var connection = CreateConnection();
             var user = await GetUserByUsernameAsync(notification.Username);
-            if (user == null) return 0;
-            return await connection.ExecuteScalarAsync<int>(
-                $@"INSERT INTO Notifications (UserId, Title, Message, IsRead, CreatedAt)
-                   VALUES (@UserId, @Title, @Message, @IsRead, {DateTimeNowFunction});
-                   SELECT {LastInsertIdFunction};",
-                new { UserId = user.UserId, notification.Title, notification.Message, notification.IsRead });
+            if (user == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ SaveNotificationAsync: user '{notification.Username}' not found — notification dropped.");
+                return 0;
+            }
+
+            try
+            {
+                int newId = await connection.ExecuteScalarAsync<int>(
+                    $@"INSERT INTO Notifications (UserId, Title, Message, IsRead, CreatedAt)
+               VALUES (@UserId, @Title, @Message, @IsRead, {DateTimeNowFunction});
+               SELECT {LastInsertIdFunction};",
+                    new { UserId = user.UserId, notification.Title, notification.Message, notification.IsRead });
+
+                System.Diagnostics.Debug.WriteLine(
+                    $"✅ Notification saved (id={newId}) → {notification.Username}: {notification.Title}");
+                return newId;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"❌ SaveNotificationAsync FAILED for '{notification.Username}': {ex.Message}");
+                throw;
+            }
         }
 
         public async Task<List<NotificationModel>> GetNotificationsForUserAsync(string username)
         {
             using var connection = CreateConnection();
             var user = await GetUserByUsernameAsync(username);
-            if (user == null) return new List<NotificationModel>();
-            return (await connection.QueryAsync<NotificationModel>(
+            if (user == null)
+            {
+                System.Diagnostics.Debug.WriteLine(
+                    $"⚠️ GetNotificationsForUserAsync: user '{username}' not found.");
+                return new List<NotificationModel>();
+            }
+
+            var list = (await connection.QueryAsync<NotificationModel>(
                 @"SELECT NotificationId, UserId, Title, Message, IsRead, CreatedAt as Timestamp
-                  FROM Notifications WHERE UserId=@UserId ORDER BY CreatedAt DESC",
+          FROM Notifications WHERE UserId=@UserId ORDER BY CreatedAt DESC",
                 new { UserId = user.UserId })).ToList();
+
+            System.Diagnostics.Debug.WriteLine(
+                $"✅ GetNotificationsForUserAsync('{username}') → {list.Count} notification(s)");
+            return list;
+        }
+
+        // ============================================================
+        // UNREAD NOTIFICATION COUNT (for bell badge)
+        // ============================================================
+        public async Task<int> GetUnreadNotificationCountAsync(string username)
+        {
+            if (string.IsNullOrWhiteSpace(username)) return 0;
+
+            using var connection = CreateConnection();
+            var user = await GetUserByUsernameAsync(username);
+            if (user == null) return 0;
+
+            int count = await connection.ExecuteScalarAsync<int>(
+                "SELECT COUNT(*) FROM Notifications WHERE UserId=@UserId AND IsRead=0",
+                new { UserId = user.UserId });
+
+            System.Diagnostics.Debug.WriteLine(
+                $"🔔 Unread count for '{username}': {count}");
+            return count;
         }
 
         public async Task<int> MarkNotificationAsReadAsync(int id)
@@ -515,7 +594,7 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ✅ FIXED: DISTINCT + AssignedToUsername IS NOT NULL to eliminate
+        // ✅ DISTINCT + AssignedToUsername IS NOT NULL to eliminate
         // duplicates from stale Assignments rows and to exclude items whose
         // assignment was cleared during Clearance but whose ConditionStatus
         // is still 'Damaged'/'InRepair' (kept for the disposal pipeline).
@@ -601,7 +680,7 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
-        // ✅ FIXED: Close pre-existing 'Assigned' rows before inserting the new
+        // ✅ Close pre-existing 'Assigned' rows before inserting the new
         // one. Otherwise repeated request→approve cycles accumulate stale
         // 'Assigned' rows → officer dashboard shows the same tool N times.
         public async Task<int> ApproveRequestAsync(string qrCode, UserModel approver)

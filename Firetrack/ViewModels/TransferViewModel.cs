@@ -226,12 +226,10 @@ namespace Firetrack.ViewModels
         // =========================================================
         // STEP 1 - SCAN EQUIPMENT
         // ---------------------------------------------------------
-        // ✅ FIX: Use Routes.GetScannerPushedRoute() so the Scanner
-        // lands on TOP of TransferPage in the navigation stack.
-        // Using the absolute route ("//AdminScanner") replaces the
-        // whole stack, so GoToAsync("..") had nothing to pop back
-        // to — that's why the user ended up on Dashboard instead of
-        // returning to TransferPage with the scanned QR.
+        // ✅ Use Routes.GetScannerPushedRoute() so the Scanner lands
+        // on TOP of TransferPage in the navigation stack. Using the
+        // absolute route ("//AdminScanner") replaces the whole stack,
+        // so GoToAsync("..") had nothing to pop back to.
         // =========================================================
 
         private async void OnScanEquipment()
@@ -277,6 +275,15 @@ namespace Firetrack.ViewModels
 
         // =========================================================
         // PROCESS QR
+        // ---------------------------------------------------------
+        // The QR value may be either:
+        //   • An equipment PropertyNumber (e.g. "HOSE001", "TOOL001")
+        //   • A user PersonalQR             (e.g. "PERSON-001", "ADMIN-001")
+        //   • A user email (fallback)       (e.g. "john@firetrack.gov")
+        //
+        // ✅ FIX: Steps 2 & 3 now try GetUserByPersonalQrAsync FIRST
+        // (matches the actual QR sticker) and fall back to email
+        // lookup so both formats work.
         // =========================================================
 
         public async Task ProcessScannedQR(string qrCode, string mode)
@@ -334,7 +341,14 @@ namespace Firetrack.ViewModels
 
                 else if (mode == "currentCustodian")
                 {
-                    var user = await _db.GetUserByUsernameAsync(qrCode);
+                    // ✅ FIX: try PersonalQR lookup first (matches the actual
+                    // QR sticker value like "PERSON-001"), then fall back to
+                    // email lookup so both formats work.
+                    var user = await _db.GetUserByPersonalQrAsync(qrCode)
+                            ?? await _db.GetUserByUsernameAsync(qrCode);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"🔍 Custodian lookup: qr={qrCode} found={(user != null ? user.FullName : "<null>")}");
 
                     if (user == null)
                     {
@@ -351,7 +365,12 @@ namespace Firetrack.ViewModels
 
                 else if (mode == "newCustodian")
                 {
-                    var user = await _db.GetUserByUsernameAsync(qrCode);
+                    // ✅ FIX: same PersonalQR-first lookup as currentCustodian
+                    var user = await _db.GetUserByPersonalQrAsync(qrCode)
+                            ?? await _db.GetUserByUsernameAsync(qrCode);
+
+                    System.Diagnostics.Debug.WriteLine(
+                        $"🔍 Receiver lookup: qr={qrCode} found={(user != null ? user.FullName : "<null>")}");
 
                     if (user == null)
                     {
@@ -378,6 +397,7 @@ namespace Firetrack.ViewModels
             catch (Exception ex)
             {
                 Step1Status = $"❌ Error: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"❌ ProcessScannedQR exception: {ex}");
             }
             finally
             {

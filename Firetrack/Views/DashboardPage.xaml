@@ -58,14 +58,38 @@
                            HorizontalOptions="Start" />
                 </Grid>
 
-                <ImageButton Grid.Column="1"
-                             Source="bell.png"
-                             BackgroundColor="Transparent"
-                             WidthRequest="40"
-                             HeightRequest="40"
-                             Command="{Binding GoToNotificationsCommand}"
-                             HorizontalOptions="Center"
-                             VerticalOptions="Center" />
+                <!-- Bell + badge overlay -->
+                <Grid Grid.Column="1"
+                      WidthRequest="48"
+                      HeightRequest="48"
+                      HorizontalOptions="Center"
+                      VerticalOptions="Center">
+                    <ImageButton Source="bell.png"
+                                 BackgroundColor="Transparent"
+                                 WidthRequest="40"
+                                 HeightRequest="40"
+                                 Command="{Binding GoToNotificationsCommand}"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center" />
+
+                    <!-- ✅ NEW: unread count badge -->
+                    <Border IsVisible="{Binding HasUnread}"
+                            BackgroundColor="#E74C3C"
+                            StrokeThickness="0"
+                            Padding="0"
+                            WidthRequest="20"
+                            HeightRequest="20"
+                            StrokeShape="RoundRectangle 10"
+                            HorizontalOptions="End"
+                            VerticalOptions="Start">
+                        <Label Text="{Binding UnreadBadgeText}"
+                               FontSize="11"
+                               FontAttributes="Bold"
+                               TextColor="White"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+                </Grid>
             </Grid>
 
             <!-- METRICS CARDS (Admin only) -->
@@ -163,7 +187,6 @@
                                         </Label.GestureRecognizers>
                                     </Label>
 
-                                    <!-- Report button: only for NON-damaged items -->
                                     <Button Grid.Column="2"
                                             Text="Report"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.ReportDamageCommand}"
@@ -176,7 +199,6 @@
                                             HeightRequest="30"
                                             IsVisible="{Binding Status, Converter={StaticResource IsNotDamagedConverter}}" />
 
-                                    <!-- Request Disposal: only for DAMAGED items -->
                                     <Button Grid.Column="2"
                                             Text="Request Disposal"
                                             Command="{Binding Source={RelativeSource AncestorType={x:Type ContentPage}}, Path=BindingContext.RequestDisposalCommand}"
@@ -238,7 +260,6 @@
                   ColumnSpacing="12"
                   RowSpacing="12">
 
-                <!-- ROW 0: Transfer + Scan QR -->
                 <Button Grid.Row="0" Grid.Column="0"
                         Text="Transfer"
                         Command="{Binding GoToTransferCommand}"
@@ -256,7 +277,6 @@
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}" />
 
-                <!-- ROW 1: Clearance (admin) / Profile (personnel) -->
                 <Button Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
                         Text="Clearance"
                         Command="{Binding GoToClearanceCommand}"
@@ -269,7 +289,6 @@
                         Style="{StaticResource PrimaryButton}"
                         IsVisible="{Binding IsAdmin, Converter={StaticResource InvertedBoolConverter}}" />
 
-                <!-- ROW 2: PDF Archive (Admin only) -->
                 <Button Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
                         Text="📁 PDF Archive"
                         Command="{Binding GoToPdfArchiveCommand}"
