@@ -99,6 +99,14 @@ namespace Firetrack.ViewModels
             IsBusy = false;
         }
 
+        // ============================================================
+        // MARK SELECTED AS RETURNED
+        // ------------------------------------------------------------
+        // Closes the Assignments row for the selected item BEFORE
+        // saving the Equipment row. Without this, the officer's
+        // dashboard JOIN keeps finding the stale 'Assigned' row and
+        // the item reappears / duplicates.
+        // ============================================================
         private async void OnMarkReturned()
         {
             if (SelectedEquipment == null)
@@ -118,6 +126,17 @@ namespace Firetrack.ViewModels
 
             try
             {
+                // ✅ FIX: Close the Assignments row FIRST so the officer's
+                // dashboard JOIN no longer finds this equipment. Without
+                // this, saving the Equipment row alone leaves a stale
+                // 'Assigned' row that keeps resurfacing the item.
+                if (SelectedOfficer != null)
+                {
+                    await _db.CloseActiveAssignmentsAsync(
+                        SelectedEquipment.EquipmentId,
+                        SelectedOfficer.Username);
+                }
+
                 var transaction = new TransactionModel
                 {
                     EquipmentQR = SelectedEquipment.QRCode,
@@ -128,7 +147,7 @@ namespace Firetrack.ViewModels
                     Remarks = $"Returned by {SelectedEquipment.AssignedToUsername} during clearance."
                 };
 
-                // ✅ FIX: don't downgrade Damaged/InRepair items to Available.
+                // ✅ Don't downgrade Damaged/InRepair items to Available.
                 // Only clear the assignment so the item stays in the disposal pipeline.
                 string originalStatus = SelectedEquipment.Status;
                 SelectedEquipment.AssignedToUsername = null;
@@ -170,9 +189,23 @@ namespace Firetrack.ViewModels
             }
         }
 
+        // ============================================================
+        // MARK ALL RETURNED
+        // ------------------------------------------------------------
+        // Closes Assignments rows for every item in the officer's
+        // list before updating Equipment. Damaged/InRepair items keep
+        // their status for the disposal pipeline.
+        // ============================================================
         private async void OnMarkAllReturned()
         {
-            if (SelectedOfficer == null)
+            // ✅ FIX: Capture into local variables so nullable flow analysis survives
+            // the awaits inside the loop. Without this, CS8602 fires on
+            // SelectedOfficer.Username / SelectedOfficer.FullName because the compiler
+            // can't prove the field wasn't reassigned by another thread during an await.
+            var officer = SelectedOfficer;
+            var currentUser = App.CurrentUser;
+
+            if (officer == null)
             {
                 StatusMessage = "Please select an officer first.";
                 return;
@@ -203,11 +236,14 @@ namespace Firetrack.ViewModels
                 {
                     if (string.IsNullOrEmpty(eq.AssignedToUsername)) continue;
 
+                    // ✅ Close the Assignments row before touching the Equipment row.
+                    await _db.CloseActiveAssignmentsAsync(eq.EquipmentId, officer.Username);
+
                     string originalStatus = eq.Status;
                     eq.AssignedToUsername = null;
                     eq.LastUpdated = DateTime.Now;
 
-                    // ✅ FIX: only downgrade non-damaged items to Available
+                    // ✅ Only downgrade non-damaged items to Available.
                     if (originalStatus == "Damaged" || originalStatus == "InRepair")
                     {
                         damagedSkipped++;
@@ -224,8 +260,8 @@ namespace Firetrack.ViewModels
                     var transaction = new TransactionModel
                     {
                         EquipmentQR = eq.QRCode,
-                        FromUser = SelectedOfficer.Username,
-                        ToUser = App.CurrentUser?.Username ?? "admin",
+                        FromUser = officer.Username,
+                        ToUser = currentUser?.Username ?? "admin",
                         Timestamp = DateTime.Now,
                         Action = "Return",
                         Remarks = originalStatus == "Damaged" || originalStatus == "InRepair"
@@ -235,12 +271,12 @@ namespace Firetrack.ViewModels
                     await _db.SaveTransactionAsync(transaction);
                 }
 
-                if (App.CurrentUser != null)
+                if (currentUser != null)
                 {
                     await _db.LogActionAsync(
-                        App.CurrentUser.Username,
+                        currentUser.Username,
                         "Clearance All Returned",
-                        $"Marked {returnedCount} item(s) as returned; {damagedSkipped} damaged item(s) kept in pipeline for {SelectedOfficer.FullName}");
+                        $"Marked {returnedCount} item(s) as returned; {damagedSkipped} damaged item(s) kept in pipeline for {officer.FullName}");
                 }
 
                 if (damagedSkipped > 0)
@@ -264,6 +300,9 @@ namespace Firetrack.ViewModels
             }
         }
 
+        // ============================================================
+        // GENERATE CLEARANCE CERTIFICATE
+        // ============================================================
         private async void OnGenerateCertificate()
         {
             if (SelectedOfficer == null)

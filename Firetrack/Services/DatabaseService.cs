@@ -515,20 +515,23 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
+        // ✅ FIXED: DISTINCT + AssignedToUsername IS NOT NULL to eliminate
+        // duplicates from stale Assignments rows and to exclude items whose
+        // assignment was cleared during Clearance but whose ConditionStatus
+        // is still 'Damaged'/'InRepair' (kept for the disposal pipeline).
         public async Task<List<EquipmentModel>> GetEquipmentsAssignedToUserAsync(string username)
         {
             using var connection = CreateConnection();
             var user = await GetUserByUsernameAsync(username);
             if (user == null) return new List<EquipmentModel>();
 
-            // ✅ FIX: Only return items that are actively in the user's custody.
-            // Assignment must be 'Assigned' AND the item must still be held
-            // (Issued, Damaged, or InRepair). Available/Disposed items are excluded.
-            var sql = @"SELECT e.* FROM Equipment e
+            var sql = @"SELECT DISTINCT e.* FROM Equipment e
                 JOIN Assignments a ON e.EquipmentId = a.EquipmentId
                 WHERE a.UserId = @UserId 
                   AND a.AssignmentStatus = 'Assigned'
+                  AND e.AssignedToUsername IS NOT NULL
                   AND e.ConditionStatus IN ('Issued', 'Damaged', 'InRepair')";
+
             var result = (await connection.QueryAsync<EquipmentModel>(sql, new { UserId = user.UserId })).ToList();
 
             foreach (var eq in result)
@@ -598,6 +601,9 @@ namespace Firetrack.Services
             return result.ToList();
         }
 
+        // ✅ FIXED: Close pre-existing 'Assigned' rows before inserting the new
+        // one. Otherwise repeated request→approve cycles accumulate stale
+        // 'Assigned' rows → officer dashboard shows the same tool N times.
         public async Task<int> ApproveRequestAsync(string qrCode, UserModel approver)
         {
             var equipment = await GetEquipmentByQRAsync(qrCode);
@@ -607,6 +613,15 @@ namespace Firetrack.Services
             if (user == null) return 0;
 
             using var connection = CreateConnection();
+
+            // 1. Close any pre-existing 'Assigned' rows for this equipment.
+            await connection.ExecuteAsync(@"
+                UPDATE Assignments 
+                SET AssignmentStatus = 'Returned', ReturnedDate = @Date
+                WHERE EquipmentId = @EquipmentId AND AssignmentStatus = 'Assigned'",
+                new { EquipmentId = equipment.EquipmentId, Date = DateTime.Now.Date });
+
+            // 2. Insert the fresh assignment.
             await connection.ExecuteAsync(
                 @"INSERT INTO Assignments (EquipmentId, UserId, AssignedDate, AssignmentStatus)
                   VALUES (@EquipmentId, @UserId, @Date, 'Assigned')",
@@ -650,6 +665,37 @@ namespace Firetrack.Services
             equipment.RequestStatus = status;
             equipment.LastUpdated = DateTime.Now;
             return await SaveEquipmentAsync(equipment);
+        }
+
+        // ============================================================
+        // CLOSE ACTIVE ASSIGNMENTS (used by Clearance flow)
+        // ------------------------------------------------------------
+        // Marks every 'Assigned' row for this equipment+user as 'Returned'.
+        // Without this, the officer's dashboard JOIN keeps finding stale
+        // rows, and re-requests create duplicate 'Assigned' rows.
+        // ============================================================
+        public async Task<int> CloseActiveAssignmentsAsync(int equipmentId, string username)
+        {
+            using var connection = CreateConnection();
+            var user = await GetUserByUsernameAsync(username);
+            if (user == null) return 0;
+
+            int rows = await connection.ExecuteAsync(@"
+                UPDATE Assignments 
+                SET AssignmentStatus = 'Returned', ReturnedDate = @Date
+                WHERE EquipmentId = @EquipmentId 
+                  AND UserId = @UserId 
+                  AND AssignmentStatus = 'Assigned'",
+                new
+                {
+                    EquipmentId = equipmentId,
+                    UserId = user.UserId,
+                    Date = DateTime.Now.Date
+                });
+
+            System.Diagnostics.Debug.WriteLine(
+                $"✅ Closed {rows} assignment row(s) for Equipment {equipmentId} / User {username}");
+            return rows;
         }
 
         // ============================================================
